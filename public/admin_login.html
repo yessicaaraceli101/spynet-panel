@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ingreso Administrativo</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f3f4f6;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .login-box {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      width: 320px;
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1e4ecf;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="login-box">
+    <h2>Administrador</h2>
+
+    <input type="text" id="adminUser" placeholder="Usuario">
+    <input type="password" id="adminPass" placeholder="Contraseña">
+    
+    <button onclick="validarAdmin()">Ingresar</button>
+    <a href="index.html" class="volver-btn">← Volver</a>
+  <style>
+    .volver-btn {
+  display: block;
+  width: 130px;
+  margin: 15px auto 0;
+  padding: 10px 0;
+  text-align: center;
+  background: #e5e7eb; /* gris suave */
+  color: #374151; /* gris oscuro */
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.volver-btn:hover {
+  background: #d1d5db; /* gris más fuerte */
+}
+    
+  </style>
+  </div>
+
+<script>
+function validarAdmin() {
+  const u = adminUser.value;
+  const p = adminPass.value;
+
+  // Ejemplo - CAMBIAR por credenciales reales
+  if (u === "admin" && p === "1234") {
+    localStorage.setItem("adminAuth", "yes");
+    window.location.href = "admin.html";
+  } else {
+    alert("Acceso denegado");
+  }
+}
+</script>
+
+</body>
+</html>
