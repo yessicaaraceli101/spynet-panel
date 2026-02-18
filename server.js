@@ -83,6 +83,8 @@ app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 /* ----------------------------- PostgreSQL Pool ------------------------------ */
+const sslRequired = String(process.env.PGSSLMODE || "").trim().toLowerCase() === "require";
+
 const pool = new Pool({
   host: process.env.PGHOST,
   port: Number(process.env.PGPORT || 5432),
@@ -90,9 +92,7 @@ const pool = new Pool({
   password: process.env.PGPASSWORD,
   database: process.env.PGDATABASE,
 
-  ssl: {
-    rejectUnauthorized: false, // ✅ clave para evitar SELF_SIGNED_CERT_IN_CHAIN
-  },
+  ssl: sslRequired ? { rejectUnauthorized: false } : false,
 
   max: Number(process.env.PGPOOL_MAX || 10),
   idleTimeoutMillis: 30_000,
