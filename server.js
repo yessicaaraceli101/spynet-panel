@@ -33,6 +33,11 @@ app.use((req, res, next) => {
 console.log("SUPABASE_URL:", process.env.SUPABASE_URL ? "OK" : "FALTA");
 console.log("SERVICE_ROLE:", process.env.SUPABASE_SERVICE_ROLE_KEY ? "OK" : "FALTA");
 
+console.log("ENV KEYS:", Object.keys(process.env).filter(k => k.includes("SUPABASE") || k.includes("SERVICE")));
+console.log("SUPABASE_URL exists:", !!process.env.SUPABASE_URL);
+console.log("SUPABASE_SERVICE_ROLE_KEY exists:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+console.log("SERVICE_ROLE exists:", !!process.env.SERVICE_ROLE);
+
 // ✅ Cortar con error claro si falta algo
 if (!process.env.SUPABASE_URL) {
   throw new Error("FALTA SUPABASE_URL en .env");
@@ -85,12 +90,14 @@ const pool = new Pool({
   password: process.env.PGPASSWORD,
   database: process.env.PGDATABASE,
 
-  // ✅ Evita saturar conexiones ("demasiados clientes")
-  max: Number(process.env.PGPOOL_MAX || 10),      // máx conexiones en pool
-  idleTimeoutMillis: 30_000,                      // cierra conexiones inactivas
-  connectionTimeoutMillis: 5_000,                 // timeout al conectar
-});
+  ssl: {
+    rejectUnauthorized: false, // ✅ clave para evitar SELF_SIGNED_CERT_IN_CHAIN
+  },
 
+  max: Number(process.env.PGPOOL_MAX || 10),
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000,
+});
 // ✅ Log de errores del pool
 pool.on("error", (err) => {
   console.error("❌ Pool error:", err.message);
@@ -173,36 +180,6 @@ function requireAuth(req, res, next) {
   return res.status(401).json({ error: "No autorizado" });
 }
 
-// ✅ TEST SUPABASE: lista 5 filas de una tabla (por defecto: productos)
-app.get("/supabase-test", requireAuth, async (req, res) => {
-  try {
-    const table = (req.query.table || "productos").toString().trim();
-
-    const { data, error } = await supabase
-      .from(table)
-      .select("*")
-      .limit(5);
-
-    if (error) {
-      return res.status(400).json({
-        ok: false,
-        table,
-        error: error.message,
-        hint:
-          "Verificá que la tabla exista en Supabase y que el service role key sea correcto.",
-      });
-    }
-
-    return res.json({
-      ok: true,
-      table,
-      count: data?.length || 0,
-      data,
-    });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message });
-  }
-});
 
 app.get("/supabase-test", async (req, res) => {
   const table = String(req.query.table || "productos").trim();
@@ -2518,6 +2495,9 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     console.error("❌ Error generando pagaré:", err);
     res.status(500).send("Error generando pagaré");
   }
+});
+app.get("/", (_req, res) => {
+  res.send("SPYnet OK ✅");
 });
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
