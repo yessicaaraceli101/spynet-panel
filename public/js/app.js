@@ -1,4 +1,6 @@
-const API = "http://localhost:4000"; // mismo host
+const API = window.location.hostname.includes("localhost")
+  ? "http://localhost:4000"
+  : "";
 
 // LOGOS EN BASE64
 let logoConsorcio = "";
