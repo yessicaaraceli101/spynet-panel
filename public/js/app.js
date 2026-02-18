@@ -1,6 +1,4 @@
-const API = window.location.hostname.includes("localhost")
-  ? "http://localhost:4000"
-  : "";
+const API = window.location.origin;
 
 // LOGOS EN BASE64
 let logoConsorcio = "";
