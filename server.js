@@ -1510,32 +1510,57 @@ app.post("/ventas", async (req, res) => {
   const client = await pool.connect();
 
   try {
-    if (!forma_pago_id) return res.status(400).json({ ok: false, msg: "Falta forma_pago_id" });
+    if (!forma_pago_id) {
+      return res.status(400).json({ ok: false, msg: "Falta forma_pago_id" });
+    }
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ ok: false, msg: "No hay items" });
     }
 
-    const EFECTIVO_ID = 2;        // ✅ tu BD
-    const TRANSFER_ID = 3;        // ✅ tu BD (no es obligatorio usarlo, pero queda claro)
+    // ✅ IDs reales en tu BD
+    const EFECTIVO_ID = 2;
 
     const fpId = Number(forma_pago_id);
     const totalFinal = Number(total || 0);
 
-    // ✅ comprobante solo si NO es efectivo (o sea, transferencia)
+    if (!Number.isFinite(fpId) || fpId <= 0) {
+      return res.status(400).json({ ok: false, msg: "forma_pago_id inválido" });
+    }
+    if (!Number.isFinite(totalFinal) || totalFinal <= 0) {
+      return res.status(400).json({ ok: false, msg: "Total inválido" });
+    }
+
+    // ✅ Solo estas formas requieren comprobante
+    const FORMAS_CON_COMPROBANTE = new Set([4, 5, 6, 7, 8, 9, 10]);
     const compStr = (nro_comprobante || "").toString().trim();
-    if (fpId !== EFECTIVO_ID && !compStr) {
+
+    if (FORMAS_CON_COMPROBANTE.has(fpId) && !compStr) {
       return res.status(400).json({ ok: false, msg: "Falta nro_comprobante" });
     }
 
-    // ✅ tipo caja según forma de pago
+    // ✅ tipo de caja requerido
     const tipoCajaNecesaria = (fpId === EFECTIVO_ID) ? "efectivo" : "transferencia";
 
     await client.query("BEGIN");
 
-    // ✅ buscar caja abierta del tipo correcto
+    // ✅ buscar caja abierta del tipo correcto (robusto a mayúsculas/variantes)
+    // - efectivo: busca "efectivo"
+    // - transferencia: busca "transferencia" o "transferencias" (y variantes)
+    const tipoPattern =
+      (tipoCajaNecesaria === "efectivo")
+        ? "%efectiv%"
+        : "%transf%";
+
     const cajaQ = await client.query(
-      "SELECT id FROM caja WHERE estado='abierta' AND tipo=$1 ORDER BY id DESC LIMIT 1",
-      [tipoCajaNecesaria]
+      `
+      SELECT id, tipo
+      FROM caja
+      WHERE estado = 'abierta'
+        AND (lower(tipo) LIKE lower($1))
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+      [tipoPattern]
     );
 
     if (cajaQ.rows.length === 0) {
@@ -1552,14 +1577,16 @@ app.post("/ventas", async (req, res) => {
     const clienteIdFinal =
       cliente_id && String(cliente_id) !== "0" ? Number(cliente_id) : null;
 
-    // ✅ comprobante final (en efectivo null)
-    const compFinal = (fpId === EFECTIVO_ID) ? null : compStr;
+    // ✅ comprobante: si no aplica, NULL
+    const compFinal = FORMAS_CON_COMPROBANTE.has(fpId) ? compStr : null;
 
     // ✅ insertar venta
     const v = await client.query(
-      `INSERT INTO ventas (fecha, cliente_id, caja_id, total, forma_pago_id, estado_pago, nro_comprobante)
-       VALUES ((now() AT TIME ZONE 'America/Asuncion')::date, $1,$2,$3,$4,$5,$6)
-       RETURNING id`,
+      `
+      INSERT INTO ventas (fecha, cliente_id, caja_id, total, forma_pago_id, estado_pago, nro_comprobante)
+      VALUES ((now() AT TIME ZONE 'America/Asuncion')::date, $1, $2, $3, $4, $5, $6)
+      RETURNING id
+      `,
       [
         clienteIdFinal,
         caja_id_final,
@@ -1575,27 +1602,59 @@ app.post("/ventas", async (req, res) => {
     // ✅ items + stock
     for (const it of items) {
       const productoId = Number(it.producto_id);
-      const cantidad = Number(it.cantidad);
+      const cantidad = Number(it.cantidad || 0);
       const precio = Number(it.precio ?? it.precio_unitario ?? 0);
       const subtotal = Number(it.subtotal ?? (cantidad * precio));
 
+      if (!productoId || productoId <= 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ ok: false, msg: "Item con producto_id inválido" });
+      }
+      if (!Number.isFinite(cantidad) || cantidad <= 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ ok: false, msg: "Item con cantidad inválida" });
+      }
+      if (!Number.isFinite(precio) || precio < 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ ok: false, msg: "Item con precio inválido" });
+      }
+
       await client.query(
-        `INSERT INTO ventas_items (venta_id, producto_id, cantidad, precio, subtotal)
-         VALUES ($1,$2,$3,$4,$5)`,
+        `
+        INSERT INTO ventas_items (venta_id, producto_id, cantidad, precio, subtotal)
+        VALUES ($1, $2, $3, $4, $5)
+        `,
         [ventaId, productoId, cantidad, precio, subtotal]
       );
 
-      await client.query(
-        `UPDATE productos SET stock = stock - $1 WHERE id = $2`,
+      // ✅ evitar stock negativo (si querés permitir negativo, avisame y lo quito)
+      const upd = await client.query(
+        `
+        UPDATE productos
+        SET stock = stock - $1
+        WHERE id = $2
+          AND stock >= $1
+        RETURNING id
+        `,
         [cantidad, productoId]
       );
+
+      if (upd.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          ok: false,
+          msg: `Stock insuficiente para el producto ID ${productoId}`,
+        });
+      }
     }
 
-    // ✅ sumar a caja (si usás saldo_actual como acumulado)
+    // ✅ sumar a caja
     await client.query(
-      `UPDATE caja
-       SET saldo_actual = COALESCE(saldo_actual, 0) + $1
-       WHERE id = $2`,
+      `
+      UPDATE caja
+      SET saldo_actual = COALESCE(saldo_actual, 0) + $1
+      WHERE id = $2
+      `,
       [totalFinal, caja_id_final]
     );
 
@@ -1605,7 +1664,8 @@ app.post("/ventas", async (req, res) => {
       ok: true,
       id: ventaId,
       caja_id: caja_id_final,
-      tipo_caja: tipoCajaNecesaria
+      tipo_caja: tipoCajaNecesaria,
+      caja_tipo_real: cajaQ.rows[0].tipo,
     });
 
   } catch (err) {

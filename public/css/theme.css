@@ -3576,3 +3576,75 @@ main{
   border-color:#dc2626 !important;
   background-image:none !important;
 }
+
+
+/* ===== MODAL LOGOUT: más chico y cuadrado ===== */
+#logoutModal .modal-content{
+  width: 420px;        /* más chico */
+  max-width: 92vw;
+  padding: 22px 24px;
+  border-radius: 8px;  /* cuadrado (si querés 100% cuadrado poné 0) */
+}
+
+#logoutModal h3{
+  margin: 0 0 8px 0;
+  font-size: 22px;
+}
+
+#logoutModal p{
+  margin: 0 0 18px 0;
+  opacity: .85;
+}
+
+#logoutModal .modal-buttons{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#logoutModal .modal-buttons button{
+  padding: 10px 16px;
+  border-radius: 8px; /* cuadrado */
+}
+
+
+/* ===== Sidebar: marcar Cerrar sesión en rojo ===== */
+.sidebar a.logout-link{
+  color: #dc2626 !important;
+  position: relative;
+}
+
+/* ícono rojo también */
+.sidebar a.logout-link i{
+  color: #dc2626 !important;
+}
+
+/* la raya roja */
+.sidebar a.logout-link::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:10px;
+  bottom:10px;
+  width:4px;
+  background:#dc2626;
+  border-radius:2px;
+}
+
+/* hover */
+.sidebar a.logout-link:hover{
+  color:#b91c1c !important;
+  background: rgba(220,38,38,.10) !important;
+}
+.sidebar a.logout-link:hover i{
+  color:#b91c1c !important;
+}
+
+/* por si el menú le marca active */
+.sidebar a.logout-link.active{
+  color:#b91c1c !important;
+  background: rgba(220,38,38,.12) !important;
+}
+.sidebar a.logout-link.active i{
+  color:#b91c1c !important;
+}

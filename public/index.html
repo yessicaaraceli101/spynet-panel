@@ -80,7 +80,7 @@
   Panel Administrativo
 </a>
 
-<a href="#" class="logout" onclick="logout(); return false;">
+<a href="#" class="logout-link" onclick="logout(event); return false;">
   <i class="fa-solid fa-right-from-bracket"></i>
   Cerrar sesión
 </a>
@@ -959,8 +959,8 @@
     <h3>Seleccionar Forma de Pago</h3>
 
     <div class="pago-grid" id="gridFormasPago">
-      <button class="btn btnFormaPago" data-id="1"  data-nombre="Efectivo">💵 Efectivo</button>
-      <button class="btn btnFormaPago" data-id="2"  data-nombre="Débito">💳 Débito</button>
+      <button class="btn btnFormaPago" data-id="1"  data-nombre="Débito">💳 Débito</button>
+      <button class="btn btnFormaPago" data-id="2"  data-nombre="Efectivo">💵 Efectivo</button>
       <button class="btn btnFormaPago" data-id="3"  data-nombre="Crédito">💳 Crédito</button>
       <button class="btn btnFormaPago" data-id="4"  data-nombre="QR">📱 QR</button>
       <button class="btn btnFormaPago" data-id="5"  data-nombre="BNF">🏦 BNF</button>
@@ -970,6 +970,7 @@
       <button class="btn btnFormaPago" data-id="9"  data-nombre="Banco Basa">🏦 Banco Basa</button>
       <button class="btn btnFormaPago" data-id="10" data-nombre="Mango">📱 Mango</button>
     </div>
+
 
     <!-- MENSAJE VISUAL -->
     <div id="mensajeFormaPago"
@@ -1332,14 +1333,14 @@
 </div>
 
 <!-- MODAL FUERA DEL MAIN -->
-    <div id="logoutModal" class="modal">
+<div id="logoutModal" class="modal" style="display:none;">
   <div class="modal-content">
     <h3>¿Cerrar sesión?</h3>
     <p>¿Estás seguro de que deseas salir del sistema?</p>
 
     <div class="modal-buttons">
-      <button onclick="confirmLogout()" class="red">Sí, cerrar</button>
-      <button onclick="closeLogoutModal()">Cancelar</button>
+      <button onclick="confirmLogout()" class="btn red">Sí, cerrar</button>
+      <button onclick="closeLogoutModal()" class="btn secondary">Cancelar</button>
     </div>
   </div>
 </div>

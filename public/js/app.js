@@ -210,33 +210,7 @@ if (hash === '#pedidos') {
     listarFP(); // 👈 único responsable
   }
 }
-function logout() {
-    // Cierra cualquier modal abierto antes
-    closeAllModals();
 
-    // Abre el modal de confirmación de cierre de sesión
-    document.getElementById("logoutModal").style.display = "flex";
-}
-
-function closeLogoutModal() {
-    // Cierra solamente el modal de logout
-    document.getElementById("logoutModal").style.display = "none";
-}
-
-function confirmLogout() {
-    // Eliminar autenticación
-    localStorage.removeItem("auth");
-
-    // Redirigir a login
-    window.location.href = "login.html";
-}
-
-function closeAllModals() {
-    // Cierra TODOS los modales del sistema
-    document.querySelectorAll(".modal").forEach(m => {
-        m.style.display = "none";
-    });
-}
 
 function esDelMesActual(fecha) {
     const f = new Date(fecha);
@@ -3209,13 +3183,69 @@ async function verificarCaja() {
   verificarCaja();
 })();
 
-function openLogoutModal() {
-  logout();
+// ================== LOGOUT (ÚNICO) ==================
+function closeAllModals() {
+  document.querySelectorAll(".modal").forEach(m => {
+    m.style.display = "none";
+    m.classList.remove("show");
+  });
+  document.body.classList.remove("modal-open");
 }
+
+function logout(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  if (e && e.stopPropagation) e.stopPropagation();
+
+  closeAllModals();
+
+  const modal = document.getElementById("logoutModal");
+  if (!modal) {
+    console.error("❌ No existe #logoutModal en el HTML");
+    return alert("No existe el modal #logoutModal");
+  }
+
+  modal.style.display = "flex";
+  modal.classList.add("show");
+}
+
+function closeLogoutModal() {
+  const modal = document.getElementById("logoutModal");
+  if (modal) {
+    modal.classList.remove("show");
+    modal.style.display = "none";
+  }
+}
+
+function confirmLogout() {
+  localStorage.removeItem("auth");
+  window.location.href = "login.html";
+}
+
+let LAST_HASH = "#dashboard";
+
+window.addEventListener("hashchange", () => {
+  if (location.hash === "#logout") {
+    // abrir modal y volver al hash anterior
+    logout();
+    history.replaceState(null, "", LAST_HASH);
+    return;
+  }
+
+  LAST_HASH = location.hash || "#dashboard";
+  show(LAST_HASH);
+});
+
+// al cargar
+window.addEventListener("load", () => {
+  LAST_HASH = location.hash || "#dashboard";
+  show(LAST_HASH);
+});
+
+// Exportar para onclick del HTML
 window.logout = logout;
 window.closeLogoutModal = closeLogoutModal;
 window.confirmLogout = confirmLogout;
-window.openLogoutModal = openLogoutModal;
+
 // Para que onclick="abrirCaja()" y onclick="cerrarCaja()" funcionen siempre
 window.abrirCaja = abrirCaja;
 window.cerrarCaja = cerrarCaja;

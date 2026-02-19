@@ -16,6 +16,9 @@ let formaPagoFinal = { id: null, nombre: null };
 const MAX_INTENTOS = 3;
 const CLAVE_EDITAR = "editar123";
 
+const ID_DEBITO   = 1;
+const ID_EFECTIVO = 2;
+
 /* ===============================
    FORMAT NUMBER
 =============================== */
@@ -46,21 +49,17 @@ function bsShowModal(id, opts = {}) {
    MODAL PROFESIONAL: CAJA CERRADA
 =============================== */
 function mostrarModalCajaCerrada(msg = "Debe abrir la caja antes de realizar una venta.") {
-  // Cambiar texto del modal
   const body = document.getElementById("modalCajaCerradaBody");
   if (body) body.textContent = msg;
 
-  // Si no hay bootstrap, fallback a alert
   if (typeof bootstrap === "undefined") {
     alert(msg);
     return;
   }
 
-  // ✅ Cerrar otros modales Bootstrap (evita que el fondo quede “raro”/transparente)
   bsHideModal("modalPago");
   bsHideModal("modalVenta");
 
-  // ✅ Mostrar Caja Cerrada DESPUÉS de cerrar los otros (pequeño delay)
   setTimeout(() => {
     const ok = bsShowModal("modalCajaCerrada", { backdrop: "static", keyboard: false });
     if (!ok) alert(msg);
@@ -70,9 +69,7 @@ function mostrarModalCajaCerrada(msg = "Debe abrir la caja antes de realizar una
 /* ===============================
    FORMAS con comprobante
 =============================== */
-// ✅ Estas formas requieren comprobante
 const FORMAS_CON_COMPROBANTE = new Set([4, 5, 6, 7, 8, 9, 10]);
-// 4=QR, 5=BNF, 6=Continental, 7=Banco Familiar, 8=Ueno Bank, 9=Banco Basa, 10=Mango
 
 function toggleComprobanteUI(formaPagoId) {
   const wrap = document.getElementById("wrapComprobante");
@@ -82,31 +79,59 @@ function toggleComprobanteUI(formaPagoId) {
   const necesita = FORMAS_CON_COMPROBANTE.has(Number(formaPagoId));
   wrap.style.display = necesita ? "block" : "none";
 
-  if (!necesita) input.value = ""; // limpiar si no aplica
+  if (!necesita) input.value = "";
 }
 
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".btnFormaPago");
-  if (!btn) return;
+/* ===============================
+   MAP FORMA PAGO
+=============================== */
+const FORMAS_PAGO_MAP = {
+  1: "Débito",
+  2: "Efectivo",
+  3: "Crédito",
+  4: "QR",
+  5: "BNF",
+  6: "Continental",
+  7: "Banco Familiar",
+  8: "Ueno Bank",
+  9: "Banco Basa",
+  10: "Mango"
+};
 
-  formaPagoIdSeleccionada = Number(btn.dataset.id);
-  formaPagoNombreSeleccionado = btn.dataset.nombre;
+function detectarFormaPagoDesdeBoton(btn) {
+  // 1) Por dataset
+  let id = Number(btn?.dataset?.id || btn?.getAttribute?.("data-id") || 0);
+  let nombre = (btn?.dataset?.nombre || "").trim();
 
-  // Mensaje visual
-  const msg = document.getElementById("mensajeFormaPago");
-  if (msg) {
-    msg.style.display = "block";
-    msg.textContent = `Forma de pago seleccionada: ${formaPagoNombreSeleccionado}`;
+  // 2) Si no hay nombre en dataset, usar texto del botón
+  if (!nombre) nombre = (btn?.textContent || "").trim();
+
+  // 3) Si no hay id, inferir por el texto comparando con el map
+  if (!id && nombre) {
+    const lower = nombre.toLowerCase();
+    for (const [k, v] of Object.entries(FORMAS_PAGO_MAP)) {
+      if (String(v).toLowerCase() === lower) {
+        id = Number(k);
+        break;
+      }
+    }
   }
 
-  // Bloque efectivo (si corresponde)
-  const bloque = document.getElementById("bloqueEfectivo");
-  if (bloque) bloque.style.display = (formaPagoIdSeleccionada === 1) ? "block" : "none";
+  return { id: id || null, nombre: nombre || null };
+}
 
-  // ✅ comprobante (si corresponde)
-  toggleComprobanteUI(formaPagoIdSeleccionada);
+/* ===============================
+   SELECCIÓN FORMA PAGO (ÚNICA Y ROBUSTA)
+   - Captura clicks en botones de pago aunque tengan clase diferente
+=============================== */
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".pago-grid .btn, .btnFormaPago");
+  if (!btn) return;
 
-  console.log("FORMA PAGO SELECCIONADA:", { formaPagoIdSeleccionada, formaPagoNombreSeleccionado });
+  const { id } = detectarFormaPagoDesdeBoton(btn);
+  if (!id) return;
+
+  confirmarPago(btn, id);
 });
 
 /* ===============================
@@ -117,10 +142,14 @@ function iniciarPOS() {
   formaPagoIdSeleccionada = null;
   formaPagoFinal = { id: null, nombre: null };
 
-  // ✅ limpiar comprobante
   const inp = document.getElementById("inputComprobante");
   if (inp) inp.value = "";
   toggleComprobanteUI(null);
+
+  const mr = document.getElementById("montoRecibido");
+  if (mr) mr.value = "";
+  const v = document.getElementById("vuelto");
+  if (v) { v.textContent = "0"; v.style.color = ""; }
 
   renderItemsVenta();
   iniciarScannerVenta();
@@ -155,7 +184,8 @@ async function cargarClientesVenta() {
 document.addEventListener("change", e => {
   if (e.target.id === "v_cliente") {
     const opt = e.target.selectedOptions[0];
-    document.getElementById("v_ruc").value = opt?.dataset?.ruc || "";
+    const ruc = document.getElementById("v_ruc");
+    if (ruc) ruc.value = opt?.dataset?.ruc || "";
   }
 });
 
@@ -237,7 +267,8 @@ function renderItemsVenta() {
     tbody.appendChild(tr);
   });
 
-  document.getElementById("v_total").textContent = nf(total);
+  const lbl = document.getElementById("v_total");
+  if (lbl) lbl.textContent = nf(total);
 }
 
 /* ===============================
@@ -252,64 +283,61 @@ function abrirPago() {
   formaPagoIdSeleccionada = null;
   formaPagoFinal = { id: null, nombre: null };
 
-  // ✅ limpiar comprobante al abrir
   const inp = document.getElementById("inputComprobante");
   if (inp) inp.value = "";
   toggleComprobanteUI(null);
 
-  // tu función custom
+  const mr = document.getElementById("montoRecibido");
+  if (mr) mr.value = "";
+  const v = document.getElementById("vuelto");
+  if (v) { v.textContent = "0"; v.style.color = ""; }
+
   openModal("modalPago");
 }
-
-const FORMAS_PAGO_MAP = {
-  1: "Efectivo",
-  2: "Débito",
-  3: "Crédito",
-  4: "QR",
-  5: "BNF",
-  6: "Continental",
-  7: "Banco Familiar",
-  8: "Ueno Bank",
-  9: "Banco Basa",
-  10: "Mango"
-};
 
 function confirmarPago(btn, formaPagoId) {
   formaPagoId = Number(formaPagoId);
   formaPagoIdSeleccionada = formaPagoId;
 
-  document.querySelectorAll(".pago-grid .btn")
+  document.querySelectorAll(".pago-grid .btn, .btnFormaPago")
     .forEach(b => b.classList.remove("active"));
-
   btn.classList.add("active");
 
+  const nombre = FORMAS_PAGO_MAP[formaPagoId] || (btn.textContent || "").trim();
+
   const msg = document.getElementById("mensajeFormaPago");
-  msg.style.display = "block";
-  msg.textContent = `Forma de pago seleccionada: ${FORMAS_PAGO_MAP[formaPagoId]}`;
+  if (msg) {
+    msg.style.display = "block";
+    msg.textContent = `Forma de pago seleccionada: ${nombre}`;
+  }
 
-  formaPagoFinal = {
-    id: formaPagoId,
-    nombre: FORMAS_PAGO_MAP[formaPagoId] || null
-  };
+  formaPagoFinal = { id: formaPagoId, nombre };
 
-  console.log("CLICK formaPagoId:", formaPagoId, "=>", formaPagoFinal);
+  const bloque = document.getElementById("bloqueEfectivo");
+  const esEfectivo = (formaPagoId === ID_EFECTIVO);
 
-  const bloqueEfectivo = document.getElementById("bloqueEfectivo");
-  if (formaPagoId === 1) {
-    bloqueEfectivo.style.display = "block";
+  if (bloque) bloque.style.display = esEfectivo ? "block" : "none";
+
+  if (esEfectivo) {
+    calcularVuelto();
   } else {
-    bloqueEfectivo.style.display = "none";
     const mr = document.getElementById("montoRecibido");
     if (mr) mr.value = "";
     const v = document.getElementById("vuelto");
-    if (v) v.textContent = "0";
+    if (v) { v.textContent = "0"; v.style.color = ""; }
   }
 
-  // ✅ Mostrar/ocultar input comprobante
   toggleComprobanteUI(formaPagoId);
 }
 
 async function confirmarPagoFinal() {
+  // ✅ anti-bug: si la variable quedó mal, tomamos el botón active
+  const activeBtn = document.querySelector(".pago-grid .btn.active, .btnFormaPago.active");
+  if (activeBtn) {
+    const det = detectarFormaPagoDesdeBoton(activeBtn);
+    if (det.id) formaPagoIdSeleccionada = det.id;
+  }
+
   formaPagoIdSeleccionada = Number(formaPagoIdSeleccionada);
 
   if (!formaPagoIdSeleccionada) {
@@ -324,12 +352,6 @@ async function confirmarPagoFinal() {
 
   const total = ventaItems.reduce((a, i) => a + (Number(i.subtotal) || 0), 0);
 
-  // (Visual)
-  formaPagoFinal = {
-    id: formaPagoIdSeleccionada,
-    nombre: FORMAS_PAGO_MAP?.[formaPagoIdSeleccionada] || null
-  };
-
   const clienteRaw = (document.getElementById("v_cliente")?.value || "").trim();
   const cliente_id = clienteRaw ? Number(clienteRaw) : null;
 
@@ -341,32 +363,25 @@ async function confirmarPagoFinal() {
   const fechaInput = (document.getElementById("v_fecha")?.value || "").trim();
   const fecha = fechaInput || new Date().toISOString().slice(0, 10);
 
-  // 💵 SOLO EFECTIVO
-  let montoRecibido = null;
-  let vuelto = null;
+  const esEfectivo = (formaPagoIdSeleccionada === ID_EFECTIVO);
 
-  if (formaPagoIdSeleccionada === 1) {
+  // 💵 EFECTIVO: validar vuelto
+  let vuelto = null;
+  if (esEfectivo) {
     const input = document.getElementById("montoRecibido");
-    montoRecibido = Number((input?.value || "").replace(/\D/g, "") || 0);
+    const montoRecibido = Number((input?.value || "").replace(/\D/g, "") || 0);
 
     if (montoRecibido < total) {
       alert("❌ El monto recibido es menor al total");
       return;
     }
-
     vuelto = montoRecibido - total;
   }
 
-  // ==========================
   // ✅ CAJA según forma de pago
-  // ==========================
   window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
-
-  const esEfectivo = (formaPagoIdSeleccionada === 1);
   const tipoCajaNecesaria = esEfectivo ? "efectivo" : "transferencia";
 
-  // Si querés intentar refrescar estado desde backend, mantenemos compat:
-  // (Opcional; si no existe, no rompe)
   if (typeof verificarCaja === "function") {
     try { await verificarCaja(); } catch {}
   } else if (typeof refrescarCajaAbierta === "function") {
@@ -375,7 +390,7 @@ async function confirmarPagoFinal() {
 
   let caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
 
-  // fallback por compat (si tu backend solo llena window.cajaActual)
+  // fallback compat
   if (!caja_id && window.cajaActual?.id) {
     const t = (String(window.cajaActual.tipo || "").toLowerCase().includes("trans"))
       ? "transferencia"
@@ -384,7 +399,6 @@ async function confirmarPagoFinal() {
     caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
   }
 
-  // ✅ Si NO hay caja abierta para ese tipo -> modal profesional
   if (!caja_id) {
     if (typeof closeModal === "function") closeModal("modalPago");
     if (typeof closeModal === "function") closeModal("modalVenta");
@@ -394,16 +408,14 @@ async function confirmarPagoFinal() {
       : "Debe abrir la caja de TRANSFERENCIAS antes de realizar una venta por banco/QR/transferencia.";
 
     mostrarModalCajaCerrada(msg);
-    console.warn("⚠️ caja_id null. tipo requerido:", tipoCajaNecesaria, "cajasActuales:", window.cajasActuales);
     return;
   }
 
-  // ✅ Comprobante (solo transferencias/bancos/QR/Mango)
+  // ✅ Comprobante
   let nro_comprobante = null;
   if (FORMAS_CON_COMPROBANTE.has(Number(formaPagoIdSeleccionada))) {
     const inp = document.getElementById("inputComprobante");
     const comp = (inp?.value || "").trim();
-
     if (!comp) {
       alert("❌ Ingrese el número de comprobante para esta forma de pago");
       return;
@@ -414,7 +426,7 @@ async function confirmarPagoFinal() {
   const body = {
     fecha,
     cliente_id,
-    caja_id, // ✅ ahora SIEMPRE según el tipo requerido
+    caja_id,
     total,
     forma_pago_id: formaPagoIdSeleccionada,
     estado_pago,
@@ -437,17 +449,13 @@ async function confirmarPagoFinal() {
     try { data = JSON.parse(text); } catch {}
 
     if (!res.ok) {
-      console.error("ERROR /ventas:", data || text);
       const msg = (data && (data.msg || data.error)) || text || "Error al guardar la venta";
 
       if (typeof closeModal === "function") closeModal("modalPago");
       if (typeof closeModal === "function") closeModal("modalVenta");
 
-      if (String(msg).toLowerCase().includes("caja")) {
-        mostrarModalCajaCerrada(msg);
-      } else {
-        alert(msg);
-      }
+      if (String(msg).toLowerCase().includes("caja")) mostrarModalCajaCerrada(msg);
+      else alert(msg);
       return;
     }
 
@@ -460,7 +468,6 @@ async function confirmarPagoFinal() {
     if (typeof closeModal === "function") closeModal("modalPago");
     if (typeof closeModal === "function") closeModal("modalVenta");
 
-    // limpiar comprobante
     const inp = document.getElementById("inputComprobante");
     if (inp) inp.value = "";
     toggleComprobanteUI(null);
@@ -481,40 +488,40 @@ function formatearMontoRecibido() {
   const input = document.getElementById("montoRecibido");
   if (!input) return;
 
-  let limpio = input.value.replace(/\D/g, "");
+  const limpio = input.value.replace(/\D/g, "");
 
   if (!limpio) {
     input.value = "";
-    document.getElementById("vuelto").textContent = "0";
+    const sp = document.getElementById("vuelto");
+    if (sp) { sp.textContent = "0"; sp.style.color = ""; }
     return;
   }
 
   const monto = Number(limpio);
   input.value = monto.toLocaleString("es-PY");
-  calcularVuelto(monto);
+  calcularVuelto();
 }
 
-function calcularVuelto(montoManual = null) {
-  const total = ventaItems.reduce((a, i) => a + i.subtotal, 0);
+function calcularVuelto() {
+  const total = ventaItems.reduce((a, i) => a + (Number(i.subtotal) || 0), 0);
+  const monto = Number((document.getElementById("montoRecibido")?.value || "").replace(/\D/g, "") || 0);
 
-  let monto;
-  if (montoManual !== null) {
-    monto = montoManual;
-  } else {
-    monto = Number(
-      (document.getElementById("montoRecibido")?.value || "").replace(/\D/g, "")
-    );
-  }
-
-  const vuelto = monto - total;
   const span = document.getElementById("vuelto");
   if (!span) return;
+
+  const vuelto = monto - total;
+
+  if (monto <= 0) {
+    span.textContent = "0";
+    span.style.color = "";
+    return;
+  }
 
   if (vuelto < 0) {
     span.textContent = "Monto insuficiente";
     span.style.color = "#dc2626";
   } else {
-    span.textContent = vuelto.toLocaleString("es-PY");
+    span.textContent = vuelto.toLocaleString("es-PY") + " Gs.";
     span.style.color = "#065f46";
   }
 }
@@ -546,10 +553,10 @@ async function cargarVentas() {
           </span>
         </td>
         <td style="text-align:center;">
-        <button class="btn-icon print-ticket" onclick="imprimirTicket(${v.id})" title="Ticket">🧾</button>
-        <button class="btn-icon print-pagare" onclick="imprimirPagare(${v.id})" title="Pagaré">📄</button>
-        <button class="btn-icon edit" onclick="editarVenta(${v.id})" title="Editar">✏️</button>
-        <button class="btn-icon delete" onclick="confirmarEliminarVenta(${v.id})" title="Eliminar">🗑</button>
+          <button class="btn-icon print-ticket" onclick="imprimirTicket(${v.id})" title="Ticket">🧾</button>
+          <button class="btn-icon print-pagare" onclick="imprimirPagare(${v.id})" title="Pagaré">📄</button>
+          <button class="btn-icon edit" onclick="editarVenta(${v.id})" title="Editar">✏️</button>
+          <button class="btn-icon delete" onclick="confirmarEliminarVenta(${v.id})" title="Eliminar">🗑</button>
         </td>
       `;
       tbody.appendChild(tr);
@@ -559,6 +566,7 @@ async function cargarVentas() {
     console.error("Error cargando ventas", err);
   }
 }
+
 function confirmarEliminarVenta(id) {
   ventaEliminarId = id;
   openModal("modalEliminarVenta");
@@ -582,7 +590,7 @@ async function eliminarVentaConfirmada() {
 }
 
 /* ===============================
-   EDITAR VENTA
+   EDITAR VENTA (tu código igual)
 =============================== */
 function editarVenta(id) {
   ventaPendienteEditar = id;
@@ -627,12 +635,10 @@ async function validarClaveEditar() {
 async function guardarEdicionVenta() {
   const id = document.getElementById("edit_venta_id").value;
 
-  // ✅ convierte "2.000" -> 2000 | "12.000" -> 12000
   function toGsNumber(v) {
     return Number(String(v || "0").replace(/\./g, "").replace(/,/g, "."));
   }
 
-  // ✅ levantar items editados del modal
   const rows = document.querySelectorAll("#edit_items tr");
   const items = [];
 
@@ -654,7 +660,6 @@ async function guardarEdicionVenta() {
     return;
   }
 
-  // ✅ total recalculado
   const total = items.reduce((a, it) => a + (it.cantidad * it.precio_unitario), 0);
 
   const body = {
@@ -673,7 +678,6 @@ async function guardarEdicionVenta() {
       body: JSON.stringify(body)
     });
 
-    // ✅ soporta backends que devuelven text o json
     const raw = await res.text();
     let data = null;
     try { data = JSON.parse(raw); } catch {}
@@ -684,20 +688,12 @@ async function guardarEdicionVenta() {
     }
 
     alert("✅ Venta actualizada");
-
-    // ✅ cerrar modal
     closeModal("modalEditarVenta");
 
-    // ✅ refrescar tabla SIEMPRE y mostrar error si falla
     try {
-      if (typeof window.cargarVentas === "function") {
-        await window.cargarVentas();
-      } else if (typeof cargarVentas === "function") {
-        await cargarVentas();
-      } else {
-        console.error("No existe cargarVentas() en scope global.");
-        alert("⚠️ Se guardó la venta pero no se pudo refrescar la tabla (cargarVentas no existe).");
-      }
+      if (typeof window.cargarVentas === "function") await window.cargarVentas();
+      else if (typeof cargarVentas === "function") await cargarVentas();
+      else alert("⚠️ Se guardó la venta pero no se pudo refrescar la tabla.");
     } catch (e) {
       console.error("cargarVentas falló:", e);
       alert("⚠️ Se guardó la venta pero falló refrescar la tabla (mirá consola).");
@@ -708,6 +704,7 @@ async function guardarEdicionVenta() {
     alert("❌ Error al guardar cambios");
   }
 }
+
 async function abrirEditarVenta(id) {
   try {
     const res = await fetch(`/ventas/${id}`, { credentials: "include" });
@@ -723,11 +720,8 @@ async function abrirEditarVenta(id) {
     const tbody = document.getElementById("edit_items");
     tbody.innerHTML = "";
 
-    // Render editable
     (venta.items || []).forEach((it, idx) => {
       const cant = Number(it.cantidad || 0);
-
-      // ✅ intentamos sacar precio_unitario desde backend; si no viene, lo calculamos del subtotal/cantidad
       const precioUnit = Number(
         it.precio_unitario ??
         (cant > 0 ? (Number(it.subtotal || 0) / cant) : 0)
@@ -738,30 +732,17 @@ async function abrirEditarVenta(id) {
       tbody.innerHTML += `
         <tr data-idx="${idx}">
           <td>${it.producto_nombre}</td>
-
           <td style="text-align:center; width:120px;">
-            <input
-              type="number"
-              min="1"
-              class="form-control form-control-sm edit-cant"
-              value="${cant}"
-              data-producto-id="${it.producto_id}"
-            />
+            <input type="number" min="1" class="form-control form-control-sm edit-cant"
+              value="${cant}" data-producto-id="${it.producto_id}" />
           </td>
-
           <td style="text-align:right; width:160px;">
-            <input
-              type="number"
-              min="0"
-              class="form-control form-control-sm edit-precio"
-              value="${precioUnit}"
-            />
+            <input type="number" min="0" class="form-control form-control-sm edit-precio"
+              value="${precioUnit}" />
           </td>
-
           <td style="text-align:right; width:160px;">
             <span class="edit-subtotal">${nf(sub)}</span>
           </td>
-
           <td style="text-align:center; width:70px;">
             <button class="btn btn-sm btn-danger btn-del-item" type="button">X</button>
           </td>
@@ -769,21 +750,7 @@ async function abrirEditarVenta(id) {
       `;
     });
 
-    // ✅ recalcular total inicial
-    if (typeof recalcularEditTotales === "function") {
-      recalcularEditTotales();
-    } else {
-      // fallback si aún no pegaste la función
-      let total = 0;
-      document.querySelectorAll("#edit_items tr").forEach(tr => {
-        const cant = Number(tr.querySelector(".edit-cant")?.value || 0);
-        const precio = Number(tr.querySelector(".edit-precio")?.value || 0);
-        total += cant * precio;
-      });
-      const lbl = document.getElementById("edit_total");
-      if (lbl) lbl.textContent = nf(total);
-    }
-
+    recalcularEditTotales();
     openModal("modalEditarVenta");
 
   } catch (err) {
@@ -791,6 +758,7 @@ async function abrirEditarVenta(id) {
     alert("❌ Error cargando la venta");
   }
 }
+
 function recalcularEditTotales() {
   const rows = document.querySelectorAll("#edit_items tr");
   let total = 0;
@@ -933,3 +901,7 @@ window.togglePasswordEditar = togglePasswordEditar;
 window.guardarEdicionVenta = guardarEdicionVenta;
 window.mostrarModalCajaCerrada = mostrarModalCajaCerrada;
 window.cargarVentas = cargarVentas;
+
+// si usás esto en input: oninput="formatearMontoRecibido()"
+window.formatearMontoRecibido = formatearMontoRecibido;
+window.calcularVuelto = calcularVuelto;
