@@ -2951,8 +2951,9 @@ function detectarFormaPago(v) {
   if (fp.includes("efect")) return "efectivo";
   if (fp.includes("transf")) return "transferencia";
 
-  if (Number(v.forma_pago_id) === 1) return "efectivo";
-  if (Number(v.forma_pago_id) === 2) return "transferencia";
+  // ✅ IDs reales de tu tabla formas_pago:
+  if (Number(v.forma_pago_id) === 2) return "efectivo";
+  if (Number(v.forma_pago_id) === 3) return "transferencia";
 
   return "otro";
 }

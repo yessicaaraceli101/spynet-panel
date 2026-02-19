@@ -12,6 +12,7 @@ import bcrypt from "bcryptjs";
 import session from "express-session";
 import PDFDocument from "pdfkit";
 import { createClient } from "@supabase/supabase-js";
+console.log("SERVER CORRECTO (server.js) ->", new Date().toISOString(), "CWD:", process.cwd());
 
 const { Pool } = pkg;
 const EDIT_SALES_PASSWORD = process.env.EDIT_SALES_PASSWORD || "editar123";
@@ -2227,17 +2228,18 @@ app.get("/caja/resumen-dia", async (req, res) => {
     const diaParam = req.query.dia || req.query.fecha;
     if (!diaParam) return res.status(400).json({ ok: false, msg: "Falta dia o fecha" });
 
-    const ymd = toISODate(diaParam); // YYYY-MM-DD
+    const ymd = toISODate(diaParam);
 
     const q = await pool.query(
       `
       SELECT
-        COALESCE(SUM(CASE WHEN fp.id = 1 THEN v.total ELSE 0 END), 0) AS efectivo,
-        COALESCE(SUM(CASE WHEN fp.id <> 1 THEN v.total ELSE 0 END), 0) AS transferencia,
+        COALESCE(SUM(CASE WHEN fp.tipo = 'efectivo' THEN v.total ELSE 0 END), 0) AS efectivo,
+        COALESCE(SUM(CASE WHEN fp.tipo = 'transferencia' THEN v.total ELSE 0 END), 0) AS transferencia,
         COALESCE(SUM(v.total), 0) AS total
       FROM ventas v
       LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
       WHERE v.fecha::date = $1::date
+        AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
       `,
       [ymd]
     );
@@ -2248,7 +2250,6 @@ app.get("/caja/resumen-dia", async (req, res) => {
     return res.status(500).json({ ok: false, msg: "Error resumen día" });
   }
 });
-
 // ✅ Mes: acepta ?mes= o ?fecha=
 app.get("/caja/resumen-mes", async (req, res) => {
   try {
@@ -2262,12 +2263,13 @@ app.get("/caja/resumen-mes", async (req, res) => {
     const q = await pool.query(
       `
       SELECT
-        COALESCE(SUM(CASE WHEN fp.id = 1 THEN v.total ELSE 0 END), 0) AS efectivo,
-        COALESCE(SUM(CASE WHEN fp.id <> 1 THEN v.total ELSE 0 END), 0) AS transferencia,
+        COALESCE(SUM(CASE WHEN fp.tipo = 'efectivo' THEN v.total ELSE 0 END), 0) AS efectivo,
+        COALESCE(SUM(CASE WHEN fp.tipo = 'transferencia' THEN v.total ELSE 0 END), 0) AS transferencia,
         COALESCE(SUM(v.total), 0) AS total
       FROM ventas v
       LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
       WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+        AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
       `,
       [ymd]
     );
@@ -2278,7 +2280,6 @@ app.get("/caja/resumen-mes", async (req, res) => {
     return res.status(500).json({ ok: false, msg: "Error resumen mes" });
   }
 });
-
 // ✅ Único: /caja/resumen?fecha=16/02/2026 ó 2026-02-16
 app.get("/caja/resumen", async (req, res) => {
   try {
@@ -2287,30 +2288,36 @@ app.get("/caja/resumen", async (req, res) => {
 
     const ymd = toISODate(fechaParam);
 
+    // ✅ IDs reales
+    const EFECTIVO_ID = 2;
+    const TRANSFERENCIA_ID = 3;
+
+    // ✅ Día (solo efectivo=2 y transferencia=3)
     const diaQ = await pool.query(
       `
       SELECT
-        COALESCE(SUM(CASE WHEN fp.id = 1 THEN v.total ELSE 0 END), 0) AS efectivo,
-        COALESCE(SUM(CASE WHEN fp.id <> 1 THEN v.total ELSE 0 END), 0) AS transferencia,
+        COALESCE(SUM(CASE WHEN v.forma_pago_id = $2 THEN v.total ELSE 0 END), 0) AS efectivo,
+        COALESCE(SUM(CASE WHEN v.forma_pago_id = $3 THEN v.total ELSE 0 END), 0) AS transferencia,
         COALESCE(SUM(v.total), 0) AS total
       FROM ventas v
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
       WHERE v.fecha::date = $1::date
+        AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
       `,
-      [ymd]
+      [ymd, EFECTIVO_ID, TRANSFERENCIA_ID]
     );
 
+    // ✅ Mes (solo efectivo=2 y transferencia=3)
     const mesQ = await pool.query(
       `
       SELECT
-        COALESCE(SUM(CASE WHEN fp.id = 1 THEN v.total ELSE 0 END), 0) AS efectivo,
-        COALESCE(SUM(CASE WHEN fp.id <> 1 THEN v.total ELSE 0 END), 0) AS transferencia,
+        COALESCE(SUM(CASE WHEN v.forma_pago_id = $2 THEN v.total ELSE 0 END), 0) AS efectivo,
+        COALESCE(SUM(CASE WHEN v.forma_pago_id = $3 THEN v.total ELSE 0 END), 0) AS transferencia,
         COALESCE(SUM(v.total), 0) AS total
       FROM ventas v
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
       WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+        AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
       `,
-      [ymd]
+      [ymd, EFECTIVO_ID, TRANSFERENCIA_ID]
     );
 
     return res.json({
@@ -2604,6 +2611,26 @@ app.post("/caja/cerrar", async (req, res) => {
   }
 });
 
+
+app.get("/debug/db", async (_req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT
+        current_database() AS db,
+        inet_server_addr() AS ip,
+        inet_server_port() AS port,
+        current_user AS "user"
+    `);
+    res.json({ ok: true, ...r.rows[0] });
+  } catch (e) {
+    console.error("GET /debug/db", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+app.get("/debug/formas-pago-pool", async (_req, res) => {
+  const r = await pool.query("SELECT id, nombre, tipo FROM formas_pago ORDER BY id");
+  res.json(r.rows);
+});
 app.get("/", (_req, res) => {
   res.send("SPYnet OK ✅");
 });
