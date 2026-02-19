@@ -3704,3 +3704,51 @@ main{
 .btn-icon.red:hover{
   filter: brightness(.92);
 }
+
+.btns-right{
+  display: flex;
+  align-items: center;
+  gap: 12px; /* espacio entre Volver y Nuevo */
+}
+
+.volver-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #e5e7eb;   /* gris */
+  color: #111827;
+  text-decoration: none;
+  font-weight: 600;
+  border: 1px solid #d1d5db;
+  transition: .15s ease;
+}
+
+.volver-btn:hover{
+  background: #d1d5db;
+}
+
+/* Igualar EXACTO Volver y Nueva Venta (solo en el header) */
+.header-actions .volver-btn,
+.header-actions .btn.btn-blue{
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 18px !important;
+  line-height: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  box-sizing: border-box !important;
+}
+
+/* Si el azul queda “aplastado” por font-size distinto */
+.header-actions .btn.btn-blue,
+.header-actions .volver-btn{
+  font-size: 15px !important;
+}
+.header-actions .btn.btn-blue{
+  border: 1px solid transparent !important;
+}

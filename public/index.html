@@ -158,7 +158,10 @@
               <div class="search">
                 <input id="cliSearch" placeholder="Buscar cliente..." oninput="filtrarClientes(this.value)"/>
               </div>
-              <button class="btn btn-blue" onclick="openModal('modalCliente')">+ Nuevo</button>
+              <div class="btns-right">
+              <a href="index.html" class="volver-btn">← Volver</a>
+             <button class="btn btn-blue" onclick="openModal('modalCliente')">+ Nuevo</button>
+             </div>
             </div>
           </div>
           <div class="table-responsive mt-3">
@@ -192,6 +195,7 @@
         <div class="search">
           <input id="provSearch" placeholder="Buscar proveedor..." oninput="filtrarProveedores(this.value)"/>
         </div>
+        <a href="index.html" class="volver-btn">← Volver</a>
         <button class="btn btn-blue" onclick="openModal('modalProveedor')">+ Nuevo</button>
       </div>
     </div>
@@ -232,6 +236,7 @@
               <div class="search">
                 <input id="prodSearch" placeholder="Buscar producto..." oninput="filtrarProductos(this.value)"/>
               </div>
+              <a href="index.html" class="volver-btn">← Volver</a>
               <button class="btn btn-agregar" onclick="openModal('modalProducto')">+ Agregar</button>
             </div>
           </div>
@@ -255,12 +260,17 @@
               Pedido a Proveedor <span id="pp_id" class="text-muted"></span>
             </h3>
             <small class="text-muted">Cargá proveedor, fechas e ítems del pedido</small>
+          
+            </div>
+           <div class="header-actions">
+           <a href="index.html" class="volver-btn">← Volver</a>
+           <button type="button"
+          class="btn btn-outline-secondary"
+          onclick="location.hash='#lista_pedidos'">
+           Lista de Pedidos
+           </button>
           </div>
-
-          <button type="button" class="btn btn-outline-secondary" onclick="location.hash='#lista_pedidos'">
-            Lista de Pedidos
-          </button>
-        </div>
+         </div>
 
         <!-- Form grid -->
         <div class="row g-3">
@@ -337,6 +347,7 @@
       </div>
 
       <div class="actions" style="gap:.5rem">
+        <a href="index.html" class="volver-btn">← Volver</a>
         <button class="btn btn-primary" onclick="exportarPDF_Listado()">
           <i class="fa-solid fa-file-pdf"></i> Descargar PDF
         </button>
@@ -416,6 +427,7 @@
       </div>
 
       <div class="actions" style="gap:.5rem">
+        <a href="index.html" class="volver-btn">← Volver</a>
         <button class="btn primary" onclick="abrirNuevaCompra()">+ Nueva Compra</button>
       </div>
     </div>
@@ -607,6 +619,7 @@
               <div class="search">
                 <input id="catSearch" placeholder="Buscar categoría..." oninput="filtrarCategorias(this.value)"/>
               </div>
+              <a href="index.html" class="volver-btn">← Volver</a>
               <button class="btn btn-blue" onclick="openModal('modalCategoria')">+ Agregar</button>
             </div>
           </div>
@@ -767,9 +780,10 @@
   <!-- ===== HEADER ===== -->
   <div class="ventas-header">
     <h2><i class="fa-solid fa-basket-shopping"></i>Ventas</h2>
-    <button class="btn btn-primary btn-lg" onclick="nuevaVenta()">
-      + Nueva Venta
-    </button>
+    <div class="header-actions">
+  <a href="javascript:history.back()" class="volver-btn">← Volver</a>
+  <button class="btn btn-blue" onclick="nuevaVenta()">+ Nueva Venta</button>
+</div>
   </div>
 
   <!-- ===== LISTADO DE VENTAS ===== -->
@@ -819,7 +833,7 @@
 
     <label>Forma de pago</label>
     <select id="edit_forma_pago" class="input">
-      <option value="1">Efectivo</option>
+      <option value="2">Efectivo</option>
       <option value="6">Banco Continental</option>
       <option value="7">Banco Familiar</option>
       <option value="8">Ueno Bank</option>

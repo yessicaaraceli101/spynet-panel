@@ -330,6 +330,14 @@ function confirmarPago(btn, formaPagoId) {
   toggleComprobanteUI(formaPagoId);
 }
 
+function normalizarTipoCaja(tipo) {
+  let t = String(tipo || "").trim().toLowerCase();
+  if (t === "trasferencia") t = "transferencia";
+  if (t.includes("trans")) t = "transferencia";
+  if (t.includes("efect")) t = "efectivo";
+  return t;
+}
+
 async function confirmarPagoFinal() {
   // ✅ anti-bug: si la variable quedó mal, tomamos el botón active
   const activeBtn = document.querySelector(".pago-grid .btn.active, .btnFormaPago.active");
@@ -379,24 +387,27 @@ async function confirmarPagoFinal() {
   }
 
   // ✅ CAJA según forma de pago
-  window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
+  window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null, trasferencia: null };
   const tipoCajaNecesaria = esEfectivo ? "efectivo" : "transferencia";
 
-  if (typeof verificarCaja === "function") {
-    try { await verificarCaja(); } catch {}
-  } else if (typeof refrescarCajaAbierta === "function") {
-    try { await refrescarCajaAbierta(); } catch {}
+  // ✅ IMPORTANTE: tu endpoint /caja/estado exige tipo + fecha
+  if (typeof refrescarCajaAbierta === "function") {
+    try {
+      await refrescarCajaAbierta(tipoCajaNecesaria, fecha); // ✅ PASAMOS FECHA
+    } catch (e) {
+      console.error("refrescarCajaAbierta falló:", e);
+    }
   }
 
   let caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
 
-  // fallback compat
+  // fallback compat (por si tu backend devuelve solo una caja en cajaActual)
   if (!caja_id && window.cajaActual?.id) {
     const t = (String(window.cajaActual.tipo || "").toLowerCase().includes("trans"))
-      ? "transferencia"
-      : "efectivo";
-    window.cajasActuales[t] = window.cajaActual;
-    caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
+  ? "transferencia"
+  : "efectivo";
+window.cajasActuales[t] = window.cajaActual;
+caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
   }
 
   if (!caja_id) {
@@ -480,7 +491,6 @@ async function confirmarPagoFinal() {
     alert("❌ Error al guardar la venta");
   }
 }
-
 /* ===============================
    EFECTIVO - VUELTO
 =============================== */
@@ -833,25 +843,53 @@ function togglePasswordEditar() {
 /* ===============================
    CAJA
 =============================== */
-async function refrescarCajaAbierta() {
+async function refrescarCajaAbierta(tipo = "efectivo", fecha = null) {
   try {
-    const r = await fetch("/caja/estado", { credentials: "include" });
+    // ✅ normalizar tipo (arregla el typo "trasferencia")
+    let tipoKey = String(tipo || "").trim().toLowerCase();
+    if (tipoKey === "trasferencia") tipoKey = "transferencia";
+    if (tipoKey.includes("trans")) tipoKey = "transferencia";
+
+    // ✅ fecha (si no viene, usar input o hoy)
+    const fechaInput = (fecha || document.getElementById("v_fecha")?.value || "").trim();
+    const ymd = fechaInput || new Date().toISOString().slice(0, 10);
+
+    const qs = `tipo=${encodeURIComponent(tipoKey)}&fecha=${encodeURIComponent(ymd)}`;
+
+    const r = await fetch(`/caja/estado?${qs}`, {
+      credentials: "include",
+      cache: "no-store",
+    });
+
     const data = await r.json();
+    const caja = data?.caja ?? data?.data?.caja ?? data?.data ?? null;
 
-    const caja = data?.caja ?? data?.data?.caja ?? null;
+    // ✅ guardar SIEMPRE con clave normalizada
+    window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
+    window.cajasActuales[tipoKey] = (caja && caja.id) ? caja : null;
 
+    // compat
     window.cajaActual = caja;
     window.cajaAbierta = !!(caja && caja.id);
+
+    console.log("refrescarCajaAbierta OK ->", { tipoKey, ymd, abierta: window.cajaAbierta, caja });
 
     return window.cajaAbierta;
   } catch (e) {
     console.error("No se pudo consultar caja:", e);
+
+    let tipoKey = String(tipo || "").trim().toLowerCase();
+    if (tipoKey === "trasferencia") tipoKey = "transferencia";
+    if (tipoKey.includes("trans")) tipoKey = "transferencia";
+
+    window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
+    window.cajasActuales[tipoKey] = null;
+
     window.cajaActual = null;
     window.cajaAbierta = false;
     return false;
   }
 }
-
 /* ===============================
    NUEVA VENTA
 =============================== */
