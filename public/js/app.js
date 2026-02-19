@@ -3208,6 +3208,14 @@ async function verificarCaja() {
   // al cargar, refrescar una vez
   verificarCaja();
 })();
+
+function openLogoutModal() {
+  logout();
+}
+window.logout = logout;
+window.closeLogoutModal = closeLogoutModal;
+window.confirmLogout = confirmLogout;
+window.openLogoutModal = openLogoutModal;
 // Para que onclick="abrirCaja()" y onclick="cerrarCaja()" funcionen siempre
 window.abrirCaja = abrirCaja;
 window.cerrarCaja = cerrarCaja;
