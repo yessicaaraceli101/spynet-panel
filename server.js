@@ -1507,26 +1507,28 @@ app.get("/ventas", async (_req, res) => {
 });
 app.post("/ventas", async (req, res) => {
   const { cliente_id, total, forma_pago_id, items, estado_pago, nro_comprobante } = req.body || {};
-
   const client = await pool.connect();
+
   try {
-    // Validaciones básicas
     if (!forma_pago_id) return res.status(400).json({ ok: false, msg: "Falta forma_pago_id" });
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ ok: false, msg: "No hay items" });
     }
 
+    const EFECTIVO_ID = 2;        // ✅ tu BD
+    const TRANSFER_ID = 3;        // ✅ tu BD (no es obligatorio usarlo, pero queda claro)
+
     const fpId = Number(forma_pago_id);
     const totalFinal = Number(total || 0);
 
-    // ✅ Requerir comprobante solo si NO es efectivo
+    // ✅ comprobante solo si NO es efectivo (o sea, transferencia)
     const compStr = (nro_comprobante || "").toString().trim();
-    if (fpId !== 1 && !compStr) {
+    if (fpId !== EFECTIVO_ID && !compStr) {
       return res.status(400).json({ ok: false, msg: "Falta nro_comprobante" });
     }
 
-    // ✅ tipo de caja
-    const tipoCajaNecesaria = (fpId === 1) ? "efectivo" : "transferencia";
+    // ✅ tipo caja según forma de pago
+    const tipoCajaNecesaria = (fpId === EFECTIVO_ID) ? "efectivo" : "transferencia";
 
     await client.query("BEGIN");
 
@@ -1550,8 +1552,8 @@ app.post("/ventas", async (req, res) => {
     const clienteIdFinal =
       cliente_id && String(cliente_id) !== "0" ? Number(cliente_id) : null;
 
-    // comprobante normalizado
-    const compFinal = fpId === 1 ? null : compStr;
+    // ✅ comprobante final (en efectivo null)
+    const compFinal = (fpId === EFECTIVO_ID) ? null : compStr;
 
     // ✅ insertar venta
     const v = await client.query(
@@ -1589,7 +1591,7 @@ app.post("/ventas", async (req, res) => {
       );
     }
 
-    // ✅ CLAVE: sumar a la caja
+    // ✅ sumar a caja (si usás saldo_actual como acumulado)
     await client.query(
       `UPDATE caja
        SET saldo_actual = COALESCE(saldo_actual, 0) + $1
@@ -1609,11 +1611,7 @@ app.post("/ventas", async (req, res) => {
   } catch (err) {
     try { await client.query("ROLLBACK"); } catch {}
     console.error("❌ Error guardando venta:", err);
-    return res.status(500).json({
-      ok: false,
-      msg: "Error guardando venta",
-      error: err.message,
-    });
+    return res.status(500).json({ ok: false, msg: "Error guardando venta", error: err.message });
   } finally {
     client.release();
   }
@@ -2496,6 +2494,56 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     res.status(500).send("Error generando pagaré");
   }
 });
+
+app.post("/caja/cerrar", async (req, res) => {
+  try {
+    const tipo = req.body?.tipo ? String(req.body.tipo).trim().toLowerCase() : null;
+    const fecha = req.body?.fecha ? toISODate(req.body.fecha) : null;
+
+    // Si el front no manda nada, igual cerramos la última abierta (de cualquier tipo)
+    const r = await pool.query(
+      tipo && fecha
+        ? `SELECT id FROM caja
+           WHERE estado='abierta' AND tipo=$1 AND fecha::date=$2::date
+           ORDER BY id DESC LIMIT 1`
+        : tipo
+        ? `SELECT id FROM caja
+           WHERE estado='abierta' AND tipo=$1
+           ORDER BY id DESC LIMIT 1`
+        : `SELECT id FROM caja
+           WHERE estado='abierta'
+           ORDER BY id DESC LIMIT 1`,
+      tipo && fecha ? [tipo, fecha] : tipo ? [tipo] : []
+    );
+
+    if (!r.rowCount) {
+      return res.status(400).json({ ok: false, msg: "No hay caja abierta para cerrar" });
+    }
+
+    const cajaId = r.rows[0].id;
+
+    await pool.query(
+      `UPDATE caja
+       SET estado='cerrada',
+           cerrado_en = NOW(),
+           saldo_cierre = (
+             SELECT (COALESCE(c.saldo_inicial,0) + COALESCE(SUM(v.total),0))::numeric
+             FROM caja c
+             LEFT JOIN ventas v ON v.caja_id = c.id
+             WHERE c.id = $1
+             GROUP BY c.id
+           )
+       WHERE id=$1`,
+      [cajaId]
+    );
+
+    return res.json({ ok: true, caja_id: cajaId });
+  } catch (err) {
+    console.error("POST /caja/cerrar", err);
+    return res.status(500).json({ ok: false, msg: "Error al cerrar caja" });
+  }
+});
+
 app.get("/", (_req, res) => {
   res.send("SPYnet OK ✅");
 });
