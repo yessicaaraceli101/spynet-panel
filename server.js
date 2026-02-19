@@ -550,6 +550,7 @@ app.get("/productos", requireAuth, async (req, res) => {
               LOWER(p.nombre) LIKE '%' || $1 || '%'
               OR LOWER(p.codigo) LIKE '%' || $1 || '%'
               OR LOWER(p.marca)  LIKE '%' || $1 || '%'
+              OR LOWER(COALESCE(c.nombre, '')) LIKE '%' || $1 || '%'
             )
           ORDER BY p.nombre ASC
         `,
@@ -588,7 +589,6 @@ app.get("/productos", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Error al listar productos" });
   }
 });
-
 // ---------- POST /productos ----------
 app.post("/productos", requireAuth, upload.single("imagen"), async (req, res) => {
   const {
@@ -1300,6 +1300,49 @@ app.get("/pedidos/:id/pdf", requireAuth, (req, res) => {
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 /* ----------------------------------- Server --------------------------------- */
+// ✅ Próximo N° Factura por proveedor (autocompletar en compras)
+app.get("/compras/proxima-factura", requireAuth, async (req, res) => {
+  try {
+    const proveedor_id = Number(req.query.proveedor_id || 0);
+    if (!proveedor_id) {
+      return res.status(400).json({ ok: false, msg: "Falta proveedor_id" });
+    }
+
+    const lastQ = await pool.query(
+      `
+      SELECT factura
+      FROM compras
+      WHERE proveedor_id = $1
+        AND factura IS NOT NULL
+        AND TRIM(factura) <> ''
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+      [proveedor_id]
+    );
+
+    const last = (lastQ.rows[0]?.factura || "").toString().trim();
+
+    if (!last) {
+      return res.json({ ok: true, factura: "0001", last: null });
+    }
+
+    const m = last.match(/(\d+)\s*$/);
+    if (!m) {
+      return res.json({ ok: true, factura: `${last}-1`, last });
+    }
+
+    const digits = m[1];
+    const prefix = last.slice(0, last.length - digits.length);
+    const next = String(Number(digits) + 1).padStart(digits.length, "0");
+
+    return res.json({ ok: true, factura: `${prefix}${next}`, last });
+  } catch (err) {
+    console.error("GET /compras/proxima-factura", err);
+    return res.status(500).json({ ok: false, msg: "Error generando próxima factura" });
+  }
+});
+
 app.get("/compras", requireAuth, async (_req, res) => {
   try {
     const { rows } = await pool.query(`

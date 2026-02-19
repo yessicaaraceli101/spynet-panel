@@ -3648,3 +3648,59 @@ main{
 .sidebar a.logout-link.active i{
   color:#b91c1c !important;
 }
+
+.btn.primary{
+  background:#2563eb;        /* azul */
+  color:#fff;
+  border:1px solid #1d4ed8;
+}
+
+.btn.primary:hover{
+  background:#1d4ed8;
+}
+
+.btn.primary:active{
+  transform: translateY(1px);
+}
+
+.btn.primary:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.25);
+}
+
+/* ===== Botones de acción (Editar/Eliminar) tipo Clientes ===== */
+.btn-icon{
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: .15s ease;
+  margin: 0 4px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.08);
+}
+
+.btn-icon i{
+  font-size: 14px;
+}
+
+/* Azul (editar) */
+.btn-icon.blue{
+  background: #2563eb;
+  color: #fff;
+}
+.btn-icon.blue:hover{
+  filter: brightness(.92);
+}
+
+/* Rojo (eliminar) */
+.btn-icon.red{
+  background: #dc2626;
+  color: #fff;
+}
+.btn-icon.red:hover{
+  filter: brightness(.92);
+}

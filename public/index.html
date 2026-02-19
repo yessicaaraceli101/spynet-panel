@@ -416,7 +416,7 @@
       </div>
 
       <div class="actions" style="gap:.5rem">
-        <button class="btn" onclick="abrirNuevaCompra()">+ Nueva Compra</button>
+        <button class="btn primary" onclick="abrirNuevaCompra()">+ Nueva Compra</button>
       </div>
     </div>
 
@@ -467,7 +467,7 @@
 
                   <div class="col-md-12">
                       <label class="form-label">Proveedor</label>
-                      <select id="c_proveedor" class="form-select"></select>
+                      <select id="c_proveedor" class="form-select" onchange="setProximaFacturaCompra()"></select>
                   </div>
 
                   <div class="col-md-6">
