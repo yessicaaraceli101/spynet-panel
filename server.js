@@ -2340,36 +2340,32 @@ app.get("/caja/resumen", async (req, res) => {
 
     const ymd = toISODate(fechaParam);
 
-    // ✅ IDs reales
-    const EFECTIVO_ID = 2;
-    const TRANSFERENCIA_ID = 3;
-
-    // ✅ Día (solo efectivo=2 y transferencia=3)
     const diaQ = await pool.query(
       `
       SELECT
-        COALESCE(SUM(CASE WHEN v.forma_pago_id = $2 THEN v.total ELSE 0 END), 0) AS efectivo,
-        COALESCE(SUM(CASE WHEN v.forma_pago_id = $3 THEN v.total ELSE 0 END), 0) AS transferencia,
+        COALESCE(SUM(CASE WHEN lower(fp.tipo) LIKE '%efect%' THEN v.total ELSE 0 END), 0) AS efectivo,
+        COALESCE(SUM(CASE WHEN lower(fp.tipo) LIKE '%transf%' THEN v.total ELSE 0 END), 0) AS transferencia,
         COALESCE(SUM(v.total), 0) AS total
       FROM ventas v
+      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
       WHERE v.fecha::date = $1::date
         AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
       `,
-      [ymd, EFECTIVO_ID, TRANSFERENCIA_ID]
+      [ymd]
     );
 
-    // ✅ Mes (solo efectivo=2 y transferencia=3)
     const mesQ = await pool.query(
       `
       SELECT
-        COALESCE(SUM(CASE WHEN v.forma_pago_id = $2 THEN v.total ELSE 0 END), 0) AS efectivo,
-        COALESCE(SUM(CASE WHEN v.forma_pago_id = $3 THEN v.total ELSE 0 END), 0) AS transferencia,
+        COALESCE(SUM(CASE WHEN lower(fp.tipo) LIKE '%efect%' THEN v.total ELSE 0 END), 0) AS efectivo,
+        COALESCE(SUM(CASE WHEN lower(fp.tipo) LIKE '%transf%' THEN v.total ELSE 0 END), 0) AS transferencia,
         COALESCE(SUM(v.total), 0) AS total
       FROM ventas v
+      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
       WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
         AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
       `,
-      [ymd, EFECTIVO_ID, TRANSFERENCIA_ID]
+      [ymd]
     );
 
     return res.json({

@@ -39,6 +39,18 @@ function mustAuth() {
 }
 mustAuth();
 
+function hoyISO() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function asegurarFechasCaja() {
+  const fE = document.getElementById('fechaCajaEfectivo');
+  const fT = document.getElementById('fechaCajaTransferencia');
+  if (fE && !fE.value) fE.value = hoyISO();
+  if (fT && !fT.value) fT.value = hoyISO();
+}
+
+
 // ================== UTILIDADES BÁSICAS ==================
 function qs(s) { return document.querySelector(s) }
 function qsa(s) { return [...document.querySelectorAll(s)] }
@@ -200,11 +212,10 @@ if (hash === '#pedidos') {
 }
 
   if (hash === '#caja') {
-    const f = document.getElementById("fechaCaja");
-    if (f && !f.value) f.value = toYMD(new Date());
-    verificarCaja();
-    cargarRecaudacionFecha();
-  }
+  asegurarFechasCaja();        
+  verificarCaja();
+  cargarRecaudacionFecha();
+}
 
   if (hash === '#formas-pago') {
     listarFP(); // 👈 único responsable
