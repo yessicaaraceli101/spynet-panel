@@ -39,6 +39,14 @@ console.log("SUPABASE_URL exists:", !!process.env.SUPABASE_URL);
 console.log("SUPABASE_SERVICE_ROLE_KEY exists:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
 console.log("SERVICE_ROLE exists:", !!process.env.SERVICE_ROLE);
 
+function normTipoCaja(t) {
+  let s = String(t || "").trim().toLowerCase();
+  if (s === "trasferencia") s = "transferencia";
+  if (s.includes("trans")) s = "transferencia";   // transferencia, transferencias, etc.
+  if (s.includes("efect")) s = "efectivo";        // efectivo
+  return s;
+}
+
 // ✅ Cortar con error claro si falta algo
 if (!process.env.SUPABASE_URL) {
   throw new Error("FALTA SUPABASE_URL en .env");
@@ -2103,7 +2111,7 @@ app.post("/caja/abrir", async (req, res) => {
   const { tipo, fecha, saldo_inicial } = req.body || {};
 
   try {
-    const tipoNorm = String(tipo || "").trim().toLowerCase();
+    const tipoNorm = normTipoCaja(tipo);
     const fechaISO = toISODate(fecha);
 
     const cajaAbierta = await pool.query(
@@ -2131,7 +2139,7 @@ app.post("/caja/abrir", async (req, res) => {
 
 app.get("/caja/abierta", async (req, res) => {
   try {
-    const tipo = req.query.tipo ? String(req.query.tipo).trim().toLowerCase() : null;
+    const tipo = req.query.tipo ? normTipoCaja(req.query.tipo) : null;
 
     const q = tipo
       ? `
@@ -2166,9 +2174,10 @@ app.get("/caja/abierta", async (req, res) => {
     res.status(500).json({ abierta: false, msg: "Error consultando caja" });
   }
 });
+
 app.get("/caja/estado", async (req, res) => {
   try {
-    const tipo = req.query.tipo ? String(req.query.tipo).trim().toLowerCase() : null;
+    const tipo = req.query.tipo ? normTipoCaja(req.query.tipo) : null;
     const fecha = req.query.fecha ? toISODate(req.query.fecha) : null;
 
     if (!tipo) {

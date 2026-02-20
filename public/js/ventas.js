@@ -386,28 +386,30 @@ async function confirmarPagoFinal() {
     vuelto = montoRecibido - total;
   }
 
-  // ✅ CAJA según forma de pago
-  window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null, trasferencia: null };
+  // ✅ CAJA según forma de pago (sin usar window.cajaActual)
+  window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
   const tipoCajaNecesaria = esEfectivo ? "efectivo" : "transferencia";
 
-  // ✅ IMPORTANTE: tu endpoint /caja/estado exige tipo + fecha
+  // 1) Consultar estado de la caja requerida (tipo + fecha)
   if (typeof refrescarCajaAbierta === "function") {
     try {
-      await refrescarCajaAbierta(tipoCajaNecesaria, fecha); // ✅ PASAMOS FECHA
+      await refrescarCajaAbierta(tipoCajaNecesaria, fecha);
     } catch (e) {
       console.error("refrescarCajaAbierta falló:", e);
     }
   }
 
+  // 2) Leer caja_id SOLO desde window.cajasActuales[tipo]
   let caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
 
-  // fallback compat (por si tu backend devuelve solo una caja en cajaActual)
-  if (!caja_id && window.cajaActual?.id) {
-    const t = (String(window.cajaActual.tipo || "").toLowerCase().includes("trans"))
-  ? "transferencia"
-  : "efectivo";
-window.cajasActuales[t] = window.cajaActual;
-caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
+  // 3) Reintento por si vino lento / quedó null
+  if (!caja_id && typeof refrescarCajaAbierta === "function") {
+    try {
+      await refrescarCajaAbierta(tipoCajaNecesaria, fecha);
+      caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
+    } catch (e) {
+      console.error("refrescarCajaAbierta (reintento) falló:", e);
+    }
   }
 
   if (!caja_id) {
@@ -849,20 +851,35 @@ async function refrescarCajaAbierta(tipo = "efectivo", fecha = null) {
     let tipoKey = String(tipo || "").trim().toLowerCase();
     if (tipoKey === "trasferencia") tipoKey = "transferencia";
     if (tipoKey.includes("trans")) tipoKey = "transferencia";
+    if (tipoKey.includes("efect")) tipoKey = "efectivo";
 
-    // ✅ fecha (si no viene, usar input o hoy)
+    // ✅ fecha
     const fechaInput = (fecha || document.getElementById("v_fecha")?.value || "").trim();
     const ymd = fechaInput || new Date().toISOString().slice(0, 10);
 
-    const qs = `tipo=${encodeURIComponent(tipoKey)}&fecha=${encodeURIComponent(ymd)}`;
+    // 🔁 probar 2 variantes de tipo (por si el backend es case-sensitive)
+    const tiposAProbar = (tipoKey === "efectivo")
+      ? ["efectivo", "Efectivo"]
+      : ["transferencia", "Transferencia"];
 
-    const r = await fetch(`/caja/estado?${qs}`, {
-      credentials: "include",
-      cache: "no-store",
-    });
+    let caja = null;
+    let data = null;
 
-    const data = await r.json();
-    const caja = data?.caja ?? data?.data?.caja ?? data?.data ?? null;
+    for (const t of tiposAProbar) {
+      const qs = `tipo=${encodeURIComponent(t)}&fecha=${encodeURIComponent(ymd)}`;
+
+      const r = await fetch(`/caja/estado?${qs}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+
+      data = await r.json().catch(() => ({}));
+      caja = data?.caja ?? data?.data?.caja ?? data?.data ?? null;
+
+      console.log("🔎 /caja/estado", { t, ymd, ok: r.ok, caja });
+
+      if (caja && caja.id) break;
+    }
 
     // ✅ guardar SIEMPRE con clave normalizada
     window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
@@ -881,6 +898,7 @@ async function refrescarCajaAbierta(tipo = "efectivo", fecha = null) {
     let tipoKey = String(tipo || "").trim().toLowerCase();
     if (tipoKey === "trasferencia") tipoKey = "transferencia";
     if (tipoKey.includes("trans")) tipoKey = "transferencia";
+    if (tipoKey.includes("efect")) tipoKey = "efectivo";
 
     window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
     window.cajasActuales[tipoKey] = null;

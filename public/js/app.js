@@ -2769,7 +2769,6 @@ async function abrirCaja(tipoParam) {
       tipo === "efectivo" ? "fechaCajaEfectivo" : "fechaCajaTransferencia"
     );
 
-    // opcional: si en algún momento ponés saldo inicial separado
     const saldoEl = document.getElementById(
       tipo === "efectivo" ? "saldoInicialCajaEfectivo" : "saldoInicialCajaTransferencia"
     );
@@ -2782,9 +2781,8 @@ async function abrirCaja(tipoParam) {
       return;
     }
 
-    // ✅ Tu backend espera tipo como texto, vos usabas "Efectivo"
-    // Dejamos bonito para DB:
-    const tipoDB = tipo === "efectivo" ? "Efectivo" : "Transferencia";
+    // ✅ IMPORTANTE: mandar el tipo en minúscula (para que coincida con /caja/abierta?tipo=...)
+    const tipoDB = tipo; // "efectivo" | "transferencia"
 
     const res = await fetch(`${API}/caja/abrir`, {
       method: "POST",
@@ -2812,24 +2810,19 @@ async function abrirCaja(tipoParam) {
       data?.cajaId ??
       null;
 
-    // ✅ contenedor de cajas separadas
     window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
 
     if (id) {
-      window.cajasActuales[tipo] = data.caja || { id, tipo: tipoDB, fecha, saldo_inicial: saldoInicial };
+      window.cajasActuales[tipo] =
+        data.caja || { id, tipo: tipoDB, fecha, saldo_inicial: saldoInicial };
     } else {
-      // si backend no devolvió id, consultar estado
       if (typeof verificarCaja === "function") {
         await verificarCaja();
       } else if (typeof refrescarCajaAbierta === "function") {
         await refrescarCajaAbierta();
       }
 
-      // fallback: si tu verificarCaja solo llena window.cajaActual (global),
-      // lo copiamos al tipo actual
-      if (window.cajaActual?.id) {
-        window.cajasActuales[tipo] = window.cajaActual;
-      }
+      if (window.cajaActual?.id) window.cajasActuales[tipo] = window.cajaActual;
 
       if (!window.cajasActuales[tipo] || !window.cajasActuales[tipo].id) {
         alert("La caja se abrió, pero no se pudo obtener el ID. Revisá /caja/abrir");
@@ -2838,19 +2831,19 @@ async function abrirCaja(tipoParam) {
       }
     }
 
-    // ✅ mantenemos compatibilidad con código viejo (ventas)
-    // por defecto, si abrís efectivo, lo ponemos como cajaActual
-    if (tipo === "efectivo") window.cajaActual = window.cajasActuales[tipo];
+    // ✅ IMPORTANTE: actualizar cajaActual para ambos (así Ventas no rompe)
+    window.cajaActual = window.cajasActuales[tipo];
 
     const estadoEl = document.getElementById(
       tipo === "efectivo" ? "estadoCajaEfectivo" : "estadoCajaTransferencia"
     );
 
     if (estadoEl) {
-      estadoEl.innerHTML = `🟢 Caja ABIERTA (${tipoDB}) — ${saldoInicial.toLocaleString("es-PY")} Gs.`;
+      const label = (tipo === "efectivo") ? "Efectivo" : "Transferencia";
+      estadoEl.innerHTML = `🟢 Caja ABIERTA (${label}) — ${saldoInicial.toLocaleString("es-PY")} Gs.`;
     }
 
-    alert(`Caja ${tipoDB} abierta ✅`);
+    alert(`Caja ${tipo === "efectivo" ? "Efectivo" : "Transferencia"} abierta ✅`);
     if (typeof cargarRecaudacionFecha === "function") cargarRecaudacionFecha();
 
   } catch (err) {
