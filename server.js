@@ -1467,10 +1467,13 @@ app.post("/compras", requireAuth, async (req, res) => {
 
 app.get("/compras/:id", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
+
   try {
-    const cab = await pool.query(`
+    const cab = await pool.query(
+      `
       SELECT 
         c.id,
+        c.proveedor_id,                 -- ✅ necesario para editar
         c.fecha,
         c.factura,
         c.subtotal,
@@ -1480,35 +1483,129 @@ app.get("/compras/:id", requireAuth, async (req, res) => {
         p.ruc AS proveedor_ruc
       FROM compras c
       LEFT JOIN proveedores p ON p.id = c.proveedor_id
-      WHERE c.id=$1
-    `, [id]);
+      WHERE c.id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
 
-    if (!cab.rowCount) 
-      return res.status(404).json({ error: "Compra no encontrada" });
+    if (!cab.rowCount) {
+      return res.status(404).json({ ok: false, error: "Compra no encontrada" });
+    }
 
-    const items = await pool.query(`
+    const items = await pool.query(
+      `
       SELECT 
         ci.id,
         ci.producto_id,
         pr.nombre AS producto_nombre,
         pr.codigo,
+        cat.nombre AS categoria_nombre,      -- ✅ nombre de categoría
         ci.cantidad,
         ci.costo,
         ci.subtotal
       FROM compras_items ci
       LEFT JOIN productos pr ON pr.id = ci.producto_id
-      WHERE ci.compra_id=$1
+      LEFT JOIN categorias cat ON cat.id = pr.categoria_id
+      WHERE ci.compra_id = $1
       ORDER BY ci.id
-    `, [id]);
+      `,
+      [id]
+    );
 
-    res.json({
+    return res.json({
+      ok: true,
       ...cab.rows[0],
-      items: items.rows
+      items: items.rows,
     });
-
   } catch (e) {
     console.error("GET /compras/:id", e);
-    res.status(500).json({ error: "Error al obtener compra" });
+    return res.status(500).json({ ok: false, error: "Error al obtener compra" });
+  }
+});
+
+app.put("/compras/:id", requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  const { proveedor_id, fecha, factura, items } = req.body || {};
+
+  if (!id) return res.status(400).json({ ok:false, msg:"ID inválido" });
+  if (!proveedor_id) return res.status(400).json({ ok:false, msg:"Falta proveedor_id" });
+  if (!fecha) return res.status(400).json({ ok:false, msg:"Falta fecha" });
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ ok:false, msg:"No hay items" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // 1) traer items anteriores (para devolver stock)
+    const prevItemsQ = await client.query(
+      `SELECT producto_id, cantidad, costo
+       FROM compras_items
+       WHERE compra_id = $1`,
+      [id]
+    );
+    const prevItems = prevItemsQ.rows || [];
+
+    // 2) borrar items anteriores
+    await client.query(`DELETE FROM compras_items WHERE compra_id=$1`, [id]);
+
+    // 3) recalcular totales + insertar items nuevos
+    let subtotal = 0;
+    for (const it of items) {
+      const producto_id = Number(it.producto_id);
+      const cantidad = Number(it.cantidad || 0);
+      const costo = Number(it.costo || 0);
+      if (!producto_id || cantidad <= 0 || costo <= 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ ok:false, msg:"Item inválido (producto/cantidad/costo)" });
+      }
+      const sub = cantidad * costo;
+      subtotal += sub;
+
+      await client.query(
+        `INSERT INTO compras_items (compra_id, producto_id, cantidad, costo, subtotal)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [id, producto_id, cantidad, costo, sub]
+      );
+    }
+
+    const iva = Math.round(subtotal * 0.10);
+    const total = subtotal + iva;
+
+    // 4) actualizar cabecera
+    await client.query(
+      `UPDATE compras
+       SET proveedor_id=$1, fecha=$2, factura=$3, subtotal=$4, iva=$5, total=$6
+       WHERE id=$7`,
+      [Number(proveedor_id), fecha, factura || null, subtotal, iva, total, id]
+    );
+
+    // 5) ✅ ajustar stock correctamente
+    // devolver stock anterior
+    for (const p of prevItems) {
+      await client.query(
+        `UPDATE productos SET stock = stock - $1 WHERE id = $2`,
+        [Number(p.cantidad), Number(p.producto_id)]
+      );
+    }
+    // aplicar stock nuevo
+    for (const it of items) {
+      await client.query(
+        `UPDATE productos SET stock = stock + $1, costo = $2 WHERE id = $3`,
+        [Number(it.cantidad), Number(it.costo), Number(it.producto_id)]
+      );
+    }
+
+    await client.query("COMMIT");
+    return res.json({ ok:true });
+  } catch (e) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("PUT /compras/:id", e);
+    return res.status(500).json({ ok:false, msg:"Error actualizando compra", error: e.message });
+  } finally {
+    client.release();
   }
 });
 

@@ -15,6 +15,23 @@ function formatFecha(f) {
   return new Date(f).toISOString().slice(0, 10);
 }
 
+// --- util dinero PY ---
+function parsePYMoney(v) {
+  return Number(String(v || "").replace(/\./g, "").replace(/,/g, "").trim() || 0);
+}
+function numberFormat(n) {
+  return new Intl.NumberFormat("es-PY").format(Number(n || 0));
+}
+function attachMoneyFormatterById(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.dataset.moneyBound === "1") return;
+  el.dataset.moneyBound = "1";
+  el.addEventListener("input", () => {
+    const n = parsePYMoney(el.value);
+    el.value = numberFormat(n);
+  });
+}
 /*************************************************
  *  ✅ NUEVO: AUTOCOMPLETAR PRÓXIMA FACTURA POR PROVEEDOR
  *************************************************/
@@ -25,14 +42,13 @@ async function setProximaFacturaCompra() {
   if (!selProv || !inputFactura) return;
 
   const proveedorId = selProv.value;
-
-  // si no hay proveedor, no hacemos nada
   if (!proveedorId) return;
 
   try {
-    const res = await fetch(`/compras/proxima-factura?proveedor_id=${encodeURIComponent(proveedorId)}`, {
-      credentials: "include"
-    });
+    const res = await fetch(
+      `/compras/proxima-factura?proveedor_id=${encodeURIComponent(proveedorId)}`,
+      { credentials: "include" }
+    );
 
     if (!res.ok) {
       const txt = await res.text();
@@ -42,7 +58,6 @@ async function setProximaFacturaCompra() {
 
     const data = await res.json();
 
-    // No pisar si el usuario ya escribió
     if (!inputFactura.value.trim()) {
       inputFactura.value = data.factura || data.proxima_factura || "";
     }
@@ -58,14 +73,12 @@ async function cargarComprasLista() {
   try {
     const res = await fetch("/compras", { credentials: "include" });
 
-    // ✅ Si no está autorizado, volver a login
     if (res.status === 401) {
       alert("Sesión expirada. Inicie sesión de nuevo.");
       location.href = "/login.html";
       return;
     }
 
-    // ✅ Si es otro error
     if (!res.ok) {
       const txt = await res.text();
       console.error("Error /compras:", res.status, txt);
@@ -74,7 +87,6 @@ async function cargarComprasLista() {
 
     const data = await res.json();
 
-    // ✅ Asegurar que sea array
     if (!Array.isArray(data)) {
       console.error("Respuesta inesperada /compras:", data);
       return;
@@ -105,34 +117,56 @@ async function cargarComprasLista() {
 }
 
 async function editarCompra(id) {
+  await cargarProductosEditarCompra();
+  attachMoneyFormatterById("edit_c_costo");
+
+  // 1) Traer compra
   const res = await fetch(`/compras/${id}`, { credentials: "include" });
+  if (res.status === 401) {
+    alert("Sesión expirada. Inicie sesión de nuevo.");
+    location.href = "/login.html";
+    return;
+  }
+  if (!res.ok) {
+    console.error("Error /compras/:id:", res.status, await res.text());
+    return alert("No se pudo cargar la compra");
+  }
   const data = await res.json();
 
   document.getElementById("edit_compra_id").value = id;
 
+  // 2) Cargar proveedores
   const provRes = await fetch("/proveedores", { credentials: "include" });
+  if (!provRes.ok) {
+    console.error("Error /proveedores:", provRes.status, await provRes.text());
+    return alert("No se pudieron cargar proveedores");
+  }
   const proveedores = await provRes.json();
 
-  const sel = document.getElementById("edit_compra_proveedor");
-  sel.innerHTML = "";
-
+  const selProv = document.getElementById("edit_compra_proveedor");
+  selProv.innerHTML = "";
   proveedores.forEach((p) => {
     const op = document.createElement("option");
     op.value = p.id;
     op.textContent = `${p.nombre} — ${p.ruc}`;
-    if (p.id === data.proveedor_id) op.selected = true;
-    sel.appendChild(op);
+    if (Number(p.id) === Number(data.proveedor_id)) op.selected = true;
+    selProv.appendChild(op);
   });
 
-  document.getElementById("edit_compra_fecha").value = data.fecha.slice(0, 10);
-  document.getElementById("edit_compra_factura").value = data.factura;
+  // 3) Cargar productos para el combo del modal (si existe)
+  await cargarProductosEditarCompra();
 
-  editCompraItems = data.items.map((it) => ({
+  // 4) Cargar campos cabecera
+  document.getElementById("edit_compra_fecha").value = String(data.fecha || "").slice(0, 10);
+  document.getElementById("edit_compra_factura").value = data.factura || "";
+
+  // 5) Items actuales
+  editCompraItems = (data.items || []).map((it) => ({
     producto_id: it.producto_id,
     producto_nombre: it.producto_nombre,
-    cantidad: it.cantidad,
-    costo: it.costo,
-    subtotal: it.subtotal,
+    cantidad: Number(it.cantidad || 0),
+    costo: Number(it.costo || 0),
+    subtotal: Number(it.subtotal || (Number(it.cantidad || 0) * Number(it.costo || 0))),
   }));
 
   renderItemsEditarCompra();
@@ -156,8 +190,14 @@ async function guardarEdicionCompra() {
     body: JSON.stringify(body),
   });
 
-  const data = await res.json();
-  if (!data.ok) return alert("Error: " + data.msg);
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = { ok: false, msg: "Respuesta inválida del servidor" };
+  }
+
+  if (!data.ok) return alert("Error: " + (data.msg || "No se pudo actualizar"));
 
   alert("Compra actualizada correctamente");
   closeModal("modalEditarCompra");
@@ -195,7 +235,8 @@ function renderItemsEditarCompra() {
   const iva = Math.round(subtotal * 0.1);
   const total = subtotal + iva;
 
-  document.getElementById("edit_compra_total").textContent = numberFormat(total);
+  const elTotal = document.getElementById("edit_compra_total");
+  if (elTotal) elTotal.textContent = numberFormat(total);
 }
 
 async function eliminarCompra(id) {
@@ -215,7 +256,6 @@ async function eliminarCompra(id) {
 
 /*************************************************
  *  CARGAR PROVEEDORES (Nueva Compra)
- *  ✅ actualizado: engancha onchange para autocompletar factura
  *************************************************/
 async function cargarProveedoresCompra() {
   try {
@@ -225,7 +265,6 @@ async function cargarProveedoresCompra() {
     const sel = document.getElementById("c_proveedor");
     sel.innerHTML = "<option value=''>Seleccione proveedor…</option>";
 
-    // ✅ enganchar evento una sola vez
     sel.onchange = setProximaFacturaCompra;
 
     data.forEach((p) => {
@@ -241,9 +280,11 @@ async function cargarProveedoresCompra() {
 
 /*************************************************
  *  NUEVA COMPRA
- *  ✅ actualizado: intenta cargar proxima factura al abrir
  *************************************************/
 function abrirNuevaCompra() {
+  // ✅ enganchar formato dinero en costo
+  attachMoneyFormatterById("c_costo");
+
   cargarProveedoresCompra();
   openModal("modalNuevaCompra");
 
@@ -256,7 +297,6 @@ function abrirNuevaCompra() {
 
   renderItemsCompra();
 
-  // ✅ por si hay un proveedor preseleccionado en algún caso
   setTimeout(() => setProximaFacturaCompra(), 50);
 }
 
@@ -269,7 +309,7 @@ function agregarItemCompra() {
   }
 
   const cantidad = Number(document.getElementById("c_cantidad").value);
-  const costo = Number(document.getElementById("c_costo").value);
+  const costo = parsePYMoney(document.getElementById("c_costo").value); // ✅ parse con puntos
 
   if (cantidad <= 0) return alert("Cantidad inválida.");
   if (costo <= 0) return alert("Costo inválido.");
@@ -282,24 +322,24 @@ function agregarItemCompra() {
     subtotal: cantidad * costo,
   });
 
-  // Reset de campos
+  // Reset
   document.getElementById("c_buscar_producto").value = "";
   document.getElementById("c_cantidad").value = 1;
-  document.getElementById("c_costo").value = 0;
+  document.getElementById("c_costo").value = "0";
   productoSeleccionado = null;
 
   renderItemsCompra();
 }
 
 /*************************************************
- *  EDITAR ÍTEM
+ *  EDITAR ÍTEM (NUEVA COMPRA)
  *************************************************/
 function editarItemCompra(i) {
   const it = compraItems[i];
 
   document.getElementById("c_buscar_producto").value = it.producto_nombre;
   document.getElementById("c_cantidad").value = it.cantidad;
-  document.getElementById("c_costo").value = it.costo;
+  document.getElementById("c_costo").value = numberFormat(it.costo); // ✅ formateado
 
   productoSeleccionado = { id: it.producto_id, nombre: it.producto_nombre };
 
@@ -308,7 +348,7 @@ function editarItemCompra(i) {
 }
 
 /*************************************************
- *  BORRAR ÍTEM
+ *  BORRAR ÍTEM (NUEVA COMPRA)
  *************************************************/
 function borrarItemCompra(i) {
   if (!confirm("¿Desea eliminar este producto?")) return;
@@ -317,7 +357,7 @@ function borrarItemCompra(i) {
 }
 
 /*************************************************
- *  RENDERIZAR TABLA DE ÍTEMS
+ *  RENDERIZAR TABLA DE ÍTEMS (NUEVA COMPRA)
  *************************************************/
 function renderItemsCompra() {
   const tbody = document.getElementById("c_items");
@@ -407,7 +447,7 @@ async function verCompraDetalle(id) {
     const tbody = document.getElementById("v_items");
     tbody.innerHTML = "";
 
-    data.items.forEach((it) => {
+    (data.items || []).forEach((it) => {
       tbody.innerHTML += `
         <tr>
           <td>${it.producto_nombre}</td>
@@ -424,7 +464,7 @@ async function verCompraDetalle(id) {
 }
 
 /*************************************************
- *  AUTOCOMPLETAR PRODUCTOS
+ *  AUTOCOMPLETAR PRODUCTOS (NUEVA COMPRA)
  *************************************************/
 async function autocompletarProductoCompra(texto) {
   const lista = document.getElementById("c_lista_productos");
@@ -460,18 +500,21 @@ async function autocompletarProductoCompra(texto) {
       const codigo = (p.codigo || "").trim();
       const nombre = (p.nombre || "").trim();
 
-      // ✅ Scanner — [SATE] 4711510193828
-      // si no hay código, cae al nombre
-      const idStr = codigo || nombre;
-      item.textContent = `${categoria} — [${marca}] ${idStr}`;
+      // ✅ Mostrar NOMBRE (CÓDIGO) cuando exista
+      const label =
+        (codigo && nombre && codigo !== nombre)
+          ? `${nombre} (${codigo})`
+          : (nombre || codigo || "SIN NOMBRE");
+
+      item.textContent = `${categoria} — [${marca}] ${label}`;
 
       item.onclick = () => {
-        document.getElementById("c_buscar_producto").value = nombre;
-        document.getElementById("c_costo").value = p.costo || 0;
+        document.getElementById("c_buscar_producto").value = nombre || codigo || "";
+        document.getElementById("c_costo").value = numberFormat(p.costo || 0); // ✅ formateado
 
         productoSeleccionado = {
           id: p.id,
-          nombre: nombre,
+          nombre: nombre || codigo || "SIN NOMBRE",
           costo: p.costo,
           categoria: p.categoria || null,
           marca: p.marca || null,
@@ -487,6 +530,7 @@ async function autocompletarProductoCompra(texto) {
     console.error("Error en autocomplete:", err);
   }
 }
+
 async function filtrarCompras() {
   const texto = document.getElementById("f_compra_buscar").value.toLowerCase();
   const proveedor = document.getElementById("f_compra_proveedor")?.value;
@@ -574,8 +618,150 @@ async function eliminarCompraConfirmada() {
 }
 
 /*************************************************
+ *  CARGAR PRODUCTOS (EDITAR COMPRA)
+ *************************************************/
+async function cargarProductosEditarCompra() {
+  const sel = document.getElementById("edit_c_producto"); // ✅ este es tu ID real
+  if (!sel) return;
+
+  const res = await fetch("/productos", { credentials: "include" });
+  if (!res.ok) {
+    console.error("No se pudo cargar /productos", res.status, await res.text());
+    return;
+  }
+
+  const productos = await res.json();
+  sel.innerHTML = `<option value="">Seleccione producto…</option>`;
+
+  productos.forEach((p) => {
+    const categoria = (p.categoria || "Sin categoría").trim();
+    const marca = (p.marca || "Sin marca").trim();
+    const codigo = (p.codigo || "").trim();
+    const nombre = (p.nombre || "").trim();
+
+    // ✅ mostrar nombre (codigo)
+    const label = (nombre && codigo && nombre !== codigo)
+      ? `${categoria} — [${marca}] ${nombre} (${codigo})`
+      : `${categoria} — [${marca}] ${nombre || codigo || "SIN NOMBRE"}`;
+
+    const op = document.createElement("option");
+    op.value = p.id;
+    op.textContent = label;
+
+    // guardamos nombre/codigo para mostrar luego
+    op.dataset.nombre = (nombre || codigo || "SIN NOMBRE");
+    sel.appendChild(op);
+  });
+}
+function onChangeProductoEditarCompra() {
+  const sel = document.getElementById("edit_c_producto");
+  const costoInput = document.getElementById("edit_c_costo");
+  if (!sel || !costoInput) return;
+  // si querés, acá podés buscar costo del producto vía fetch /productos/:id
+  // por ahora no tocamos para no romper nada
+}
+
+function agregarProductoEditarCompra() {
+  const sel = document.getElementById("edit_c_producto");
+  const inpCant = document.getElementById("edit_c_cantidad");
+  const inpCosto = document.getElementById("edit_c_costo");
+
+  if (!sel || !inpCant || !inpCosto) return alert("Faltan campos del editor.");
+
+  const producto_id = Number(sel.value);
+  if (!producto_id) return alert("Seleccione un producto.");
+
+  const cantidad = Number(inpCant.value || 0);
+  const costo = parsePYMoney(inpCosto.value);
+
+  if (cantidad <= 0) return alert("Cantidad inválida.");
+  if (costo <= 0) return alert("Costo inválido.");
+
+  const producto_nombre = sel.options[sel.selectedIndex]?.dataset?.nombre
+    || sel.options[sel.selectedIndex]?.textContent
+    || "SIN NOMBRE";
+
+  const subtotal = cantidad * costo;
+
+  // si ya existe el producto en la lista, lo actualizamos
+  const idx = editCompraItems.findIndex(x => Number(x.producto_id) === producto_id);
+  if (idx >= 0) {
+    editCompraItems[idx] = { producto_id, producto_nombre, cantidad, costo, subtotal };
+  } else {
+    editCompraItems.push({ producto_id, producto_nombre, cantidad, costo, subtotal });
+  }
+
+  // reset
+  sel.value = "";
+  inpCant.value = 1;
+  inpCosto.value = "0";
+  if (inpCosto.type !== "number") inpCosto.value = numberFormat(0);
+
+  renderItemsEditarCompra();
+}
+
+function editarItemEditarCompra(idx) {
+  const it = editCompraItems[idx];
+  if (!it) return;
+
+  const sel = document.getElementById("edit_c_producto");
+  const inpCant = document.getElementById("edit_c_cantidad");
+  const inpCosto = document.getElementById("edit_c_costo");
+
+  sel.value = String(it.producto_id);
+  inpCant.value = it.cantidad;
+  inpCosto.value = numberFormat(it.costo);
+
+  // sacamos para que al "Añadir / Actualizar" vuelva a entrar actualizado
+  editCompraItems.splice(idx, 1);
+  renderItemsEditarCompra();
+}
+
+// ✅ Borrar item
+function borrarItemEditarCompra(idx) {
+  if (!confirm("¿Eliminar este producto?")) return;
+  editCompraItems.splice(idx, 1);
+  renderItemsEditarCompra();
+}
+
+// ✅ Render tabla editar
+function renderItemsEditarCompra() {
+  const tbody = document.getElementById("edit_compra_items");
+  tbody.innerHTML = "";
+
+  let subtotal = 0;
+
+  editCompraItems.forEach((it, idx) => {
+    subtotal += it.subtotal;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${it.producto_nombre}</td>
+      <td style="text-align:center;">${it.cantidad}</td>
+      <td>${numberFormat(it.costo)}</td>
+      <td>${numberFormat(it.subtotal)}</td>
+      <td style="text-align:center; white-space:nowrap;">
+        <button class="btn btn-warning btn-sm" onclick="editarItemEditarCompra(${idx})">
+          <i class="fa fa-pen"></i>
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="borrarItemEditarCompra(${idx})">
+          <i class="fa fa-trash"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const iva = Math.round(subtotal * 0.1);
+  const total = subtotal + iva;
+
+  document.getElementById("edit_compra_total").textContent = numberFormat(total);
+}
+/*************************************************
  *  AUTO EJECUCIÓN INICIAL
  *************************************************/
 if (document.getElementById("tabla-compras")) {
+  // ✅ formato dinero en nueva compra si existe el input en el DOM
+  attachMoneyFormatterById("c_costo");
   cargarComprasLista();
 }
