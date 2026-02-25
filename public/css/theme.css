@@ -3752,3 +3752,210 @@ main{
 .header-actions .btn.btn-blue{
   border: 1px solid transparent !important;
 }
+
+
+/* =========================================================
+   ✅ RESPONSIVE ESTABLE (PC + CEL) - PEGAR AL FINAL
+========================================================= */
+
+/* No scroll lateral */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+/* ---- Desktop ---- */
+.layout{
+  display:flex !important;
+  min-height:100vh !important;
+}
+
+.sidebar{
+  width:260px !important;
+  flex:0 0 260px !important;
+  position:fixed !important;
+  left:0 !important;
+  top:0 !important;
+  height:100vh !important;
+  overflow-y:auto !important;
+  background:#fff !important;
+  border-right:1px solid #e5e7eb !important;
+  z-index:2000 !important;
+  transform:none !important;
+}
+
+main, .content{
+  flex:1 !important;
+  margin-left:260px !important;
+  min-width:0 !important;
+
+  /* ✅ scroll vertical en PC */
+  height:100vh !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+
+  padding:16px !important;
+}
+
+/* Botón menú SOLO móvil */
+.menu-btn{ display:none !important; }
+
+/* Grids en PC */
+.dashboard-kpis,
+.ventas-kpi-container,
+.grid.cols-3{ grid-template-columns:repeat(3,1fr) !important; }
+.grid.cols-2{ grid-template-columns:repeat(2,1fr) !important; }
+
+/* ---- Mobile / Tablet ---- */
+@media (max-width: 900px){
+
+  /* Layout simple */
+  .layout{ display:block !important; }
+
+  /* Botón hamburguesa visible */
+  .menu-btn{
+    display:flex !important;
+    align-items:center;
+    justify-content:center;
+    position:fixed !important;
+    top:12px;
+    left:12px;
+    z-index:4000 !important;
+    width:44px;
+    height:44px;
+    border:0;
+    border-radius:12px;
+    background:#2563eb;
+    color:#fff;
+    box-shadow:0 8px 20px rgba(0,0,0,.15);
+  }
+
+  /* Sidebar tipo drawer */
+  .sidebar{
+    position:fixed !important;
+    top:0 !important;
+    left:0 !important;
+    height:100vh !important;
+    width:260px !important;
+    max-width:85vw !important;
+    transform:translateX(-110%) !important;
+    transition:transform .22s ease !important;
+    z-index:3500 !important;
+  }
+  .sidebar.open{ transform:translateX(0) !important; }
+
+  /* Overlay cuando sidebar está abierta */
+  body.sidebar-open::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.35);
+    z-index:3400;
+  }
+
+  /* ✅ En móvil: main NO debe tener height 100vh fijo, así scrollea natural */
+  main, .content{
+    margin-left:0 !important;
+    height:auto !important;
+    min-height:100vh !important;
+    overflow:visible !important;
+    padding:12px !important;
+    padding-top:64px !important; /* espacio para botón menú */
+  }
+
+  /* Grids a 1 columna */
+  .dashboard-kpis,
+  .ventas-kpi-container,
+  .grid.cols-3,
+  .grid.cols-2{
+    grid-template-columns:1fr !important;
+  }
+
+  /* Accesos rápidos sin ancho fijo */
+  .pretty-access, .mejor-accesos{
+    width:100% !important;
+    max-width:100% !important;
+    margin:0 !important;
+  }
+
+  /* Tablas con scroll horizontal */
+  table, .table{
+    display:block !important;
+    width:100% !important;
+    overflow-x:auto !important;
+    white-space:nowrap !important;
+    -webkit-overflow-scrolling:touch;
+  }
+}
+
+.menu-btn{
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 9999;
+}
+
+.sidebar{
+  z-index: 9998;
+}
+
+/* No rompas las tablas */
+table, .table { display: table !important; }
+
+/* Scroll horizontal en móvil */
+.table-responsive{
+  overflow-x:auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+.table-responsive table{
+  min-width: 720px;
+}
+th, td{ white-space: nowrap; }
+
+/* Menú siempre clickeable encima */
+.menu-btn{
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 99999;
+}
+.sidebar{ z-index: 99998; }
+
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  min-width: 720px; /* ajustá si querés */
+}
+
+/* ✅ Scroll horizontal suave en celular para tablas */
+.table-responsive,
+.mobile-scroll{
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Asegura que las tablas puedan “pasarse” y así se deslicen */
+.table-responsive table{
+  min-width: 720px; /* ajustable */
+}
+
+/* (Opcional) que no rompa el layout */
+.table-responsive{
+  border-radius: 12px;
+}
+
+/* ===== FIX SCROLL DEFINITIVO ===== */
+
+html, body {
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* En móvil no fuerces 100vh */
+@media (max-width: 900px) {
+  main, .content {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
