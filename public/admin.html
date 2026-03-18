@@ -6,7 +6,6 @@
   <title>Panel Administrativo</title>
 
   <script>
-    // Bloqueo si NO inició sesión como admin
     if (localStorage.getItem("adminAuth") !== "yes") {
       window.location.href = "admin_login.html";
     }
@@ -21,9 +20,9 @@
       margin:0;
       padding:0;
       font-family:Arial,sans-serif;
+      color:#111827;
     }
 
-    /* TOPBAR */
     .topbar{
       width:100%;
       padding:15px 18px;
@@ -33,18 +32,22 @@
       justify-content:space-between;
       align-items:center;
       gap:14px;
+      box-sizing:border-box;
     }
+
     .topbar h2{
       margin:0;
       font-size:20px;
       font-weight:800;
       color:#111827;
     }
+
     .topbar-buttons{
       display:flex;
       gap:12px;
       align-items:center;
     }
+
     .volver-btn{
       padding:10px 18px;
       background:#e5e7eb;
@@ -56,7 +59,10 @@
       transition:0.2s;
       border:1px solid #e5e7eb;
     }
-    .volver-btn:hover{ background:#d1d5db; }
+
+    .volver-btn:hover{
+      background:#d1d5db;
+    }
 
     .logout-btn{
       background:#dc2626;
@@ -69,26 +75,127 @@
       transition:.2s;
       border:1px solid #dc2626;
     }
+
     .logout-btn:hover{
       background:#b91c1c;
       border-color:#b91c1c;
     }
 
-    /* CONTENEDOR */
-    .admin-container{ padding:25px; }
+    .admin-container{
+      padding:24px;
+      max-width:1400px;
+      margin:0 auto;
+      box-sizing:border-box;
+    }
 
-    /* KPI clicables */
+    .section-title{
+      margin:0 0 16px 0;
+      font-size:22px;
+      font-weight:800;
+      color:#111827;
+    }
+
+    .dashboard-grid{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0,1fr));
+      gap:18px;
+      margin-bottom:22px;
+    }
+
+    .mini-grid{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0,1fr));
+      gap:18px;
+      margin-bottom:22px;
+    }
+
+    .bottom-grid{
+      display:grid;
+      grid-template-columns:2fr 1fr;
+      gap:18px;
+      margin-bottom:22px;
+    }
+
+    .card{
+      background:#fff;
+      border-radius:18px;
+      box-shadow:0 8px 22px rgba(15,23,42,.06);
+      border:1px solid #e5e7eb;
+      padding:20px;
+      box-sizing:border-box;
+    }
+
+    .kpi-card{
+      position:relative;
+      overflow:hidden;
+      min-height:145px;
+    }
+
+    .kpi-card::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:0;
+      bottom:0;
+      width:5px;
+      border-radius:18px 0 0 18px;
+    }
+
+    .kpi-ventas::before{ background:#2563eb; }
+    .kpi-compras::before{ background:#059669; }
+    .kpi-stock::before{ background:#f59e0b; }
+    .kpi-egresos::before{ background:#dc2626; }
+    .kpi-margen::before{ background:#7c3aed; }
+    .kpi-bajo::before{ background:#ea580c; }
+    .kpi-agotado::before{ background:#111827; }
+
     .kpi-link{
       cursor:pointer;
       transition:transform .15s ease, box-shadow .15s ease;
     }
+
     .kpi-link:hover{
       transform:translateY(-2px);
       box-shadow:0 12px 28px rgba(0,0,0,0.10);
     }
-    .kpi-link:active{
-      transform:translateY(0px);
-      box-shadow:0 10px 22px rgba(0,0,0,0.08);
+
+    .kpi-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:10px;
+      gap:10px;
+    }
+
+    .kpi-header b{
+      font-size:15px;
+      color:#374151;
+    }
+
+    .kpi-header span{
+      font-size:12px;
+      color:#6b7280;
+    }
+
+    .kpi-main{
+      font-size:24px;
+      font-weight:900;
+      color:#111827;
+      margin-bottom:4px;
+    }
+
+    .kpi-sub{
+      display:block;
+      font-size:13px;
+      color:#6b7280;
+      margin-bottom:10px;
+    }
+
+    .kpi-anual{
+      font-size:15px;
+      font-weight:800;
+      color:#374151;
+      margin-top:4px;
     }
 
     .kpi-go{
@@ -101,7 +208,133 @@
       align-items:center;
     }
 
-    /* ===== MODAL CONFIRMACION ===== */
+    .panel-title{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-size:18px;
+      font-weight:800;
+      margin-bottom:16px;
+      color:#111827;
+    }
+
+    .chart-box{
+      height:320px;
+      border:1px dashed #cbd5e1;
+      border-radius:14px;
+      background:linear-gradient(180deg,#f8fafc 0%, #eef2ff 100%);
+      padding:16px;
+      box-sizing:border-box;
+      position:relative;
+    }
+
+    .list-box{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .stock-item{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:12px 14px;
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      background:#f9fafb;
+    }
+
+    .stock-item-left{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:0;
+    }
+
+    .stock-item-left strong{
+      font-size:14px;
+      color:#111827;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .stock-item-left span{
+      font-size:12px;
+      color:#6b7280;
+    }
+
+    .stock-badge{
+      min-width:70px;
+      text-align:center;
+      padding:8px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      color:#fff;
+      background:#ef4444;
+    }
+
+    .stock-badge.warn{
+      background:#f59e0b;
+    }
+
+    .stock-badge.ok{
+      background:#16a34a;
+    }
+
+    .pretty-access{
+      max-width:560px;
+      margin:0 auto;
+    }
+
+    .title-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:16px;
+      font-size:18px;
+      font-weight:800;
+    }
+
+    .title-row i{
+      color:#2563eb;
+      font-size:22px;
+    }
+
+    .access-buttons{
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .acc-btn{
+      width:100%;
+      border:none;
+      border-radius:14px;
+      padding:16px 18px;
+      font-size:16px;
+      font-weight:800;
+      color:#fff;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      transition:.2s;
+      box-shadow:0 8px 22px rgba(0,0,0,.10);
+    }
+
+    .acc-btn:hover{
+      transform:translateY(-1px);
+      filter:brightness(.97);
+    }
+
+    .acc-btn.blue{ background:#2563eb; }
+    .acc-btn.green{ background:#16a34a; }
+    .acc-btn.orange{ background:#f59e0b; }
+
     .modal-overlay{
       position:fixed;
       inset:0;
@@ -112,9 +345,11 @@
       z-index:999999;
       padding:18px;
     }
+
     .modal-overlay.show{
       display:flex !important;
     }
+
     .modal-box{
       width:100%;
       max-width:420px;
@@ -125,27 +360,32 @@
       border:1px solid #e5e7eb;
       animation:pop .12s ease-out;
     }
+
     @keyframes pop{
       from{ transform:scale(.98); opacity:.6; }
       to{ transform:scale(1); opacity:1; }
     }
+
     .modal-box h3{
       margin:0 0 8px 0;
       font-size:18px;
       color:#111827;
     }
+
     .modal-box p{
       margin:0;
       color:#4b5563;
       font-size:14px;
       line-height:1.4;
     }
+
     .modal-actions{
       display:flex;
       justify-content:flex-end;
       gap:10px;
       margin-top:14px;
     }
+
     .btn-cancel{
       padding:10px 14px;
       border-radius:10px;
@@ -155,6 +395,7 @@
       font-weight:800;
       cursor:pointer;
     }
+
     .btn-danger{
       padding:10px 14px;
       border-radius:10px;
@@ -164,90 +405,184 @@
       font-weight:900;
       cursor:pointer;
     }
-    .btn-danger:hover{ background:#b91c1c; border-color:#b91c1c; }
+
+    .btn-danger:hover{
+      background:#b91c1c;
+      border-color:#b91c1c;
+    }
+
+    @media (max-width: 1100px){
+      .dashboard-grid{
+        grid-template-columns:repeat(2, minmax(0,1fr));
+      }
+
+      .mini-grid{
+        grid-template-columns:1fr;
+      }
+
+      .bottom-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width: 700px){
+      .topbar{
+        flex-direction:column;
+        align-items:flex-start;
+      }
+
+      .topbar-buttons{
+        width:100%;
+        justify-content:flex-start;
+        flex-wrap:wrap;
+      }
+
+      .dashboard-grid{
+        grid-template-columns:1fr;
+      }
+
+      .admin-container{
+        padding:16px;
+      }
+
+      .kpi-main{
+        font-size:22px;
+      }
+    }
   </style>
 </head>
-
 <body>
 
-  <!-- TOP BAR -->
   <div class="topbar">
     <h2>Panel Administrativo</h2>
 
     <div class="topbar-buttons">
       <a href="index.html" class="volver-btn">← Volver</a>
-
-      <!-- ✅ IMPORTANTE: ID nuevo para que app.js NO lo agarre -->
       <button type="button" class="logout-btn" id="btnLogoutAdminPanel">
         Cerrar sesión
       </button>
     </div>
   </div>
 
-  <!-- DASHBOARD COMPLETO -->
   <div class="admin-container">
     <section id="dashboard" class="view">
 
-      <div class="grid cols-3">
+      <h3 class="section-title">Resumen general</h3>
 
-        <!-- KPI VENTAS -->
-        <div class="card kpi-card kpi-ventas kpi-link"
-             onclick="irA('ventas')"
-             title="Ir a Ventas">
+      <div class="dashboard-grid">
+
+        <div class="card kpi-card kpi-ventas kpi-link" onclick="irA('ventas')" title="Ir a Ventas">
           <div class="kpi-header">
             <b>Ventas</b>
-            <span id="kpi-ventas-mes-title"></span>
+            <span id="kpi-ventas-mes-title">Mes actual</span>
           </div>
-          <div class="kpi-body">
-            <div id="kpi-ventas-mes" class="kpi-main">—</div>
-            <small class="kpi-sub">Total del Mes</small>
-
-            <div id="kpi-ventas-anho" class="kpi-anual">—</div>
-            <small class="kpi-sub">Total del Año</small>
-
-            <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver ventas</div>
-          </div>
+          <div class="kpi-main" id="kpi-ventas-mes">Gs. 0</div>
+          <small class="kpi-sub">Total del Mes</small>
+          <div class="kpi-anual" id="kpi-ventas-anho">Gs. 0</div>
+          <small class="kpi-sub">Total del Año</small>
+          <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver ventas</div>
         </div>
 
-        <!-- KPI COMPRAS -->
-        <div class="card kpi-card kpi-compras kpi-link"
-             onclick="irA('compras')"
-             title="Ir a Compras">
+        <div class="card kpi-card kpi-compras kpi-link" onclick="irA('compras')" title="Ir a Compras">
           <div class="kpi-header">
             <b>Compras</b>
-            <span id="kpi-compras-mes-title"></span>
+            <span id="kpi-compras-mes-title">Mes actual</span>
           </div>
-          <div class="kpi-body">
-            <div id="kpi-compras-mes" class="kpi-main">—</div>
-            <small class="kpi-sub">Total del Mes</small>
+          <div class="kpi-main" id="kpi-compras-mes">Gs. 0</div>
+          <small class="kpi-sub">Total del Mes</small>
+          <div class="kpi-anual" id="kpi-compras-anho">Gs. 0</div>
+          <small class="kpi-sub">Total del Año</small>
+          <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver compras</div>
+        </div>
 
-            <div id="kpi-compras-anho" class="kpi-anual">—</div>
-            <small class="kpi-sub">Total del Año</small>
+        <div class="card kpi-card kpi-stock kpi-link" onclick="irA('productos')" title="Ir a Productos">
+          <div class="kpi-header">
+            <b>Stock total</b>
+            <span>Inventario</span>
+          </div>
+          <div class="kpi-main" id="kpi-productos">0</div>
+          <small class="kpi-sub">Productos disponibles</small>
+          <div class="kpi-anual" id="kpi-stock-restante">0 unidades</div>
+          <small class="kpi-sub">Unidades restantes</small>
+          <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver productos</div>
+        </div>
 
-            <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver compras</div>
+        <div class="card kpi-card kpi-egresos kpi-link" onclick="location.href='egresos.html'" title="Ver detalle de egresos">
+          <div class="kpi-header">
+            <b>Egresos</b>
+            <span>Control</span>
+          </div>
+          <div class="kpi-main" id="kpi-egresos-mes">Gs. 0</div>
+          <small class="kpi-sub">Egreso del Mes</small>
+          <div class="kpi-anual" id="kpi-egresos-anho">Gs. 0</div>
+          <small class="kpi-sub">Egreso del Año</small>
+        </div>
+      </div>
+
+      <div class="mini-grid">
+
+        <div class="card kpi-card kpi-egresos">
+          <div class="kpi-header">
+            <b>Egreso del día</b>
+            <span>Hoy</span>
+          </div>
+          <div class="kpi-main" id="kpi-egresos-dia">Gs. 0</div>
+          <small class="kpi-sub">Egresos registrados en el día</small>
+        </div>
+
+        <div class="card kpi-card kpi-margen">
+          <div class="kpi-header">
+            <b>Margen estimado</b>
+            <span>Mes</span>
+          </div>
+          <div class="kpi-main" id="kpi-margen-mes">Gs. 0</div>
+          <small class="kpi-sub">Ventas - Compras - Egresos del mes</small>
+        </div>
+
+        <div class="card kpi-card kpi-bajo kpi-link" onclick="mostrarStockBajo()" title="Ver productos con stock bajo">
+          <div class="kpi-header">
+            <b>Stock bajo</b>
+            <span>Alerta</span>
+          </div>
+          <div class="kpi-main" id="kpi-stock-bajo">0</div>
+          <small class="kpi-sub">Productos con pocas unidades</small>
+          <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver productos bajos</div>
+        </div>
+
+      </div>
+
+      <div class="bottom-grid">
+
+        <div class="card">
+          <div class="panel-title">
+            <i class="fa-solid fa-chart-line" style="color:#2563eb;"></i>
+            Comparativo ventas vs compras
+          </div>
+          <div class="chart-box">
+            <canvas id="chartVentasComprasCanvas"></canvas>
           </div>
         </div>
 
-        <!-- KPI STOCK -->
-        <div class="card kpi-card kpi-stock kpi-link"
-             onclick="irA('productos')"
-             title="Ir a Productos / Stock">
-          <div class="kpi-header">
-            <b>Stock</b>
-            <span id="kpi-stock-mes-title"></span>
+        <div class="card">
+          <div class="panel-title">
+            <i class="fa-solid fa-box-open" style="color:#f59e0b;"></i>
+            Productos críticos
           </div>
-          <div class="kpi-body">
-            <div id="kpi-productos" class="kpi-main">—</div>
-            <small class="kpi-sub">Productos en Stock</small>
 
-            <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver productos</div>
+          <div class="list-box" id="listaStockCritico">
+            <div class="stock-item">
+              <div class="stock-item-left">
+                <strong>Sin datos todavía</strong>
+                <span>Acá aparecerán los productos con poco stock</span>
+              </div>
+              <div class="stock-badge warn">0</div>
+            </div>
           </div>
         </div>
 
       </div>
 
-      <!-- Accesos rápidos -->
-      <div class="card accesos-card pretty-access">
+      <div class="card pretty-access">
         <div class="title-row">
           <i class="fa-solid fa-bolt"></i>
           <b>Accesos Rápidos</b>
@@ -268,13 +603,17 @@
             <i class="fa fa-box"></i>
             Gestionar Productos
           </button>
+
+          <button class="acc-btn blue" onclick="location.href='admin_usuarios.html'">
+            <i class="fa fa-users"></i>
+            Gestionar Usuarios
+          </button>
         </div>
       </div>
 
     </section>
   </div>
 
-  <!-- ✅ MODAL CONFIRMAR CERRAR SESIÓN (ADMIN) -->
   <div id="modalCerrarSesionAdmin" class="modal-overlay">
     <div class="modal-box">
       <h3>🔒 Cerrar sesión</h3>
@@ -287,52 +626,114 @@
     </div>
   </div>
 
+  <div id="modalStockBajo" class="modal-overlay">
+    <div class="modal-box" style="max-width:520px;">
+      <h3>📦 Productos con stock bajo</h3>
+      <p>Estos son los productos que actualmente tienen pocas unidades.</p>
+
+      <div id="stockBajoContenido" style="margin-top:14px; display:flex; flex-direction:column; gap:10px;"></div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" type="button" onclick="cerrarModalStockBajo()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function irA(seccion) {
       window.location.href = `index.html#${seccion}`;
     }
 
-    // ✅ MODAL ADMIN (NOMBRES ÚNICOS PARA NO CHOCAR CON app.js)
     function openLogoutModalAdmin(){
       const m = document.getElementById("modalCerrarSesionAdmin");
       if(m) m.classList.add("show");
     }
+
     function closeLogoutModalAdmin(){
       const m = document.getElementById("modalCerrarSesionAdmin");
       if(m) m.classList.remove("show");
     }
 
-    // ✅ cerrar sesión admin
+    function mostrarStockBajo() {
+      const lista = document.getElementById("listaStockCritico");
+      const contenido = document.getElementById("stockBajoContenido");
+      const modal = document.getElementById("modalStockBajo");
+
+      if (!lista || !contenido || !modal) return;
+
+      const items = lista.querySelectorAll(".stock-item");
+      contenido.innerHTML = "";
+
+      if (!items.length) {
+        contenido.innerHTML = `
+          <div style="padding:12px; border:1px solid #e5e7eb; border-radius:12px; background:#f9fafb; color:#64748b;">
+            No hay productos con stock bajo.
+          </div>
+        `;
+      } else {
+        items.forEach(item => {
+          const nombre = item.querySelector(".stock-item-left strong")?.textContent?.trim() || "Sin nombre";
+          const detalle = item.querySelector(".stock-item-left span")?.textContent?.trim() || "";
+          const cantidad = item.querySelector(".stock-badge")?.textContent?.trim() || "0";
+
+          contenido.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 14px; border:1px solid #e5e7eb; border-radius:12px; background:#f9fafb;">
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <strong style="font-size:14px; color:#111827;">${nombre}</strong>
+                <span style="font-size:12px; color:#6b7280;">${detalle}</span>
+              </div>
+              <div style="min-width:70px; text-align:center; padding:8px 10px; border-radius:999px; font-size:12px; font-weight:800; color:#fff; background:#f59e0b;">
+                ${cantidad}
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      modal.classList.add("show");
+    }
+
+    function cerrarModalStockBajo() {
+      const modal = document.getElementById("modalStockBajo");
+      if (modal) modal.classList.remove("show");
+    }
+
     function cerrarAdmin() {
       localStorage.removeItem("adminAuth");
       sessionStorage.removeItem("adminAuth");
       window.location.replace("admin_login.html");
     }
 
-    // ✅ conectar botón con el modal (admin)
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.getElementById("btnLogoutAdminPanel");
       if (btn) btn.addEventListener("click", openLogoutModalAdmin);
 
-      // cerrar clickeando fuera
       const m = document.getElementById("modalCerrarSesionAdmin");
       if (m) {
         m.addEventListener("click", (e) => {
           if (e.target === m) closeLogoutModalAdmin();
         });
       }
+
+      const modalStock = document.getElementById("modalStockBajo");
+      if (modalStock) {
+        modalStock.addEventListener("click", (e) => {
+          if (e.target === modalStock) cerrarModalStockBajo();
+        });
+      }
     });
 
-    // ✅ cerrar con ESC
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeLogoutModalAdmin();
+      if (e.key === "Escape") {
+        closeLogoutModalAdmin();
+        cerrarModalStockBajo();
+      }
     });
   </script>
 
-  <!-- tus scripts normales -->
-  <script src="js/app.js"></script>
-  <script src="js/compras.js"></script>
-  <script src="js/ventas.js"></script>
+  <script src="js/app.js?v=2"></script>
+  <script src="js/compras.js?v=2"></script>
+  <script src="js/ventas.js?v=2"></script>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -344,5 +745,6 @@
     });
   </script>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>

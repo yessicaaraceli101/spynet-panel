@@ -209,20 +209,38 @@ app.get("/supabase-test", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { usuario, password } = req.body || {};
-  if (!usuario || !password) return res.status(400).json({ error: "Faltan credenciales" });
+  if (!usuario || !password) {
+    return res.status(400).json({ error: "Faltan credenciales" });
+  }
 
   try {
     const { rows } = await pool.query(
-      "SELECT id, usuario, nombre, password_hash FROM usuarios WHERE usuario=$1 LIMIT 1",
+      "SELECT id, usuario, nombre, password_hash, rol, activo FROM usuarios WHERE usuario=$1 LIMIT 1",
       [usuario]
     );
-    if (!rows.length) return res.status(401).json({ error: "Credenciales inválidas" });
+
+    if (!rows.length) {
+      return res.status(401).json({ error: "Credenciales inválidas" });
+    }
 
     const u = rows[0];
-    const ok = await bcrypt.compare(password, u.password_hash);
-    if (!ok) return res.status(401).json({ error: "Credenciales inválidas" });
 
-    req.session.user = { id: u.id, usuario: u.usuario, nombre: u.nombre };
+    if (u.activo === false) {
+      return res.status(403).json({ error: "Usuario inactivo" });
+    }
+
+    const ok = password === u.password_hash;
+    if (!ok) {
+      return res.status(401).json({ error: "Credenciales inválidas" });
+    }
+
+    req.session.user = {
+      id: u.id,
+      usuario: u.usuario,
+      nombre: u.nombre,
+      rol: u.rol
+    };
+
     res.json({ ok: true, user: req.session.user });
   } catch (e) {
     console.error("POST /login", e);
@@ -419,16 +437,45 @@ app.get("/categorias", requireAuth, async (_req, res) => {
               AND (p.imagen_base64 IS NOT NULL OR p.imagen IS NOT NULL)
             ORDER BY p.id DESC
             LIMIT 1)
-        ) AS imagen_base64
+        ) AS imagen_base64,
+        COALESCE(
+          STRING_AGG(p.nombre, ', ' ORDER BY p.nombre)
+            FILTER (WHERE p.nombre IS NOT NULL),
+          '-'
+        ) AS productos
       FROM categorias c
+      LEFT JOIN productos p
+        ON p.categoria_id = c.id
+       AND COALESCE(p.activo, true) = true
+      GROUP BY
+        c.id, c.nombre, c.codigo, c.descripcion, c.imagen_base64
       ORDER BY c.id ASC
     `);
+
     res.json(rows);
   } catch (e) {
     console.error("GET /categorias", e);
     res.status(500).json({ error: "Error al listar categorías" });
   }
 });
+
+async function bootstrapComprasTipoPago() {
+  try {
+    await pool.query(`
+      ALTER TABLE compras
+      ADD COLUMN IF NOT EXISTS tipo_pago TEXT DEFAULT 'efectivo'
+    `);
+
+    await pool.query(`
+      UPDATE compras
+      SET tipo_pago = 'efectivo'
+      WHERE tipo_pago IS NULL OR TRIM(tipo_pago) = ''
+    `);
+  } catch (e) {
+    console.error("bootstrapComprasTipoPago:", e.message);
+  }
+}
+bootstrapComprasTipoPago();
 
 app.post("/categorias", requireAuth, async (req, res) => {
   try {
@@ -1355,37 +1402,78 @@ app.get("/compras", requireAuth, async (_req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT 
-        c.id,
-        c.fecha,
-        c.factura,
-        c.subtotal,
-        c.iva,
-        c.total,
-
+  c.id,
+  c.fecha,
+  c.factura,
+  c.subtotal,
+  c.iva,
+  c.total,
+  c.proveedor_id,
+  c.tipo_pago,
         p.nombre AS proveedor_nombre,
         p.ruc AS proveedor_ruc,
 
-        -- Lista de códigos de productos sin repetidos
+        -- Solo códigos
         (
-          SELECT STRING_AGG(DISTINCT pr.codigo, ', ')
+          SELECT STRING_AGG(
+            COALESCE(pr.codigo, '-'),
+            ', '
+            ORDER BY pr.codigo
+          )
           FROM compras_items ci
           JOIN productos pr ON pr.id = ci.producto_id
           WHERE ci.compra_id = c.id
         ) AS productos,
 
-        -- Lista de categorías sin repetidos
+        -- Solo nombres
         (
-          SELECT STRING_AGG(DISTINCT cat.nombre, ', ')
+          SELECT STRING_AGG(
+            COALESCE(pr.nombre, 'SIN NOMBRE'),
+            ', '
+            ORDER BY pr.nombre
+          )
+          FROM compras_items ci
+          JOIN productos pr ON pr.id = ci.producto_id
+          WHERE ci.compra_id = c.id
+        ) AS nombres_productos,
+
+        -- Categorías
+        (
+          SELECT STRING_AGG(
+            DISTINCT COALESCE(cat.nombre, 'Sin categoría'),
+            ', '
+            ORDER BY COALESCE(cat.nombre, 'Sin categoría')
+          )
           FROM compras_items ci
           JOIN productos pr ON pr.id = ci.producto_id
           LEFT JOIN categorias cat ON cat.id = pr.categoria_id
           WHERE ci.compra_id = c.id
-        ) AS categorias
+        ) AS categorias,
+
+        -- Cantidad total de ítems
+        (
+          SELECT COALESCE(SUM(ci.cantidad), 0)
+          FROM compras_items ci
+          WHERE ci.compra_id = c.id
+        ) AS cantidad_total,
+
+        -- Detalle completo: código - nombre x cantidad
+        (
+          SELECT STRING_AGG(
+            COALESCE(pr.codigo, '-') || ' - ' ||
+            COALESCE(pr.nombre, 'SIN NOMBRE') || ' x' ||
+            COALESCE(ci.cantidad::text, '0'),
+            ' | '
+            ORDER BY pr.nombre
+          )
+          FROM compras_items ci
+          JOIN productos pr ON pr.id = ci.producto_id
+          WHERE ci.compra_id = c.id
+        ) AS detalle_productos
 
       FROM compras c
       LEFT JOIN proveedores p ON p.id = c.proveedor_id
-      
-      ORDER BY c.id DESC;
+      ORDER BY c.id DESC
     `);
 
     res.json(rows);
@@ -1396,12 +1484,21 @@ app.get("/compras", requireAuth, async (_req, res) => {
   }
 });
 app.post("/compras", requireAuth, async (req, res) => {
-  const { proveedor_id, fecha, factura, items } = req.body || {};
+  const { proveedor_id, fecha, factura, tipo_pago, items } = req.body || {};
+
+  const tipoPagoFinal = normTipoCaja(tipo_pago || "efectivo");
 
   if (!proveedor_id || !fecha || !Array.isArray(items) || !items.length) {
     return res.status(400).json({
       ok: false,
       msg: "Proveedor, fecha e ítems son obligatorios"
+    });
+  }
+
+  if (!["efectivo", "transferencia"].includes(tipoPagoFinal)) {
+    return res.status(400).json({
+      ok: false,
+      msg: "Forma de pago inválida"
     });
   }
 
@@ -1413,15 +1510,17 @@ app.post("/compras", requireAuth, async (req, res) => {
     for (const it of items) {
       subtotal += Number(it.cantidad) * Number(it.costo);
     }
+
     const iva = Math.round(subtotal * 0.10);
     const total = subtotal + iva;
 
     const qCab = await client.query(
-      `INSERT INTO compras (proveedor_id, fecha, factura, subtotal, iva, total)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO compras (proveedor_id, fecha, factura, tipo_pago, subtotal, iva, total)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
        RETURNING id`,
-      [proveedor_id, fecha, factura, subtotal, iva, total]
+      [proveedor_id, fecha, factura, tipoPagoFinal, subtotal, iva, total]
     );
+
     const compraId = qCab.rows[0].id;
 
     for (const it of items) {
@@ -1444,7 +1543,10 @@ app.post("/compras", requireAuth, async (req, res) => {
         const cNew =
           sAnt + Number(it.cantidad) === 0
             ? it.costo
-            : Math.round(((sAnt * cAnt) + (Number(it.cantidad) * it.costo)) / (sAnt + Number(it.cantidad)));
+            : Math.round(
+                ((sAnt * cAnt) + (Number(it.cantidad) * it.costo)) /
+                (sAnt + Number(it.cantidad))
+              );
 
         await client.query(
           "UPDATE productos SET stock=$1, costo=$2 WHERE id=$3",
@@ -1464,7 +1566,6 @@ app.post("/compras", requireAuth, async (req, res) => {
     client.release();
   }
 });
-
 app.get("/compras/:id", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
 
@@ -1472,13 +1573,14 @@ app.get("/compras/:id", requireAuth, async (req, res) => {
     const cab = await pool.query(
       `
       SELECT 
-        c.id,
-        c.proveedor_id,                 -- ✅ necesario para editar
-        c.fecha,
-        c.factura,
-        c.subtotal,
-        c.iva,
-        c.total,
+  c.id,
+  c.proveedor_id,
+  c.fecha,
+  c.factura,
+  c.tipo_pago,
+  c.subtotal,
+  c.iva,
+  c.total,
         p.nombre AS proveedor_nombre,
         p.ruc AS proveedor_ruc
       FROM compras c
@@ -1526,7 +1628,9 @@ app.get("/compras/:id", requireAuth, async (req, res) => {
 
 app.put("/compras/:id", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
-  const { proveedor_id, fecha, factura, items } = req.body || {};
+  const { proveedor_id, fecha, factura, tipo_pago, items } = req.body || {};
+
+  const tipoPagoFinal = normTipoCaja(tipo_pago || "efectivo");
 
   if (!id) return res.status(400).json({ ok:false, msg:"ID inválido" });
   if (!proveedor_id) return res.status(400).json({ ok:false, msg:"Falta proveedor_id" });
@@ -1576,11 +1680,11 @@ app.put("/compras/:id", requireAuth, async (req, res) => {
 
     // 4) actualizar cabecera
     await client.query(
-      `UPDATE compras
-       SET proveedor_id=$1, fecha=$2, factura=$3, subtotal=$4, iva=$5, total=$6
-       WHERE id=$7`,
-      [Number(proveedor_id), fecha, factura || null, subtotal, iva, total, id]
-    );
+  `UPDATE compras
+   SET proveedor_id=$1, fecha=$2, factura=$3, tipo_pago=$4, subtotal=$5, iva=$6, total=$7
+   WHERE id=$8`,
+  [Number(proveedor_id), fecha, factura || null, tipoPagoFinal, subtotal, iva, total, id]
+);
 
     // 5) ✅ ajustar stock correctamente
     // devolver stock anterior
@@ -1641,7 +1745,17 @@ app.get("/ventas", async (_req, res) => {
         v.estado_pago,
         v.nro_comprobante,
         fp.nombre AS forma_pago_nombre,
-        COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente_nombre
+        COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente_nombre,
+        COALESCE((
+          SELECT STRING_AGG(
+            p.nombre || ' x' || vi.cantidad,
+            ', '
+            ORDER BY vi.id
+          )
+          FROM ventas_items vi
+          JOIN productos p ON p.id = vi.producto_id
+          WHERE vi.venta_id = v.id
+        ), '-') AS productos
       FROM ventas v
       LEFT JOIN clientes c ON c.id = v.cliente_id
       LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
@@ -1827,9 +1941,23 @@ app.post("/ventas", async (req, res) => {
 });
 app.get("/ventas/:id", async (req, res) => {
   try {
+    const ventaId = Number(req.params.id);
+
     const ven = await pool.query(
-      "SELECT * FROM ventas WHERE id = $1",
-      [req.params.id]
+      `
+      SELECT
+        v.id,
+        v.fecha,
+        v.cliente_id,
+        v.forma_pago_id,
+        v.estado_pago,
+        v.nro_comprobante,
+        v.total
+      FROM ventas v
+      WHERE v.id = $1
+      LIMIT 1
+      `,
+      [ventaId]
     );
 
     if (ven.rows.length === 0) {
@@ -1837,11 +1965,21 @@ app.get("/ventas/:id", async (req, res) => {
     }
 
     const items = await pool.query(
-      `SELECT vi.*, p.nombre AS producto_nombre
-       FROM ventas_items vi
-       JOIN productos p ON p.id = vi.producto_id
-       WHERE venta_id = $1`,
-      [req.params.id]
+      `
+      SELECT
+        vi.id,
+        vi.venta_id,
+        vi.producto_id,
+        vi.cantidad,
+        vi.precio,
+        vi.subtotal,
+        p.nombre AS producto_nombre
+      FROM ventas_items vi
+      LEFT JOIN productos p ON p.id = vi.producto_id
+      WHERE vi.venta_id = $1
+      ORDER BY vi.id ASC
+      `,
+      [ventaId]
     );
 
     res.json({
@@ -1849,9 +1987,17 @@ app.get("/ventas/:id", async (req, res) => {
       fecha: ven.rows[0].fecha,
       cliente_id: ven.rows[0].cliente_id,
       forma_pago_id: ven.rows[0].forma_pago_id,
-      nro_comprobante: ven.rows[0].nro_comprobante, // ✅ incluye comprobante
+      estado_pago: ven.rows[0].estado_pago,
+      nro_comprobante: ven.rows[0].nro_comprobante,
       total: ven.rows[0].total,
-      items: items.rows
+      items: items.rows.map(it => ({
+        id: it.id,
+        producto_id: it.producto_id,
+        producto_nombre: it.producto_nombre || "Producto",
+        cantidad: Number(it.cantidad || 0),
+        precio_unitario: Number(it.precio || 0),
+        subtotal: Number(it.subtotal || 0)
+      }))
     });
 
   } catch (err) {
@@ -2382,18 +2528,62 @@ app.get("/caja/resumen-dia", async (req, res) => {
     const q = await pool.query(
       `
       SELECT
-        COALESCE(SUM(CASE WHEN fp.tipo = 'efectivo' THEN v.total ELSE 0 END), 0) AS efectivo,
-        COALESCE(SUM(CASE WHEN fp.tipo = 'transferencia' THEN v.total ELSE 0 END), 0) AS transferencia,
-        COALESCE(SUM(v.total), 0) AS total
-      FROM ventas v
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
-      WHERE v.fecha::date = $1::date
-        AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE v.fecha::date = $1::date
+            AND lower(fp.tipo) LIKE '%efect%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_efectivo,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE c.fecha::date = $1::date
+            AND c.tipo_pago = 'efectivo'
+        ), 0) AS egreso_efectivo,
+
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE v.fecha::date = $1::date
+            AND lower(fp.tipo) LIKE '%transf%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_transferencia,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE c.fecha::date = $1::date
+            AND c.tipo_pago = 'transferencia'
+        ), 0) AS egreso_transferencia
       `,
       [ymd]
     );
 
-    return res.json({ ok: true, dia: ymd, ...numRow(q.rows[0]) });
+    const r = q.rows[0];
+
+    const ingreso_efectivo = Number(r.ingreso_efectivo || 0);
+    const egreso_efectivo = Number(r.egreso_efectivo || 0);
+    const saldo_efectivo = ingreso_efectivo - egreso_efectivo;
+
+    const ingreso_transferencia = Number(r.ingreso_transferencia || 0);
+    const egreso_transferencia = Number(r.egreso_transferencia || 0);
+    const saldo_transferencia = ingreso_transferencia - egreso_transferencia;
+
+    return res.json({
+      ok: true,
+      dia: ymd,
+      ingreso_efectivo,
+      egreso_efectivo,
+      saldo_efectivo,
+      ingreso_transferencia,
+      egreso_transferencia,
+      saldo_transferencia,
+      total: saldo_efectivo + saldo_transferencia
+    });
   } catch (err) {
     console.error("GET /caja/resumen-dia", err);
     return res.status(500).json({ ok: false, msg: "Error resumen día" });
@@ -2412,18 +2602,62 @@ app.get("/caja/resumen-mes", async (req, res) => {
     const q = await pool.query(
       `
       SELECT
-        COALESCE(SUM(CASE WHEN fp.tipo = 'efectivo' THEN v.total ELSE 0 END), 0) AS efectivo,
-        COALESCE(SUM(CASE WHEN fp.tipo = 'transferencia' THEN v.total ELSE 0 END), 0) AS transferencia,
-        COALESCE(SUM(v.total), 0) AS total
-      FROM ventas v
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
-      WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
-        AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+            AND lower(fp.tipo) LIKE '%efect%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_efectivo,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+            AND c.tipo_pago = 'efectivo'
+        ), 0) AS egreso_efectivo,
+
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+            AND lower(fp.tipo) LIKE '%transf%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_transferencia,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+            AND c.tipo_pago = 'transferencia'
+        ), 0) AS egreso_transferencia
       `,
       [ymd]
     );
 
-    return res.json({ ok: true, mes: ymd.slice(0, 7), ...numRow(q.rows[0]) });
+    const r = q.rows[0];
+
+    const ingreso_efectivo = Number(r.ingreso_efectivo || 0);
+    const egreso_efectivo = Number(r.egreso_efectivo || 0);
+    const saldo_efectivo = ingreso_efectivo - egreso_efectivo;
+
+    const ingreso_transferencia = Number(r.ingreso_transferencia || 0);
+    const egreso_transferencia = Number(r.egreso_transferencia || 0);
+    const saldo_transferencia = ingreso_transferencia - egreso_transferencia;
+
+    return res.json({
+      ok: true,
+      mes: ymd.slice(0, 7),
+      ingreso_efectivo,
+      egreso_efectivo,
+      saldo_efectivo,
+      ingreso_transferencia,
+      egreso_transferencia,
+      saldo_transferencia,
+      total: saldo_efectivo + saldo_transferencia
+    });
   } catch (err) {
     console.error("GET /caja/resumen-mes", err);
     return res.status(500).json({ ok: false, msg: "Error resumen mes" });
@@ -2433,43 +2667,112 @@ app.get("/caja/resumen-mes", async (req, res) => {
 app.get("/caja/resumen", async (req, res) => {
   try {
     const fechaParam = req.query.fecha || req.query.dia || req.query.mes;
-    if (!fechaParam) return res.status(400).json({ ok: false, msg: "Falta fecha" });
+    if (!fechaParam) {
+      return res.status(400).json({ ok: false, msg: "Falta fecha" });
+    }
 
     const ymd = toISODate(fechaParam);
 
+    // =========================
+    // RESUMEN DEL DÍA
+    // =========================
     const diaQ = await pool.query(
       `
       SELECT
-        COALESCE(SUM(CASE WHEN lower(fp.tipo) LIKE '%efect%' THEN v.total ELSE 0 END), 0) AS efectivo,
-        COALESCE(SUM(CASE WHEN lower(fp.tipo) LIKE '%transf%' THEN v.total ELSE 0 END), 0) AS transferencia,
-        COALESCE(SUM(v.total), 0) AS total
-      FROM ventas v
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
-      WHERE v.fecha::date = $1::date
-        AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE v.fecha::date = $1::date
+            AND lower(COALESCE(fp.tipo, '')) LIKE '%efect%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_efectivo,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE c.fecha::date = $1::date
+            AND c.tipo_pago = 'efectivo'
+        ), 0) AS egreso_compras_efectivo,
+
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE v.fecha::date = $1::date
+            AND lower(COALESCE(fp.tipo, '')) LIKE '%transf%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_transferencia,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE c.fecha::date = $1::date
+            AND c.tipo_pago = 'transferencia'
+        ), 0) AS egreso_compras_transferencia
       `,
       [ymd]
     );
 
+    // =========================
+    // RESUMEN DEL MES
+    // =========================
     const mesQ = await pool.query(
       `
       SELECT
-        COALESCE(SUM(CASE WHEN lower(fp.tipo) LIKE '%efect%' THEN v.total ELSE 0 END), 0) AS efectivo,
-        COALESCE(SUM(CASE WHEN lower(fp.tipo) LIKE '%transf%' THEN v.total ELSE 0 END), 0) AS transferencia,
-        COALESCE(SUM(v.total), 0) AS total
-      FROM ventas v
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
-      WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
-        AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+            AND lower(COALESCE(fp.tipo, '')) LIKE '%efect%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_efectivo,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+            AND c.tipo_pago = 'efectivo'
+        ), 0) AS egreso_compras_efectivo,
+
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+            AND lower(COALESCE(fp.tipo, '')) LIKE '%transf%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_transferencia,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+            AND c.tipo_pago = 'transferencia'
+        ), 0) AS egreso_compras_transferencia
       `,
       [ymd]
     );
+
+    const dia = diaQ.rows[0] || {};
+    const mes = mesQ.rows[0] || {};
 
     return res.json({
       ok: true,
       fecha: ymd,
-      dia: numRow(diaQ.rows[0]),
-      mes: numRow(mesQ.rows[0]),
+      dia: {
+        ingreso_efectivo: Number(dia.ingreso_efectivo || 0),
+        egreso_compras_efectivo: Number(dia.egreso_compras_efectivo || 0),
+        ingreso_transferencia: Number(dia.ingreso_transferencia || 0),
+        egreso_compras_transferencia: Number(dia.egreso_compras_transferencia || 0),
+      },
+      mes: {
+        ingreso_efectivo: Number(mes.ingreso_efectivo || 0),
+        egreso_compras_efectivo: Number(mes.egreso_compras_efectivo || 0),
+        ingreso_transferencia: Number(mes.ingreso_transferencia || 0),
+        egreso_compras_transferencia: Number(mes.egreso_compras_transferencia || 0),
+      }
     });
   } catch (err) {
     console.error("GET /caja/resumen", err);
@@ -2776,6 +3079,552 @@ app.get("/debug/formas-pago-pool", async (_req, res) => {
   const r = await pool.query("SELECT id, nombre, tipo FROM formas_pago ORDER BY id");
   res.json(r.rows);
 });
+
+app.post("/usuarios/seed-admin", async (_req, res) => {
+  try {
+    const usuario = "admin";
+    const nombre = "Juan Perez";
+    const password = "1234";
+
+    const existe = await pool.query(
+      "SELECT id FROM usuarios WHERE usuario=$1 LIMIT 1",
+      [usuario]
+    );
+
+    if (existe.rowCount) {
+      return res.json({ ok: true, msg: "El admin ya existe" });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+
+    await pool.query(
+      `INSERT INTO usuarios (nombre, usuario, password_hash, rol)
+       VALUES ($1,$2,$3,$4)`,
+      [nombre, usuario, hash, "admin"]
+    );
+
+    res.json({ ok: true, msg: "Admin creado" });
+  } catch (err) {
+    console.error("POST /usuarios/seed-admin", err);
+    res.status(500).json({ ok: false, msg: "Error creando admin" });
+  }
+});
+
+app.post("/api/usuarios", async (req, res) => {
+  try {
+    const { nombre, usuario, password, rol } = req.body;
+
+    if (!nombre || !usuario || !password) {
+      return res.status(400).json({ error: "Faltan datos" });
+    }
+
+    const existe = await pool.query(
+      "SELECT id FROM usuarios WHERE usuario = $1",
+      [usuario]
+    );
+
+    if (existe.rows.length > 0) {
+      return res.status(400).json({ error: "El usuario ya existe" });
+    }
+
+    await pool.query(
+      "INSERT INTO usuarios (nombre, usuario, password_hash, rol) VALUES ($1,$2,$3,$4)",
+      [nombre, usuario, password, rol || "usuario"]
+    );
+
+    res.json({ ok: true });
+
+  } catch (error) {
+    console.error("POST /api/usuarios", error);
+    res.status(500).json({ error: "Error creando usuario" });
+  }
+});
+app.get("/api/usuarios", async(req,res)=>{
+
+const result = await pool.query("SELECT id,nombre,usuario,rol FROM usuarios")
+
+res.json(result.rows)
+
+})
+app.delete("/api/usuarios/:id", async(req,res)=>{
+
+const id=req.params.id
+
+await pool.query("DELETE FROM usuarios WHERE id=$1",[id])
+
+res.json({ok:true})
+
+})
+
+
+function fmtGs(n) {
+  return `Gs. ${Number(n || 0).toLocaleString("es-PY")}`;
+}
+
+function fmtFechaLargaPY(fechaISO) {
+  const d = new Date(`${fechaISO}T00:00:00`);
+  return d.toLocaleDateString("es-PY");
+}
+
+function drawSimpleTable(doc, {
+  x,
+  y,
+  colWidths,
+  headers,
+  rows,
+  headerFill = "#2563eb",
+  rowHeight = 24,
+  fontSize = 10
+}) {
+  const tableWidth = colWidths.reduce((a, b) => a + b, 0);
+
+  doc.save();
+  doc.rect(x, y, tableWidth, rowHeight).fill(headerFill);
+  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(fontSize);
+
+  let cx = x;
+  headers.forEach((h, i) => {
+    doc.text(h, cx + 6, y + 7, { width: colWidths[i] - 12, align: i === headers.length - 1 ? "right" : "left" });
+    cx += colWidths[i];
+  });
+
+  let currentY = y + rowHeight;
+  doc.font("Helvetica").fillColor("#111827");
+
+  rows.forEach((row, idx) => {
+    const bg = idx % 2 === 0 ? "#f9fafb" : "#ffffff";
+    doc.rect(x, currentY, tableWidth, rowHeight).fill(bg);
+
+    let rx = x;
+    row.forEach((cell, i) => {
+      doc.fillColor("#111827").text(String(cell ?? ""), rx + 6, currentY + 7, {
+        width: colWidths[i] - 12,
+        align: i === row.length - 1 ? "right" : "left"
+      });
+      rx += colWidths[i];
+    });
+
+    doc.strokeColor("#d1d5db").lineWidth(0.5).rect(x, currentY, tableWidth, rowHeight).stroke();
+    currentY += rowHeight;
+  });
+
+  doc.restore();
+  return currentY;
+}
+
+app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
+  try {
+    const fechaParam = req.query.fecha || new Date().toISOString().slice(0, 10);
+    const fecha = toISODate(fechaParam);
+    const usuarioNombre = req.session?.user?.nombre || req.session?.user?.usuario || "Usuario";
+
+    const primaryBlue = "#2563eb";
+    const primaryGreen = "#16a34a";
+    const primaryRed = "#dc2626";
+    const darkText = "#111827";
+    const mutedText = "#4b5563";
+    const lineColor = "#d1d5db";
+
+    const logoPath = path.join(process.cwd(), "public", "img", "logo2.png");
+
+    // =========================
+    // RESUMEN DÍA
+    // =========================
+    const diaQ = await pool.query(
+      `
+      SELECT
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE v.fecha::date = $1::date
+            AND lower(COALESCE(fp.tipo, '')) LIKE '%efect%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_efectivo,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE c.fecha::date = $1::date
+            AND c.tipo_pago = 'efectivo'
+        ), 0) AS egreso_efectivo,
+
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE v.fecha::date = $1::date
+            AND lower(COALESCE(fp.tipo, '')) LIKE '%transf%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_transferencia,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE c.fecha::date = $1::date
+            AND c.tipo_pago = 'transferencia'
+        ), 0) AS egreso_transferencia
+      `,
+      [fecha]
+    );
+
+    // =========================
+    // RESUMEN MES
+    // =========================
+    const mesQ = await pool.query(
+      `
+      SELECT
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+            AND lower(COALESCE(fp.tipo, '')) LIKE '%efect%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_efectivo,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+            AND c.tipo_pago = 'efectivo'
+        ), 0) AS egreso_efectivo,
+
+        COALESCE((
+          SELECT SUM(v.total)
+          FROM ventas v
+          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+            AND lower(COALESCE(fp.tipo, '')) LIKE '%transf%'
+            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+        ), 0) AS ingreso_transferencia,
+
+        COALESCE((
+          SELECT SUM(c.total)
+          FROM compras c
+          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+            AND c.tipo_pago = 'transferencia'
+        ), 0) AS egreso_transferencia
+      `,
+      [fecha]
+    );
+
+    const dia = diaQ.rows[0];
+    const mes = mesQ.rows[0];
+
+    const diaIngresoEf = Number(dia.ingreso_efectivo || 0);
+    const diaEgresoEf = Number(dia.egreso_efectivo || 0);
+    const diaSaldoEf = diaIngresoEf - diaEgresoEf;
+
+    const diaIngresoTr = Number(dia.ingreso_transferencia || 0);
+    const diaEgresoTr = Number(dia.egreso_transferencia || 0);
+    const diaSaldoTr = diaIngresoTr - diaEgresoTr;
+
+    const saldoDia = diaSaldoEf + diaSaldoTr;
+
+    const mesIngresoEf = Number(mes.ingreso_efectivo || 0);
+    const mesEgresoEf = Number(mes.egreso_efectivo || 0);
+    const mesSaldoEf = mesIngresoEf - mesEgresoEf;
+
+    const mesIngresoTr = Number(mes.ingreso_transferencia || 0);
+    const mesEgresoTr = Number(mes.egreso_transferencia || 0);
+    const mesSaldoTr = mesIngresoTr - mesEgresoTr;
+
+    const saldoMes = mesSaldoEf + mesSaldoTr;
+
+    // =========================
+    // DETALLE VENTAS DEL DÍA
+    // =========================
+    const ventasQ = await pool.query(
+      `
+      SELECT
+        v.id,
+        v.fecha,
+        COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente,
+        COALESCE(fp.nombre, '-') AS forma_pago,
+        v.total,
+        COALESCE((
+          SELECT STRING_AGG(
+            p.nombre || ' x' || vi.cantidad,
+            ', '
+            ORDER BY vi.id
+          )
+          FROM ventas_items vi
+          JOIN productos p ON p.id = vi.producto_id
+          WHERE vi.venta_id = v.id
+        ), '-') AS detalle_productos
+      FROM ventas v
+      LEFT JOIN clientes c ON c.id = v.cliente_id
+      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+      WHERE v.fecha::date = $1::date
+        AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
+      ORDER BY v.id DESC
+      `,
+      [fecha]
+    );
+
+    // =========================
+    // DETALLE COMPRAS DEL DÍA
+    // =========================
+    const comprasQ = await pool.query(
+      `
+      SELECT
+        c.id,
+        c.fecha,
+        COALESCE(p.nombre, '-') AS proveedor,
+        COALESCE(c.factura, '-') AS factura,
+        COALESCE(c.tipo_pago, '-') AS tipo_pago,
+        c.total,
+        COALESCE((
+          SELECT STRING_AGG(
+            pr.nombre || ' x' || ci.cantidad,
+            ', '
+            ORDER BY ci.id
+          )
+          FROM compras_items ci
+          JOIN productos pr ON pr.id = ci.producto_id
+          WHERE ci.compra_id = c.id
+        ), '-') AS detalle_productos
+      FROM compras c
+      LEFT JOIN proveedores p ON p.id = c.proveedor_id
+      WHERE c.fecha::date = $1::date
+      ORDER BY c.id DESC
+      `,
+      [fecha]
+    );
+
+    // =========================
+    // DETALLE EGRESOS DEL DÍA
+    // =========================
+    let egresosRows = [];
+    try {
+      const egresosQ = await pool.query(
+        `
+        SELECT
+          fecha,
+          COALESCE(concepto, '-') AS concepto,
+          COALESCE(descripcion, '-') AS descripcion,
+          monto
+        FROM egresos
+        WHERE fecha::date = $1::date
+        ORDER BY id DESC
+        `,
+        [fecha]
+      );
+      egresosRows = egresosQ.rows;
+    } catch (e) {
+      egresosRows = [];
+    }
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=informe_caja_${fecha}.pdf`);
+
+    const doc = new PDFDocument({ size: "A4", margin: 40 });
+    doc.pipe(res);
+
+    // =========================
+    // ENCABEZADO PROFESIONAL
+    // =========================
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 40, 32, { width: 70 });
+    }
+
+    doc.font("Helvetica-Bold")
+      .fontSize(24)
+      .fillColor(darkText)
+      .text("Informe de Caja", 120, 40);
+
+    doc.font("Helvetica")
+      .fontSize(11)
+      .fillColor(mutedText)
+      .text(`Fecha de emisión: ${fmtFechaLargaPY(fecha)}`, 120, 72)
+      .text(`Generado por: ${usuarioNombre}`, 120, 88);
+
+    doc.moveTo(40, 118).lineTo(555, 118).strokeColor(lineColor).lineWidth(1).stroke();
+    doc.y = 135;
+
+    // =========================
+    // TABLA RESUMEN DÍA
+    // =========================
+    doc.font("Helvetica-Bold").fontSize(14).fillColor(darkText).text("Resumen del Día");
+    let y = doc.y + 8;
+
+    y = drawSimpleTable(doc, {
+      x: 40,
+      y,
+      colWidths: [320, 180],
+      headers: ["Concepto", "Monto"],
+      headerFill: primaryBlue,
+      rows: [
+        ["Ingreso Efectivo", fmtGs(diaIngresoEf)],
+        ["Egreso Efectivo", fmtGs(diaEgresoEf)],
+        ["Saldo Efectivo", fmtGs(diaSaldoEf)],
+        ["Ingreso Transferencia", fmtGs(diaIngresoTr)],
+        ["Egreso Transferencia", fmtGs(diaEgresoTr)],
+        ["Saldo Transferencia", fmtGs(diaSaldoTr)],
+        ["Saldo Total del Día", fmtGs(saldoDia)],
+      ]
+    });
+
+    // =========================
+    // TABLA RESUMEN MES
+    // =========================
+    y += 28;
+    doc.font("Helvetica-Bold").fontSize(14).fillColor(darkText).text("Resumen del Mes", 40, y);
+    y += 25;
+
+    y = drawSimpleTable(doc, {
+      x: 40,
+      y,
+      colWidths: [320, 180],
+      headers: ["Concepto", "Monto"],
+      headerFill: primaryGreen,
+      rows: [
+        ["Ingreso Efectivo", fmtGs(mesIngresoEf)],
+        ["Egreso Efectivo", fmtGs(mesEgresoEf)],
+        ["Saldo Efectivo", fmtGs(mesSaldoEf)],
+        ["Ingreso Transferencia", fmtGs(mesIngresoTr)],
+        ["Egreso Transferencia", fmtGs(mesEgresoTr)],
+        ["Saldo Transferencia", fmtGs(mesSaldoTr)],
+        ["Saldo Total del Mes", fmtGs(saldoMes)],
+      ]
+    });
+
+    // =========================
+    // NUEVA PÁGINA: DETALLE VENTAS
+    // =========================
+    doc.addPage();
+
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 40, 22, { width: 45 });
+    }
+
+    doc.font("Helvetica-Bold").fontSize(16).fillColor(darkText).text("Detalle de Ventas del Día", 95, 30);
+    y = 70;
+
+    const rowsVentas = ventasQ.rows.length
+      ? ventasQ.rows.map(v => [
+          new Date(v.fecha).toISOString().slice(0, 10),
+          v.cliente,
+          v.detalle_productos,
+          v.forma_pago,
+          fmtGs(v.total)
+        ])
+      : [["-", "Sin ventas registradas", "-", "-", fmtGs(0)]];
+
+    y = drawSimpleTable(doc, {
+      x: 40,
+      y,
+      colWidths: [70, 120, 190, 85, 80],
+      headers: ["Fecha", "Cliente", "Productos", "Pago", "Total"],
+      headerFill: primaryBlue,
+      rows: rowsVentas
+    });
+
+    // =========================
+    // DETALLE COMPRAS
+    // =========================
+    y += 30;
+    if (y > 680) {
+      doc.addPage();
+      y = 50;
+    }
+
+    doc.font("Helvetica-Bold").fontSize(16).fillColor(darkText).text("Detalle de Compras del Día", 40, y);
+    y += 25;
+
+    const rowsCompras = comprasQ.rows.length
+      ? comprasQ.rows.map(c => [
+          new Date(c.fecha).toISOString().slice(0, 10),
+          c.proveedor,
+          c.detalle_productos,
+          c.tipo_pago,
+          fmtGs(c.total)
+        ])
+      : [["-", "Sin compras registradas", "-", "-", fmtGs(0)]];
+
+    y = drawSimpleTable(doc, {
+      x: 40,
+      y,
+      colWidths: [70, 120, 190, 85, 80],
+      headers: ["Fecha", "Proveedor", "Productos", "Tipo pago", "Total"],
+      headerFill: primaryGreen,
+      rows: rowsCompras
+    });
+
+    // =========================
+    // DETALLE EGRESOS
+    // =========================
+    y += 30;
+    if (y > 680) {
+      doc.addPage();
+      y = 50;
+    }
+
+    doc.font("Helvetica-Bold").fontSize(16).fillColor(darkText).text("Detalle de Egresos del Día", 40, y);
+    y += 25;
+
+    const rowsEgresos = egresosRows.length
+      ? egresosRows.map(e => [
+          new Date(e.fecha).toISOString().slice(0, 10),
+          e.concepto,
+          e.descripcion,
+          fmtGs(e.monto)
+        ])
+      : [["-", "Sin egresos registrados", "-", fmtGs(0)]];
+
+    y = drawSimpleTable(doc, {
+      x: 40,
+      y,
+      colWidths: [80, 140, 220, 75],
+      headers: ["Fecha", "Concepto", "Descripción", "Monto"],
+      headerFill: primaryRed,
+      rows: rowsEgresos
+    });
+
+    // =========================
+    // PIE
+    // =========================
+    doc.fontSize(9).fillColor("#6b7280");
+    doc.text(
+      `Documento generado automáticamente por SPYnet • Usuario: ${usuarioNombre}`,
+      40,
+      780,
+      { align: "center", width: 515 }
+    );
+
+    doc.end();
+  } catch (err) {
+    console.error("GET /caja/informe/pdf", err);
+    res.status(500).send("Error generando informe PDF");
+  }
+});
+
+app.get("/cuentas-pagar", requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT
+        id,
+        proveedor,
+        concepto,
+        monto,
+        vencimiento,
+        estado,
+        fecha_pago,
+        pagado_en,
+        caja_tipo,
+        caja
+      FROM cuentas_pagar
+      ORDER BY id DESC
+    `);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /cuentas-pagar", err);
+    res.status(500).json({ error: "Error al listar cuentas a pagar" });
+  }
+});
+
 app.get("/", (_req, res) => {
   res.send("SPYnet OK ✅");
 });

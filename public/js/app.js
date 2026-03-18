@@ -5,6 +5,19 @@ let logoConsorcio = "";
 let logoSpynet = "";
 let cajaAbierta = false;
 let cajaActual = null;
+let chartVentasComprasInstance = null;
+
+let cuentasPagar = JSON.parse(localStorage.getItem("cuentasPagar") || "[]");
+let cuentasPagarFiltradas = [...cuentasPagar];
+let egresosCuentasPagar = JSON.parse(localStorage.getItem("egresosCuentasPagar") || "[]");
+
+function guardarCuentasPagarStorage() {
+  localStorage.setItem("cuentasPagar", JSON.stringify(cuentasPagar));
+}
+
+function guardarEgresosStorage() {
+  localStorage.setItem("egresosCuentasPagar", JSON.stringify(egresosCuentasPagar));
+}
 
 async function initPDF() {
   logoConsorcio = await cargarLogoBase64("img/logo1.jpg");
@@ -209,6 +222,11 @@ if (hash === '#lista_pedidos') {
 }
 if (hash === '#pedidos') {
   cargarProveedoresPedido();
+}
+
+if (hash === '#cuentas-pagar') {
+  cuentasPagarFiltradas = [...cuentasPagar];
+  renderCuentasPagar(cuentasPagarFiltradas);
 }
 
   if (hash === '#caja') {
@@ -512,45 +530,239 @@ function renderSkeleton(rows = 6) {
 
 // ================== DASHBOARD KPIs ==================
 async function cargarKpis() {
-    const [ventas, compras, productos] = await Promise.all([
-        jget('/ventas'),
-        jget('/compras'),
-        jget('/productos')
+  try {
+    const [ventasRes, comprasRes, productosRes] = await Promise.allSettled([
+      jget('/ventas'),
+      jget('/compras'),
+      jget('/productos')
     ]);
+
+    const ventas = ventasRes.status === "fulfilled" ? ventasRes.value : [];
+    const compras = comprasRes.status === "fulfilled" ? comprasRes.value : [];
+    const productos = productosRes.status === "fulfilled" ? productosRes.value : [];
+
+    console.log("KPIS ventas:", ventas);
+    console.log("KPIS compras:", compras);
+    console.log("KPIS productos:", productos);
 
     const hoy = new Date();
     const MES = hoy.toLocaleString("es-ES", { month: "long" });
     const ANHO = hoy.getFullYear();
+    const hoyStr = toYMD(hoy);
+    const mesActual = hoyStr.slice(0, 7);
 
-    // Filtrado
-    const ventasMes = ventas.filter(v => esDelMesActual(v.fecha));
-    const comprasMes = compras.filter(c => esDelMesActual(c.fecha));
+    const setText = (selector, value) => {
+      const el = qs(selector);
+      if (el) el.textContent = value;
+    };
 
-    const ventasAnho = ventas.filter(v => new Date(v.fecha).getFullYear() === ANHO);
-    const comprasAnho = compras.filter(c => new Date(c.fecha).getFullYear() === ANHO);
+    const sumTotal = (arr) =>
+      arr.reduce((acc, item) => acc + Number(item.total || 0), 0);
 
-    // Totales
-    const totalVentasMes = ventasMes.reduce((a, v) => a + Number(v.total || 0), 0);
-    const totalComprasMes = comprasMes.reduce((a, c) => a + Number(c.total || 0), 0);
+    const sumMonto = (arr) =>
+      arr.reduce((acc, item) => acc + Number(item.monto || 0), 0);
 
-    const totalVentasAnho = ventasAnho.reduce((a, v) => a + Number(v.total || 0), 0);
-    const totalComprasAnho = comprasAnho.reduce((a, c) => a + Number(c.total || 0), 0);
+    const esMismoMes = (fecha) => {
+      const ymd = toYMD(fecha);
+      return ymd && ymd.slice(0, 7) === mesActual;
+    };
 
-    // Stock
-    const stockTotal = productos.length;
+    const esMismoAnho = (fecha) => {
+      const ymd = toYMD(fecha);
+      return ymd && ymd.slice(0, 4) === String(ANHO);
+    };
 
-    // Render
-    qs("#kpi-ventas-mes-title").textContent = `${MES} ${ANHO}`;
-    qs("#kpi-compras-mes-title").textContent = `${MES} ${ANHO}`;
-    qs("#kpi-stock-mes-title").textContent = `${MES} ${ANHO}`;
+    const esMismoDia = (fecha) => {
+      const ymd = toYMD(fecha);
+      return ymd === hoyStr;
+    };
 
-    qs("#kpi-ventas-mes").textContent = "Gs. " + money(totalVentasMes);
-    qs("#kpi-compras-mes").textContent = "Gs. " + money(totalComprasMes);
+    const ventasMes = ventas.filter(v => esMismoMes(v.fecha));
+    const ventasAnho = ventas.filter(v => esMismoAnho(v.fecha));
+    const ventasDia = ventas.filter(v => esMismoDia(v.fecha));
 
-    qs("#kpi-ventas-anho").textContent = "Gs. " + money(totalVentasAnho);
-    qs("#kpi-compras-anho").textContent = "Gs. " + money(totalComprasAnho);
+    const comprasMes = compras.filter(c => esMismoMes(c.fecha));
+    const comprasAnho = compras.filter(c => esMismoAnho(c.fecha));
+    const comprasDia = compras.filter(c => esMismoDia(c.fecha));
 
-    qs("#kpi-productos").textContent = stockTotal;
+    const egresos = Array.isArray(egresosCuentasPagar) ? egresosCuentasPagar : [];
+    const egresosDia = egresos.filter(e => esMismoDia(e.fecha));
+    const egresosMes = egresos.filter(e => esMismoMes(e.fecha));
+    const egresosAnho = egresos.filter(e => esMismoAnho(e.fecha));
+
+    const totalVentasDia = sumTotal(ventasDia);
+    const totalVentasMes = sumTotal(ventasMes);
+    const totalVentasAnho = sumTotal(ventasAnho);
+
+    const totalComprasDia = sumTotal(comprasDia);
+    const totalComprasMes = sumTotal(comprasMes);
+    const totalComprasAnho = sumTotal(comprasAnho);
+
+    // ✅ EGRESOS = COMPRAS + CUENTAS A PAGAR
+    const totalEgresosDia = totalComprasDia + sumMonto(egresosDia);
+    const totalEgresosMes = totalComprasMes + sumMonto(egresosMes);
+    const totalEgresosAnho = totalComprasAnho + sumMonto(egresosAnho);
+
+    const stockProductos = productos.length;
+    const stockTotalUnidades = productos.reduce((acc, p) => acc + Number(p.stock || 0), 0);
+
+    const productosBajoStock = productos.filter(p => {
+      const stock = Number(p.stock || 0);
+      const stockMin = Number(p.stock_min || 0);
+      return stockMin > 0 ? stock <= stockMin : stock <= 3;
+    });
+
+    // ✅ Ya no restar compras dos veces
+    const margenMes = totalVentasMes - totalEgresosMes;
+
+    setText("#kpi-ventas-mes-title", `${MES} ${ANHO}`);
+    setText("#kpi-compras-mes-title", `${MES} ${ANHO}`);
+
+    setText("#kpi-ventas-mes", "Gs. " + money(totalVentasMes));
+    setText("#kpi-compras-mes", "Gs. " + money(totalComprasMes));
+
+    setText("#kpi-ventas-anho", "Gs. " + money(totalVentasAnho));
+    setText("#kpi-compras-anho", "Gs. " + money(totalComprasAnho));
+
+    setText("#kpi-productos", String(stockProductos));
+    setText("#kpi-stock-restante", String(stockTotalUnidades) + " unidades");
+
+    setText("#kpi-egresos-dia", "Gs. " + money(totalEgresosDia));
+    setText("#kpi-egresos-mes", "Gs. " + money(totalEgresosMes));
+    setText("#kpi-egresos-anho", "Gs. " + money(totalEgresosAnho));
+
+    setText("#kpi-margen-mes", "Gs. " + money(margenMes));
+    setText("#kpi-stock-bajo", String(productosBajoStock.length));
+
+    const listaStockCritico = qs("#listaStockCritico");
+    if (listaStockCritico) {
+      if (!productosBajoStock.length) {
+        listaStockCritico.innerHTML = `
+          <div class="stock-item">
+            <div class="stock-item-left">
+              <strong>Sin alertas</strong>
+              <span>No hay productos con stock bajo</span>
+            </div>
+            <div class="stock-badge ok">OK</div>
+          </div>
+        `;
+      } else {
+        listaStockCritico.innerHTML = productosBajoStock
+          .slice(0, 6)
+          .map(p => `
+            <div class="stock-item">
+              <div class="stock-item-left">
+                <strong>${p.nombre || "Sin nombre"}</strong>
+                <span>${p.categoria || "Sin categoría"}</span>
+              </div>
+              <div class="stock-badge ${Number(p.stock || 0) <= 0 ? "" : "warn"}">
+                ${Number(p.stock || 0)}
+              </div>
+            </div>
+          `)
+          .join("");
+      }
+    }
+
+    await renderGraficoVentasCompras();
+
+  } catch (err) {
+    console.error("Error cargando KPIs:", err);
+  }
+}
+
+async function renderGraficoVentasCompras() {
+  try {
+    const [ventas, compras] = await Promise.all([
+      jget('/ventas'),
+      jget('/compras')
+    ]);
+
+    const canvas = document.getElementById("chartVentasComprasCanvas");
+    if (!canvas) return;
+
+    const mesesLabels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const ventasPorMes = new Array(12).fill(0);
+    const comprasPorMes = new Array(12).fill(0);
+
+    const anhoActual = new Date().getFullYear();
+
+    ventas.forEach(v => {
+      const fecha = new Date(v.fecha);
+      if (isNaN(fecha)) return;
+      if (fecha.getFullYear() !== anhoActual) return;
+
+      const mes = fecha.getMonth();
+      ventasPorMes[mes] += Number(v.total || 0);
+    });
+
+    compras.forEach(c => {
+      const fecha = new Date(c.fecha);
+      if (isNaN(fecha)) return;
+      if (fecha.getFullYear() !== anhoActual) return;
+
+      const mes = fecha.getMonth();
+      comprasPorMes[mes] += Number(c.total || 0);
+    });
+
+    if (chartVentasComprasInstance) {
+      chartVentasComprasInstance.destroy();
+    }
+
+    chartVentasComprasInstance = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: mesesLabels,
+        datasets: [
+          {
+            label: 'Ventas',
+            data: ventasPorMes,
+            borderWidth: 1,
+            borderRadius: 8
+          },
+          {
+            label: 'Compras',
+            data: comprasPorMes,
+            borderWidth: 1,
+            borderRadius: 8
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            position: 'top'
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `${context.dataset.label}: Gs. ${money(context.raw)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return 'Gs. ' + money(value);
+              }
+            }
+          }
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error("Error renderizando gráfico ventas vs compras:", err);
+  }
 }
 
 let clientesOriginal = [];   // lista completa desde el servidor
@@ -1122,42 +1334,49 @@ function renderProductos(list) {
     const isLow = lowCfg && Number(p.stock) <= Number(p.stock_min || 0);
 
     return `
-    <tr data-id="${p.id}">
-      <td><input type="checkbox" aria-label="Seleccionar fila"></td>
-      <td style="text-align:center;">${p.id}</td>
-      <td style="text-align:center;">
-        <img src="${img}" alt="Imagen del producto" onerror="this.src='img/no-image.png'"
-             style="width:45px;height:45px;border-radius:6px;object-fit:cover;">
-      </td>
-      <td>${p.codigo || '-'}</td>
-      <td>${catName}</td>
-      <td>Gs. ${money(p.precio)}</td>
-      <td>${p.marca || '-'}</td>
-      <td>${costo != null ? 'Gs. ' + money(costo) : '—'}</td>
-      <td>${Number(p.stock || 0)}${isLow ? '<span class="badge low">Bajo</span>' : ''}</td>
-      <td style="display:flex; gap:.4rem;">
-        <button class="btn-circle btn-edit" title="Editar" onclick="abrirEditar(${p.id})"><i class="fa fa-pen"></i></button>
-        <button class="btn-circle btn-del" title="Eliminar" onclick="eliminarProducto(${p.id})"><i class="fa fa-trash"></i></button>
-      </td>
-    </tr>`;
+<tr data-id="${p.id}">
+  <td><input type="checkbox" aria-label="Seleccionar fila"></td>
+
+  <td style="text-align:center;">${p.id}</td>
+
+  <td style="text-align:center;">
+    <img src="${img}" alt="Imagen del producto" onerror="this.src='img/no-image.png'"
+         style="width:45px;height:45px;border-radius:6px;object-fit:cover;">
+  </td>
+
+  <td>${p.nombre || '-'}</td>
+
+  <td>${p.codigo || '-'}</td>
+  <td>${catName}</td>
+  <td>Gs. ${money(p.precio)}</td>
+  <td>${p.marca || '-'}</td>
+  <td>${costo != null ? 'Gs. ' + money(costo) : '—'}</td>
+  <td>${Number(p.stock || 0)}${isLow ? '<span class="badge low">Bajo</span>' : ''}</td>
+
+  <td style="display:flex; gap:.4rem;">
+    <button class="btn-circle btn-edit" title="Editar" onclick="abrirEditar(${p.id})"><i class="fa fa-pen"></i></button>
+    <button class="btn-circle btn-del" title="Eliminar" onclick="eliminarProducto(${p.id})"><i class="fa fa-trash"></i></button>
+  </td>
+</tr>`;
   }).join('');
 
   qs('#tabla-productos').innerHTML = `
-    <table class="table posdash">
-      <thead>
-        <tr>
-          <th style="width:34px;"></th>
-          <th>ID</th>
-          <th>Producto</th>
-          <th>Código</th>
-          <th>Categoría</th>
-          <th>Precio</th>
-          <th>Marca</th>
-          <th>Costo</th>
-          <th>Cantidad</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
+  <table class="table posdash">
+    <thead>
+      <tr>
+        <th style="width:34px;"></th>
+        <th>ID</th>
+        <th>Imagen</th>
+        <th>Producto</th>
+        <th>Código</th>
+        <th>Categoría</th>
+        <th>Precio</th>
+        <th>Marca</th>
+        <th>Costo</th>
+        <th>Cantidad</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
@@ -1307,8 +1526,9 @@ function renderCategorias(list) {
         <td class="text-center align-middle">${c.id}</td>
         <td class="text-center align-middle">${imgHtml}</td>
         <td class="align-middle">${(c.codigo ?? '').toString().trim() || '—'}</td>
-        <td class="align-middle">${c.nombre || '—'}</td>
-        <td class="text-center align-middle">
+<td class="align-middle">${c.productos || '—'}</td>
+<td class="align-middle">${c.nombre || '—'}</td>
+<td class="text-center align-middle">
           <div class="btn-group">
             <button class="btn btn-sm btn-light-primary me-1" title="Editar" onclick="abrirEditarCategoria(${c.id})"
               style="background-color:#e0e7ff;color:#2563eb;border-radius:50%;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;">
@@ -1325,15 +1545,16 @@ function renderCategorias(list) {
   qs('#tabla-categorias').innerHTML = `
     <table class="table align-middle">
       <thead>
-        <tr>
-          <th class="text-center" style="width:70px;">ID</th>
-          <th class="text-center" style="width:90px;">Imagen</th>
-          <th>Código</th>
-          <th>Categoría</th>
-          <th class="text-center">Acción</th>
-        </tr>
-      </thead>
-      <tbody>${rows || '<tr><td colspan="5" class="text-center text-muted py-3">Sin categorías</td></tr>'}</tbody>
+  <tr>
+    <th class="text-center" style="width:70px;">ID</th>
+    <th class="text-center" style="width:90px;">Imagen</th>
+    <th>Código</th>
+    <th>Producto</th>
+    <th>Categoría</th>
+    <th class="text-center">Acción</th>
+  </tr>
+</thead>
+      <tbody>${rows || '<tr><td colspan="6" class="text-center text-muted py-3">Sin categorías</td></tr>'}</tbody>
     </table>`;
 }
 function readFileAsDataUrl(file) {
@@ -2998,17 +3219,13 @@ function sameMonth(dateStr, yyyy_mm) {
 
 async function cargarRecaudacionFecha() {
   try {
-    // ✅ 1) tomar fecha del input si existe
-    let fecha = (document.getElementById("fechaCaja")?.value || "").trim();
+    let fecha =
+      (document.getElementById("fechaCajaEfectivo")?.value || "").trim() ||
+      (document.getElementById("fechaCajaTransferencia")?.value || "").trim() ||
+      hoyISO();
 
-    // si viene vacío o "dd/mm/aaaa", usar fecha de cajaActual o hoy
-    if (!fecha || fecha.toLowerCase() === "dd/mm/aaaa") {
-      fecha =
-        (window.cajaActual?.fecha ? String(window.cajaActual.fecha) : "") ||
-        new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    }
+    const yyyyMM = fecha.slice(0, 7);
 
-    // ✅ 2) pedir resumen
     const res = await fetch(`${API}/caja/resumen?fecha=${encodeURIComponent(fecha)}`, {
       credentials: "include",
     });
@@ -3022,21 +3239,79 @@ async function cargarRecaudacionFecha() {
     const dia = data.dia || {};
     const mes = data.mes || {};
 
-    // ✅ 3) helper para no romper si falta algún elemento
+    // INGRESOS desde ventas
+    const ingresoDiaEfectivo = Number(dia.ingreso_efectivo || 0);
+    const ingresoDiaTransferencia = Number(dia.ingreso_transferencia || 0);
+
+    const ingresoMesEfectivo = Number(mes.ingreso_efectivo || 0);
+    const ingresoMesTransferencia = Number(mes.ingreso_transferencia || 0);
+
+    // EGRESOS desde compras
+    const egresoComprasDiaEfectivo = Number(dia.egreso_compras_efectivo || 0);
+    const egresoComprasDiaTransferencia = Number(dia.egreso_compras_transferencia || 0);
+
+    const egresoComprasMesEfectivo = Number(mes.egreso_compras_efectivo || 0);
+    const egresoComprasMesTransferencia = Number(mes.egreso_compras_transferencia || 0);
+
+    // EGRESOS desde cuentas a pagar
+    const egresoCuentasDiaEfectivo = egresosCuentasPagar
+      .filter(e => e.fecha === fecha && e.tipo_caja === "efectivo")
+      .reduce((acc, e) => acc + Number(e.monto || 0), 0);
+
+    const egresoCuentasDiaTransferencia = egresosCuentasPagar
+      .filter(e => e.fecha === fecha && e.tipo_caja === "transferencia")
+      .reduce((acc, e) => acc + Number(e.monto || 0), 0);
+
+    const egresoCuentasMesEfectivo = egresosCuentasPagar
+      .filter(e => (e.fecha || "").slice(0, 7) === yyyyMM && e.tipo_caja === "efectivo")
+      .reduce((acc, e) => acc + Number(e.monto || 0), 0);
+
+    const egresoCuentasMesTransferencia = egresosCuentasPagar
+      .filter(e => (e.fecha || "").slice(0, 7) === yyyyMM && e.tipo_caja === "transferencia")
+      .reduce((acc, e) => acc + Number(e.monto || 0), 0);
+
+    // EGRESOS TOTALES
+    const egresoDiaEfectivo = egresoComprasDiaEfectivo + egresoCuentasDiaEfectivo;
+    const egresoDiaTransferencia = egresoComprasDiaTransferencia + egresoCuentasDiaTransferencia;
+
+    const egresoMesEfectivo = egresoComprasMesEfectivo + egresoCuentasMesEfectivo;
+    const egresoMesTransferencia = egresoComprasMesTransferencia + egresoCuentasMesTransferencia;
+
+    // SALDOS
+    const saldoDiaEfectivo = ingresoDiaEfectivo - egresoDiaEfectivo;
+    const saldoDiaTransferencia = ingresoDiaTransferencia - egresoDiaTransferencia;
+    const saldoDiaTotal = saldoDiaEfectivo + saldoDiaTransferencia;
+
+    const saldoMesEfectivo = ingresoMesEfectivo - egresoMesEfectivo;
+    const saldoMesTransferencia = ingresoMesTransferencia - egresoMesTransferencia;
+    const saldoMesTotal = saldoMesEfectivo + saldoMesTransferencia;
+
     const setText = (id, val) => {
       const el = document.getElementById(id);
       if (el) el.textContent = "Gs. " + money(Number(val || 0));
     };
 
-    // Día
-    setText("dia-efectivo", dia.efectivo);
-    setText("dia-transferencia", dia.transferencia);
-    setText("dia-total", dia.total);
+    // DÍA
+    setText("dia-ingreso-efectivo", ingresoDiaEfectivo);
+    setText("dia-egreso-efectivo", egresoDiaEfectivo);
+    setText("dia-efectivo", saldoDiaEfectivo);
 
-    // Mes
-    setText("mes-efectivo", mes.efectivo);
-    setText("mes-transferencia", mes.transferencia);
-    setText("mes-total", mes.total);
+    setText("dia-ingreso-transferencia", ingresoDiaTransferencia);
+    setText("dia-egreso-transferencia", egresoDiaTransferencia);
+    setText("dia-transferencia", saldoDiaTransferencia);
+
+    setText("dia-total", saldoDiaTotal);
+
+    // MES
+    setText("mes-ingreso-efectivo", ingresoMesEfectivo);
+    setText("mes-egreso-efectivo", egresoMesEfectivo);
+    setText("mes-efectivo", saldoMesEfectivo);
+
+    setText("mes-ingreso-transferencia", ingresoMesTransferencia);
+    setText("mes-egreso-transferencia", egresoMesTransferencia);
+    setText("mes-transferencia", saldoMesTransferencia);
+
+    setText("mes-total", saldoMesTotal);
 
   } catch (e) {
     console.error("Error recaudación (resumen):", e);
@@ -3097,14 +3372,14 @@ function _getVal(id) {
 
 async function verificarCaja() {
   try {
-    // ✅ leer fecha desde cualquiera de los 2 inputs (efectivo / transferencia)
+    // ✅ leer fecha desde cualquiera de los inputs
     const fecha =
       _getVal("fechaCajaEfectivo") ||
       _getVal("fechaCajaTransferencia") ||
       _getVal("fechaCaja") ||
       toYMD(new Date());
 
-    // 1) Traer cajas abiertas por tipo (tu endpoint real)
+    // 1) Traer cajas abiertas por tipo
     const [eData, tData] = await Promise.all([
       fetch(`${API}/caja/abierta?tipo=efectivo`, { credentials: "include" }).then(r => r.json()),
       fetch(`${API}/caja/abierta?tipo=transferencia`, { credentials: "include" }).then(r => r.json()),
@@ -3113,10 +3388,10 @@ async function verificarCaja() {
     const cajaE = eData?.caja || null;
     const cajaT = tData?.caja || null;
 
-    // Guardar global por si lo usás en ventas / cerrar caja
+    // Guardar global
     window.cajasActuales = { efectivo: cajaE, transferencia: cajaT };
 
-    // 2) Traer resumen del día (para calcular saldo real)
+    // 2) Traer resumen del día (ingresos)
     let dia = { efectivo: 0, transferencia: 0, total: 0 };
     try {
       const r2 = await fetch(`${API}/caja/resumen?fecha=${encodeURIComponent(fecha)}`, {
@@ -3128,10 +3403,21 @@ async function verificarCaja() {
       console.warn("No se pudo leer /caja/resumen:", e);
     }
 
-    // 3) Pintar estado caja EFECTIVO
+    // 3) Calcular egresos del día desde cuentas a pagar pagadas
+    const egresoDiaEfectivo = (egresosCuentasPagar || [])
+      .filter(e => e.fecha === fecha && e.tipo_caja === "efectivo")
+      .reduce((acc, e) => acc + Number(e.monto || 0), 0);
+
+    const egresoDiaTransferencia = (egresosCuentasPagar || [])
+      .filter(e => e.fecha === fecha && e.tipo_caja === "transferencia")
+      .reduce((acc, e) => acc + Number(e.monto || 0), 0);
+
+    // 4) Pintar estado caja EFECTIVO
     if (cajaE?.id) {
       const saldoInicialE = Number(cajaE.saldo_inicial || 0);
-      const saldoRealE = saldoInicialE + Number(dia.efectivo || 0);
+      const ingresoDiaE = Number(dia.efectivo || 0);
+      const saldoRealE = saldoInicialE + ingresoDiaE - egresoDiaEfectivo;
+
       _setHTML(
         "estadoCajaEfectivo",
         `🟢 Caja ABIERTA (Efectivo) — Saldo: Gs. ${money(saldoRealE)}`
@@ -3140,10 +3426,12 @@ async function verificarCaja() {
       _setHTML("estadoCajaEfectivo", "🔴 Caja CERRADA");
     }
 
-    // 4) Pintar estado caja TRANSFERENCIA
+    // 5) Pintar estado caja TRANSFERENCIA
     if (cajaT?.id) {
       const saldoInicialT = Number(cajaT.saldo_inicial || 0);
-      const saldoRealT = saldoInicialT + Number(dia.transferencia || 0);
+      const ingresoDiaT = Number(dia.transferencia || 0);
+      const saldoRealT = saldoInicialT + ingresoDiaT - egresoDiaTransferencia;
+
       _setHTML(
         "estadoCajaTransferencia",
         `🟢 Caja ABIERTA (Transferencia) — Saldo: Gs. ${money(saldoRealT)}`
@@ -3152,10 +3440,13 @@ async function verificarCaja() {
       _setHTML("estadoCajaTransferencia", "🔴 Caja CERRADA");
     }
 
-    // 5) Compatibilidad (si todavía tenés un #estadoCaja viejo)
-    // Muestra un resumen general
+    // 6) Compatibilidad con #estadoCaja viejo
     if (document.getElementById("estadoCaja")) {
-      _setHTML("estadoCaja", `Saldo día total: Gs. ${money(dia.total || 0)}`);
+      const saldoTotalDia =
+        (Number(dia.efectivo || 0) - egresoDiaEfectivo) +
+        (Number(dia.transferencia || 0) - egresoDiaTransferencia);
+
+      _setHTML("estadoCaja", `Saldo día total: Gs. ${money(saldoTotalDia)}`);
     }
 
   } catch (e) {
@@ -3164,15 +3455,16 @@ async function verificarCaja() {
 }
 
 // ✅ listeners para refrescar cuando cambian fechas
-(function bindCajaEventos(){
+(function bindCajaEventos() {
   const fE = document.getElementById("fechaCajaEfectivo");
   const fT = document.getElementById("fechaCajaTransferencia");
-  const f  = document.getElementById("fechaCaja"); // por si tenés uno viejo
+  const f = document.getElementById("fechaCaja"); // por si tenés uno viejo
 
   const bind = (el) => {
     if (!el) return;
     if (el.dataset.bound === "1") return;
     el.dataset.bound = "1";
+
     el.addEventListener("change", async () => {
       await cargarRecaudacionFecha();
       await verificarCaja();
@@ -3221,6 +3513,489 @@ function closeLogoutModal() {
   }
 }
 
+function renderCuentasPagar(lista = cuentasPagar) {
+  const tbody = document.getElementById("tabla-cuentas-pagar");
+  if (!tbody) return;
+
+  if (!lista.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center">No hay cuentas a pagar registradas.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = lista.map(item => {
+    const monto = Number(item.monto || 0);
+    const estado = (item.estado || "").toLowerCase();
+    const fechaPago = item.fecha_pago || "-";
+    const tipoCaja = item.tipo_caja || "-";
+
+    return `
+      <tr>
+        <td>${item.id}</td>
+        <td>${item.proveedor}</td>
+        <td>${item.concepto}</td>
+        <td>Gs. ${monto.toLocaleString("es-PY")}</td>
+        <td>${item.vencimiento || "-"}</td>
+        <td>
+          ${
+            estado === "pagado"
+              ? `<span class="badge bg-success">Pagado</span>`
+              : `<span class="badge bg-warning text-dark">Pendiente</span>`
+          }
+        </td>
+        <td>
+          <div style="display:flex; gap:.4rem; flex-wrap:wrap;">
+            ${
+              estado !== "pagado"
+                ? `<button class="btn btn-sm btn-success" onclick="pagarCuentaPagar(${item.id})">
+                    Pagar
+                   </button>`
+                : ""
+            }
+
+            <button class="btn btn-sm btn-danger" onclick="eliminarCuentaPagar(${item.id})">
+              Eliminar
+            </button>
+          </div>
+
+          ${
+            estado === "pagado"
+              ? `<div style="margin-top:.35rem; font-size:.82rem; color:#6b7280;">
+                  Pago: ${fechaPago} | Caja: ${tipoCaja}
+                 </div>`
+              : ""
+          }
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function pagarCuentaPagar(id) {
+  const item = cuentasPagar.find(x => Number(x.id) === Number(id));
+  if (!item) {
+    alert("Cuenta no encontrada.");
+    return;
+  }
+
+  if ((item.estado || "").toLowerCase() === "pagado") {
+    alert("Esta cuenta ya fue pagada.");
+    return;
+  }
+
+  const tipoCaja = prompt(
+    "¿Desde qué caja se pagó? Escriba: efectivo o transferencia",
+    "efectivo"
+  );
+
+  if (!tipoCaja) return;
+
+  const tipo = tipoCaja.toLowerCase().trim();
+
+  if (tipo !== "efectivo" && tipo !== "transferencia") {
+    alert("Debe escribir exactamente: efectivo o transferencia");
+    return;
+  }
+
+  const fechaPago = hoyISO();
+  const monto = Number(item.monto || 0);
+
+  item.estado = "pagado";
+  item.fecha_pago = fechaPago;
+  item.tipo_caja = tipo;
+
+  egresosCuentasPagar.push({
+    id: egresosCuentasPagar.length
+      ? egresosCuentasPagar[egresosCuentasPagar.length - 1].id + 1
+      : 1,
+    cuenta_id: item.id,
+    fecha: fechaPago,
+    monto: monto,
+    tipo_caja: tipo,
+    proveedor: item.proveedor || "",
+    descripcion: item.concepto || ""
+  });
+
+  guardarCuentasPagarStorage();
+  guardarEgresosStorage();
+
+  cuentasPagarFiltradas = [...cuentasPagar];
+  renderCuentasPagar(cuentasPagarFiltradas);
+
+  if (typeof cargarRecaudacionFecha === "function") {
+    cargarRecaudacionFecha();
+  }
+
+  if (typeof verificarCaja === "function") {
+    verificarCaja();
+  }
+
+  alert(`Cuenta pagada desde caja ${tipo} correctamente.`);
+}
+function guardarCuentaPagar() {
+  const proveedor = document.getElementById("cp_proveedor")?.value.trim();
+  const concepto = document.getElementById("cp_concepto")?.value.trim();
+  const montoTexto = document.getElementById("cp_monto")?.value.trim() || "0";
+  const vencimiento = document.getElementById("cp_vencimiento")?.value;
+  const estado = document.getElementById("cp_estado")?.value || "pendiente";
+
+  const monto = Number(montoTexto.replace(/\./g, "").replace(/,/g, ""));
+
+  if (!proveedor || !concepto || !monto) {
+    alert("Complete proveedor, concepto y monto.");
+    return;
+  }
+
+  const nuevo = {
+    id: cuentasPagar.length ? cuentasPagar[cuentasPagar.length - 1].id + 1 : 1,
+    proveedor,
+    concepto,
+    monto,
+    vencimiento,
+    estado
+  };
+
+  cuentasPagar.push(nuevo);
+  cuentasPagarFiltradas = [...cuentasPagar];
+
+  guardarCuentasPagarStorage();
+
+  renderCuentasPagar(cuentasPagarFiltradas);
+  closeModal("modalCuentaPagar");
+
+  document.getElementById("cp_proveedor").value = "";
+  document.getElementById("cp_concepto").value = "";
+  document.getElementById("cp_monto").value = "";
+  document.getElementById("cp_vencimiento").value = "";
+  document.getElementById("cp_estado").value = "pendiente";
+}
+function filtrarCuentasPagar(texto) {
+  const t = (texto || "").toLowerCase().trim();
+
+  cuentasPagarFiltradas = cuentasPagar.filter(item =>
+    (item.proveedor || "").toLowerCase().includes(t) ||
+    (item.concepto || "").toLowerCase().includes(t) ||
+    (item.estado || "").toLowerCase().includes(t)
+  );
+
+  renderCuentasPagar(cuentasPagarFiltradas);
+}
+
+function eliminarCuentaPagar(id) {
+  cuentasPagar = cuentasPagar.filter(item => Number(item.id) !== Number(id));
+  cuentasPagarFiltradas = [...cuentasPagar];
+
+  guardarCuentasPagarStorage();
+
+  renderCuentasPagar(cuentasPagarFiltradas);
+}
+
+async function descargarInformeCajaPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF("p", "mm", "a4");
+
+  const fechaActual = new Date();
+  const fechaISO = fechaActual.toISOString().slice(0, 10);
+  const fechaHora = fechaActual.toLocaleString("es-PY");
+
+  const usuario =
+    JSON.parse(localStorage.getItem("authUser") || sessionStorage.getItem("authUser") || "null")?.nombre ||
+    "Administrador";
+
+  const logoIzq = "img/logo1.png";
+  const logoDer = "img/logo2.png";
+
+  function cargarImagen(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = function () {
+        resolve(null);
+      };
+      img.src = url;
+    });
+  }
+
+  function fmtGs(n) {
+    return "Gs. " + Number(n || 0).toLocaleString("es-PY");
+  }
+
+  function onlyDate(v) {
+    if (!v) return "";
+    return String(v).slice(0, 10);
+  }
+
+  function sameMonth(fecha, ref) {
+    return String(fecha).slice(0, 7) === String(ref).slice(0, 7);
+  }
+
+  const hoy = fechaISO;
+
+  let compras = [];
+  let cuentas = [];
+  let ventas = [];
+
+  try {
+    const [rCompras, rCuentas, rVentas] = await Promise.all([
+      fetch("/compras", { credentials: "include" }),
+      fetch("/cuentas-pagar", { credentials: "include" }),
+      fetch("/ventas", { credentials: "include" }),
+    ]);
+
+    compras = rCompras.ok ? await rCompras.json() : [];
+    cuentas = rCuentas.ok ? await rCuentas.json() : [];
+    ventas = rVentas.ok ? await rVentas.json() : [];
+  } catch (e) {
+    console.error("Error cargando datos del PDF:", e);
+  }
+
+  const ventasDia = ventas.filter(v => onlyDate(v.fecha) === hoy);
+  const ventasMes = ventas.filter(v => sameMonth(onlyDate(v.fecha), hoy));
+
+  const comprasDia = compras.filter(c => onlyDate(c.fecha) === hoy);
+  const comprasMes = compras.filter(c => sameMonth(onlyDate(c.fecha), hoy));
+
+  const cuentasDia = cuentas.filter(c => {
+    const estado = String(c.estado || "").toLowerCase();
+    const fechaPago = onlyDate(c.fecha_pago || c.pagado_en || c.fecha || "");
+    return estado === "pagado" && fechaPago === hoy;
+  });
+
+  const cuentasMes = cuentas.filter(c => {
+    const estado = String(c.estado || "").toLowerCase();
+    const fechaPago = onlyDate(c.fecha_pago || c.pagado_en || c.fecha || "");
+    return estado === "pagado" && sameMonth(fechaPago, hoy);
+  });
+
+  const resumenDia = {
+    ventas: ventasDia.reduce((a, b) => a + Number(b.total || 0), 0),
+    compras: comprasDia.reduce((a, b) => a + Number(b.total || 0), 0),
+    cuentas: cuentasDia.reduce((a, b) => a + Number(b.monto || 0), 0),
+  };
+
+  const resumenMes = {
+    ventas: ventasMes.reduce((a, b) => a + Number(b.total || 0), 0),
+    compras: comprasMes.reduce((a, b) => a + Number(b.total || 0), 0),
+    cuentas: cuentasMes.reduce((a, b) => a + Number(b.monto || 0), 0),
+  };
+
+  const logo1 = await cargarImagen(logoIzq);
+  const logo2 = await cargarImagen(logoDer);
+
+  function dibujarEncabezado(yBase = 10) {
+    if (logo1) doc.addImage(logo1, "PNG", 10, yBase, 30, 22);
+    if (logo2) doc.addImage(logo2, "PNG", 170, yBase, 28, 22);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(20);
+    doc.text("Consorcio Spy E.A.S.", 105, yBase + 8, { align: "center" });
+
+    doc.setFontSize(11);
+    doc.text("Servicio de Internet (Telecomunicaciones)", 105, yBase + 16, { align: "center" });
+
+    doc.setFontSize(8.5);
+    doc.text("Comercio al por menor de equipos de telecomunicaciones", 105, yBase + 23, { align: "center" });
+    doc.text("Instalaciones eléctricas, electromecánicas y electrónicas", 105, yBase + 28, { align: "center" });
+
+    doc.setDrawColor(120);
+    doc.line(55, yBase + 32, 155, yBase + 32);
+
+    doc.setFontSize(10);
+    doc.text("Calle, Tte Eligio Montania - Valenzuela", 105, yBase + 39, { align: "center" });
+    doc.text("Cordillera - Paraguay", 105, yBase + 45, { align: "center" });
+
+    doc.setDrawColor(0);
+    doc.line(10, yBase + 50, 200, yBase + 50);
+  }
+
+  dibujarEncabezado(8);
+
+  doc.setFontSize(16);
+  doc.text("Informe de Caja", 14, 68);
+
+  doc.setFontSize(10);
+  doc.text(`Fecha de emisión: ${fechaHora}`, 14, 75);
+  doc.text(`Generado por: ${usuario}`, 14, 81);
+
+  doc.autoTable({
+    startY: 88,
+    head: [["Resumen del Día", "Monto"]],
+    body: [
+      ["Ventas del Día", fmtGs(resumenDia.ventas)],
+      ["Compras del Día", fmtGs(resumenDia.compras)],
+      ["Cuentas Pagadas del Día", fmtGs(resumenDia.cuentas)],
+      ["Saldo del Día", fmtGs(resumenDia.ventas - resumenDia.compras - resumenDia.cuentas)],
+    ],
+    theme: "grid",
+    headStyles: { fillColor: [37, 99, 235] },
+    styles: { fontSize: 9 }
+  });
+
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 8,
+    head: [["Resumen del Mes", "Monto"]],
+    body: [
+      ["Ventas del Mes", fmtGs(resumenMes.ventas)],
+      ["Compras del Mes", fmtGs(resumenMes.compras)],
+      ["Cuentas Pagadas del Mes", fmtGs(resumenMes.cuentas)],
+      ["Saldo del Mes", fmtGs(resumenMes.ventas - resumenMes.compras - resumenMes.cuentas)],
+    ],
+    theme: "grid",
+    headStyles: { fillColor: [22, 163, 74] },
+    styles: { fontSize: 9 }
+  });
+
+  doc.addPage();
+  dibujarEncabezado(8);
+
+  doc.setFontSize(14);
+  doc.text("Detalle de Ventas del Día", 14, 68);
+  doc.autoTable({
+    startY: 73,
+    head: [["Fecha", "Cliente", "Forma de pago", "Productos", "Total"]],
+    body: ventasDia.length
+      ? ventasDia.map(v => [
+          onlyDate(v.fecha),
+          v.cliente_nombre || "Consumidor Final",
+          v.forma_pago_nombre || "-",
+          v.productos || "-",
+          fmtGs(v.total)
+        ])
+      : [["-", "Sin ventas registradas", "-", "-", "Gs. 0"]],
+    theme: "grid",
+    headStyles: { fillColor: [37, 99, 235] },
+    styles: { fontSize: 8.5 }
+  });
+
+  doc.setFontSize(14);
+  doc.text("Detalle de Compras del Día", 14, doc.lastAutoTable.finalY + 12);
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 16,
+    head: [["Fecha", "Proveedor", "Factura", "Tipo pago", "Productos", "Total"]],
+    body: comprasDia.length
+      ? comprasDia.map(c => [
+          onlyDate(c.fecha),
+          c.proveedor_nombre || "-",
+          c.factura || "-",
+          c.tipo_pago || "-",
+          c.detalle_productos || c.productos || "-",
+          fmtGs(c.total)
+        ])
+      : [["-", "Sin compras registradas", "-", "-", "-", "Gs. 0"]],
+    theme: "grid",
+    headStyles: { fillColor: [22, 163, 74] },
+    styles: { fontSize: 8.5 }
+  });
+
+  doc.setFontSize(14);
+  doc.text("Detalle de Cuentas Pagadas del Día", 14, doc.lastAutoTable.finalY + 12);
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 16,
+    head: [["Pago", "Proveedor", "Concepto", "Vencimiento", "Caja", "Monto"]],
+    body: cuentasDia.length
+      ? cuentasDia.map(c => [
+          onlyDate(c.fecha_pago || c.pagado_en || c.fecha),
+          c.proveedor || "-",
+          c.concepto || "-",
+          onlyDate(c.vencimiento),
+          c.caja_tipo || c.caja || "-",
+          fmtGs(c.monto)
+        ])
+      : [["-", "Sin cuentas pagadas", "-", "-", "-", "Gs. 0"]],
+    theme: "grid",
+    headStyles: { fillColor: [220, 38, 38] },
+    styles: { fontSize: 8.5 }
+  });
+
+  doc.addPage();
+  dibujarEncabezado(8);
+
+  doc.setFontSize(14);
+  doc.text("Detalle de Ventas del Mes", 14, 68);
+  doc.autoTable({
+    startY: 73,
+    head: [["Fecha", "Cliente", "Forma de pago", "Productos", "Total"]],
+    body: ventasMes.length
+      ? ventasMes.map(v => [
+          onlyDate(v.fecha),
+          v.cliente_nombre || "Consumidor Final",
+          v.forma_pago_nombre || "-",
+          v.productos || "-",
+          fmtGs(v.total)
+        ])
+      : [["-", "Sin ventas registradas", "-", "-", "Gs. 0"]],
+    theme: "grid",
+    headStyles: { fillColor: [37, 99, 235] },
+    styles: { fontSize: 8.5 }
+  });
+
+  doc.setFontSize(14);
+  doc.text("Detalle de Compras del Mes", 14, doc.lastAutoTable.finalY + 12);
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 16,
+    head: [["Fecha", "Proveedor", "Factura", "Tipo pago", "Productos", "Total"]],
+    body: comprasMes.length
+      ? comprasMes.map(c => [
+          onlyDate(c.fecha),
+          c.proveedor_nombre || "-",
+          c.factura || "-",
+          c.tipo_pago || "-",
+          c.detalle_productos || c.productos || "-",
+          fmtGs(c.total)
+        ])
+      : [["-", "Sin compras registradas", "-", "-", "-", "Gs. 0"]],
+    theme: "grid",
+    headStyles: { fillColor: [22, 163, 74] },
+    styles: { fontSize: 8.5 }
+  });
+
+  doc.setFontSize(14);
+  doc.text("Detalle de Cuentas Pagadas del Mes", 14, doc.lastAutoTable.finalY + 12);
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 16,
+    head: [["Pago", "Proveedor", "Concepto", "Vencimiento", "Caja", "Monto"]],
+    body: cuentasMes.length
+      ? cuentasMes.map(c => [
+          onlyDate(c.fecha_pago || c.pagado_en || c.fecha),
+          c.proveedor || "-",
+          c.concepto || "-",
+          onlyDate(c.vencimiento),
+          c.caja_tipo || c.caja || "-",
+          fmtGs(c.monto)
+        ])
+      : [["-", "Sin cuentas pagadas", "-", "-", "-", "Gs. 0"]],
+    theme: "grid",
+    headStyles: { fillColor: [220, 38, 38] },
+    styles: { fontSize: 8.5 }
+  });
+
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      `Documento generado automáticamente por SPYnet • Usuario: ${usuario} • Página ${i}/${totalPages}`,
+      105,
+      290,
+      { align: "center" }
+    );
+  }
+
+  doc.save(`informe_caja_${fechaISO}.pdf`);
+}
+
 function confirmLogout() {
   localStorage.removeItem("auth");
   window.location.href = "login.html";
@@ -3238,6 +4013,45 @@ window.addEventListener("hashchange", () => {
 
   LAST_HASH = location.hash || "#dashboard";
   show(LAST_HASH);
+});
+
+
+window.USUARIO_ACTUAL = null;
+
+async function mostrarUsuarioLogueado() {
+  try {
+    const res = await fetch("/me", {
+      credentials: "include"
+    });
+
+    const nombreBox = document.getElementById("usuarioSidebarNombre");
+
+    if (!res.ok) {
+      if (nombreBox) nombreBox.textContent = "Usuario";
+      return;
+    }
+
+    const data = await res.json();
+
+    const nombre =
+      data?.user?.nombre ||
+      data?.user?.usuario ||
+      "Usuario";
+
+    window.USUARIO_ACTUAL = data.user;
+
+    if (nombreBox) nombreBox.textContent = nombre;
+
+  } catch (err) {
+    console.error("Error obteniendo usuario:", err);
+    const nombreBox = document.getElementById("usuarioSidebarNombre");
+    if (nombreBox) nombreBox.textContent = "Usuario";
+  }
+}
+window.addEventListener("load", async () => {
+  try { await initPDF(); } catch (e) { console.warn("No cargó logos:", e); }
+  await mostrarUsuarioLogueado();
+  show(location.hash || "#dashboard");
 });
 
 // al cargar

@@ -93,29 +93,31 @@ async function cargarComprasLista() {
     }
 
     document.getElementById("tabla-compras").innerHTML = `
-      <table class="table">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Fecha</th>
-            <th>Productos</th>
-            <th>Categoría</th>
-            <th>Total</th>
-            <th>Proveedor</th>
-            <th>RUC</th>
-            <th style="text-align:center;">Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="tablaCompras"></tbody>
-      </table>
-    `;
+<table class="table">
+<thead>
+<tr>
+<th>ID</th>
+<th>Fecha</th>
+<th>N° Factura</th>
+<th>Proveedor</th>
+<th>Código</th>
+<th>Producto</th>
+<th>Cantidad</th>
+<th>Categoría</th>
+<th>Total</th>
+<th>RUC</th>
+<th style="text-align:center;">Acciones</th>
+</tr>
+</thead>
+<tbody id="tablaCompras"></tbody>
+</table>
+`;
 
     renderTablaCompras(data);
   } catch (err) {
     console.error("Error cargando compras:", err);
   }
 }
-
 async function editarCompra(id) {
   await cargarProductosEditarCompra();
   attachMoneyFormatterById("edit_c_costo");
@@ -159,6 +161,7 @@ async function editarCompra(id) {
   // 4) Cargar campos cabecera
   document.getElementById("edit_compra_fecha").value = String(data.fecha || "").slice(0, 10);
   document.getElementById("edit_compra_factura").value = data.factura || "";
+  document.getElementById("edit_compra_tipo_pago").value = data.tipo_pago || "efectivo";
 
   // 5) Items actuales
   editCompraItems = (data.items || []).map((it) => ({
@@ -180,6 +183,7 @@ async function guardarEdicionCompra() {
     proveedor_id: Number(document.getElementById("edit_compra_proveedor").value),
     fecha: document.getElementById("edit_compra_fecha").value,
     factura: document.getElementById("edit_compra_factura").value,
+    tipo_pago: document.getElementById("edit_compra_tipo_pago").value,
     items: editCompraItems,
   };
 
@@ -282,22 +286,28 @@ async function cargarProveedoresCompra() {
  *  NUEVA COMPRA
  *************************************************/
 function abrirNuevaCompra() {
-  // ✅ enganchar formato dinero en costo
   attachMoneyFormatterById("c_costo");
 
   cargarProveedoresCompra();
   openModal("modalNuevaCompra");
 
-  document.getElementById("c_fecha").value = "";
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  document.getElementById("c_fecha").value = hoy;
   document.getElementById("c_factura").value = "";
   document.getElementById("c_proveedor").value = "";
+  document.getElementById("c_tipo_pago").value = "efectivo";
+  document.getElementById("c_buscar_producto").value = "";
+  document.getElementById("c_cantidad").value = 1;
+  document.getElementById("c_costo").value = "0";
+
+  const lista = document.getElementById("c_lista_productos");
+  if (lista) lista.innerHTML = "";
 
   compraItems = [];
   productoSeleccionado = null;
 
   renderItemsCompra();
-
-  setTimeout(() => setProximaFacturaCompra(), 50);
 }
 
 /*************************************************
@@ -371,12 +381,16 @@ function renderItemsCompra() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${it.producto_nombre}</td>
-      <td>${it.cantidad}</td>
-      <td>${numberFormat(it.costo)}</td>
-      <td>${numberFormat(it.subtotal)}</td>
-      <td>
-        <button class="btn btn-warning btn-sm" onclick="editarItemCompra(${idx})">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="borrarItemCompra(${idx})">🗑️</button>
+      <td style="text-align:center;">${it.cantidad}</td>
+      <td>Gs. ${numberFormat(it.costo)}</td>
+      <td>Gs. ${numberFormat(it.subtotal)}</td>
+      <td style="text-align:center; white-space:nowrap;">
+        <button class="btn btn-warning btn-sm" onclick="editarItemCompra(${idx})">
+          <i class="fa fa-pen"></i>
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="borrarItemCompra(${idx})">
+          <i class="fa fa-trash"></i>
+        </button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -397,15 +411,18 @@ async function guardarCompra() {
   const proveedor_id = Number(document.getElementById("c_proveedor").value);
   const fecha = document.getElementById("c_fecha").value;
   const factura = document.getElementById("c_factura").value;
+  const tipo_pago = document.getElementById("c_tipo_pago").value;
 
   if (!proveedor_id) return alert("Seleccione proveedor.");
   if (!fecha) return alert("Ingrese fecha.");
+  if (!tipo_pago) return alert("Seleccione forma de pago.");
   if (!compraItems.length) return alert("Agregue productos.");
 
   const body = {
     proveedor_id,
     fecha,
     factura,
+    tipo_pago,
     items: compraItems,
   };
 
@@ -564,18 +581,18 @@ function renderTablaCompras(data) {
   tbody.innerHTML = "";
 
   data.forEach((c) => {
-    const productos = c.productos || "-";
-    const categorias = c.categorias || "-";
-
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
       <td>${c.id}</td>
       <td>${formatFecha(c.fecha)}</td>
-      <td>${productos}</td>
-      <td>${categorias}</td>
-      <td><b>Gs. ${numberFormat(c.total)}</b></td>
+      <td>${c.factura || "-"}</td>
       <td>${c.proveedor_nombre || "-"}</td>
+      <td>${c.productos || "-"}</td>
+      <td>${c.nombres_productos || "-"}</td>
+      <td>${c.cantidad_total || 0}</td>
+      <td>${c.categorias || "-"}</td>
+      <td><b>Gs. ${numberFormat(c.total)}</b></td>
       <td>${c.proveedor_ruc || "-"}</td>
 
       <td style="text-align:center; white-space:nowrap;">
@@ -592,7 +609,6 @@ function renderTablaCompras(data) {
     tbody.appendChild(tr);
   });
 }
-
 function confirmarEliminarCompra(id) {
   document.getElementById("delete_compra_id").value = id;
   openModal("modalEliminarCompra");

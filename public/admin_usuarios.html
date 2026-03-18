@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usuarios del sistema</title>
+
+<script>
+if(localStorage.getItem("adminAuth") !== "yes"){
+  window.location.href="admin_login.html";
+}
+</script>
+
+<link rel="stylesheet" href="css/theme.css">
+
+<style>
+
+body{
+background:#f3f4f6;
+font-family:Arial;
+margin:0;
+}
+
+.topbar{
+background:white;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+box-shadow:0 1px 4px rgba(0,0,0,0.08);
+}
+
+.container{
+max-width:900px;
+margin:auto;
+padding:30px;
+}
+
+.card{
+background:white;
+padding:25px;
+border-radius:12px;
+box-shadow:0 8px 20px rgba(0,0,0,0.08);
+margin-bottom:25px;
+}
+
+input,select{
+width:100%;
+padding:10px;
+margin-top:6px;
+margin-bottom:14px;
+border-radius:8px;
+border:1px solid #ddd;
+}
+
+button{
+background:#2563eb;
+color:white;
+border:none;
+padding:10px 16px;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+}
+
+button:hover{
+background:#1d4ed8;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+th,td{
+padding:10px;
+border-bottom:1px solid #eee;
+text-align:left;
+}
+
+.delete{
+background:#dc2626;
+}
+
+.delete:hover{
+background:#b91c1c;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+<h2>Gestión de Usuarios</h2>
+<a href="admin.html">← Volver</a>
+</div>
+
+<div class="container">
+
+<div class="card">
+
+<h3>Crear Usuario</h3>
+
+<input id="nombre" placeholder="Nombre">
+<input id="usuario" placeholder="Usuario">
+<input id="password" placeholder="Contraseña">
+
+<select id="rol">
+<option value="usuario">Usuario</option>
+<option value="admin">Administrador</option>
+</select>
+
+<button onclick="crearUsuario()">Crear usuario</button>
+
+</div>
+
+
+<div class="card">
+
+<h3>Usuarios registrados</h3>
+
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Nombre</th>
+<th>Usuario</th>
+<th>Rol</th>
+<th></th>
+</tr>
+</thead>
+
+<tbody id="listaUsuarios">
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<script>
+
+async function cargarUsuarios(){
+
+const res = await fetch("/api/usuarios")
+const data = await res.json()
+
+const lista = document.getElementById("listaUsuarios")
+lista.innerHTML=""
+
+data.forEach(u=>{
+
+lista.innerHTML+=`
+<tr>
+<td>${u.id}</td>
+<td>${u.nombre}</td>
+<td>${u.usuario}</td>
+<td>${u.rol}</td>
+<td>
+<button class="delete" onclick="eliminar(${u.id})">
+Eliminar
+</button>
+</td>
+</tr>
+`
+
+})
+
+}
+
+
+async function crearUsuario(){
+
+const nombre=document.getElementById("nombre").value
+const usuario=document.getElementById("usuario").value
+const password=document.getElementById("password").value
+const rol=document.getElementById("rol").value
+
+await fetch("/api/usuarios",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+nombre,
+usuario,
+password,
+rol
+})
+})
+
+alert("Usuario creado")
+
+cargarUsuarios()
+
+}
+
+
+async function eliminar(id){
+
+if(!confirm("Eliminar usuario?")) return
+
+await fetch("/api/usuarios/"+id,{
+method:"DELETE"
+})
+
+cargarUsuarios()
+
+}
+
+cargarUsuarios()
+
+</script>
+
+</body>
+</html>

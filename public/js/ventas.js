@@ -1,22 +1,23 @@
 let ventaItems = [];
 let ventaPendienteEditar = null;
 let formaPagoIdFinal = null;
-let formaPagoSeleccionada = null;     // texto
+let formaPagoSeleccionada = null;
 let formaPagoIdSeleccionada = null;
 let formaPagoNombreSeleccionado = null;
 let ventaEliminarId = null;
 let intentosEditar = 0;
 let caja_id = null;
+let productoManualSeleccionado = null;
 
 window.cajaAbierta = window.cajaAbierta ?? false;
-window.cajaActual  = window.cajaActual  ?? null;
+window.cajaActual = window.cajaActual ?? null;
 
 let formaPagoFinal = { id: null, nombre: null };
 
 const MAX_INTENTOS = 3;
 const CLAVE_EDITAR = "editar123";
 
-const ID_DEBITO   = 1;
+const ID_DEBITO = 1;
 const ID_EFECTIVO = 2;
 
 /* ===============================
@@ -27,7 +28,7 @@ function nf(n) {
 }
 
 /* ===============================
-   HELPERS MODALES BOOTSTRAP (evitar superposición)
+   HELPERS MODALES BOOTSTRAP
 =============================== */
 function bsHideModal(id) {
   const el = document.getElementById(id);
@@ -46,7 +47,7 @@ function bsShowModal(id, opts = {}) {
 }
 
 /* ===============================
-   MODAL PROFESIONAL: CAJA CERRADA
+   MODAL CAJA CERRADA
 =============================== */
 function mostrarModalCajaCerrada(msg = "Debe abrir la caja antes de realizar una venta.") {
   const body = document.getElementById("modalCajaCerradaBody");
@@ -67,7 +68,7 @@ function mostrarModalCajaCerrada(msg = "Debe abrir la caja antes de realizar una
 }
 
 /* ===============================
-   FORMAS con comprobante
+   FORMAS CON COMPROBANTE
 =============================== */
 const FORMAS_CON_COMPROBANTE = new Set([4, 5, 6, 7, 8, 9, 10]);
 
@@ -99,14 +100,11 @@ const FORMAS_PAGO_MAP = {
 };
 
 function detectarFormaPagoDesdeBoton(btn) {
-  // 1) Por dataset
   let id = Number(btn?.dataset?.id || btn?.getAttribute?.("data-id") || 0);
   let nombre = (btn?.dataset?.nombre || "").trim();
 
-  // 2) Si no hay nombre en dataset, usar texto del botón
   if (!nombre) nombre = (btn?.textContent || "").trim();
 
-  // 3) Si no hay id, inferir por el texto comparando con el map
   if (!id && nombre) {
     const lower = nombre.toLowerCase();
     for (const [k, v] of Object.entries(FORMAS_PAGO_MAP)) {
@@ -121,8 +119,7 @@ function detectarFormaPagoDesdeBoton(btn) {
 }
 
 /* ===============================
-   SELECCIÓN FORMA PAGO (ÚNICA Y ROBUSTA)
-   - Captura clicks en botones de pago aunque tengan clase diferente
+   CLICK FORMAS DE PAGO
 =============================== */
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".pago-grid .btn, .btnFormaPago");
@@ -139,6 +136,7 @@ document.addEventListener("click", (e) => {
 =============================== */
 function iniciarPOS() {
   ventaItems = [];
+  productoManualSeleccionado = null;
   formaPagoIdSeleccionada = null;
   formaPagoFinal = { id: null, nombre: null };
 
@@ -148,8 +146,25 @@ function iniciarPOS() {
 
   const mr = document.getElementById("montoRecibido");
   if (mr) mr.value = "";
+
   const v = document.getElementById("vuelto");
-  if (v) { v.textContent = "0"; v.style.color = ""; }
+  if (v) {
+    v.textContent = "0";
+    v.style.color = "";
+  }
+
+  const buscarManual = document.getElementById("buscarProductoManual");
+  const cantidadManual = document.getElementById("cantidadManualVenta");
+  const precioManual = document.getElementById("precioManualVenta");
+  const listaManual = document.getElementById("listaProductosManual");
+
+  if (buscarManual) buscarManual.value = "";
+  if (cantidadManual) cantidadManual.value = 1;
+  if (precioManual) precioManual.value = "";
+  if (listaManual) {
+    listaManual.innerHTML = "";
+    listaManual.style.display = "none";
+  }
 
   renderItemsVenta();
   iniciarScannerVenta();
@@ -175,7 +190,6 @@ async function cargarClientesVenta() {
       opt.dataset.ruc = c.ci || "";
       select.appendChild(opt);
     });
-
   } catch (e) {
     console.error("Error cargando clientes", e);
   }
@@ -212,7 +226,6 @@ function iniciarScannerVenta() {
 
       const producto = await res.json();
       agregarProductoDesdeBarcode(producto);
-
     } catch {
       alert("❌ Producto no encontrado");
     }
@@ -223,7 +236,7 @@ function iniciarScannerVenta() {
 }
 
 /* ===============================
-   AGREGAR PRODUCTO
+   AGREGAR PRODUCTO SCANNER
 =============================== */
 function agregarProductoDesdeBarcode(producto) {
   const existente = ventaItems.find(p => p.producto_id === producto.id);
@@ -256,7 +269,7 @@ function renderItemsVenta() {
   let total = 0;
 
   ventaItems.forEach(it => {
-    total += it.subtotal;
+    total += Number(it.subtotal || 0);
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -289,8 +302,12 @@ function abrirPago() {
 
   const mr = document.getElementById("montoRecibido");
   if (mr) mr.value = "";
+
   const v = document.getElementById("vuelto");
-  if (v) { v.textContent = "0"; v.style.color = ""; }
+  if (v) {
+    v.textContent = "0";
+    v.style.color = "";
+  }
 
   openModal("modalPago");
 }
@@ -324,7 +341,10 @@ function confirmarPago(btn, formaPagoId) {
     const mr = document.getElementById("montoRecibido");
     if (mr) mr.value = "";
     const v = document.getElementById("vuelto");
-    if (v) { v.textContent = "0"; v.style.color = ""; }
+    if (v) {
+      v.textContent = "0";
+      v.style.color = "";
+    }
   }
 
   toggleComprobanteUI(formaPagoId);
@@ -339,7 +359,6 @@ function normalizarTipoCaja(tipo) {
 }
 
 async function confirmarPagoFinal() {
-  // ✅ anti-bug: si la variable quedó mal, tomamos el botón active
   const activeBtn = document.querySelector(".pago-grid .btn.active, .btnFormaPago.active");
   if (activeBtn) {
     const det = detectarFormaPagoDesdeBoton(activeBtn);
@@ -366,6 +385,7 @@ async function confirmarPagoFinal() {
   let estado_pago = (document.getElementById("v_estado_pago")?.value || "pagado")
     .trim()
     .toLowerCase();
+
   if (!estado_pago) estado_pago = "pagado";
 
   const fechaInput = (document.getElementById("v_fecha")?.value || "").trim();
@@ -373,7 +393,6 @@ async function confirmarPagoFinal() {
 
   const esEfectivo = (formaPagoIdSeleccionada === ID_EFECTIVO);
 
-  // 💵 EFECTIVO: validar vuelto
   let vuelto = null;
   if (esEfectivo) {
     const input = document.getElementById("montoRecibido");
@@ -386,11 +405,9 @@ async function confirmarPagoFinal() {
     vuelto = montoRecibido - total;
   }
 
-  // ✅ CAJA según forma de pago (sin usar window.cajaActual)
   window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
   const tipoCajaNecesaria = esEfectivo ? "efectivo" : "transferencia";
 
-  // 1) Consultar estado de la caja requerida (tipo + fecha)
   if (typeof refrescarCajaAbierta === "function") {
     try {
       await refrescarCajaAbierta(tipoCajaNecesaria, fecha);
@@ -399,10 +416,8 @@ async function confirmarPagoFinal() {
     }
   }
 
-  // 2) Leer caja_id SOLO desde window.cajasActuales[tipo]
   let caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
 
-  // 3) Reintento por si vino lento / quedó null
   if (!caja_id && typeof refrescarCajaAbierta === "function") {
     try {
       await refrescarCajaAbierta(tipoCajaNecesaria, fecha);
@@ -424,7 +439,6 @@ async function confirmarPagoFinal() {
     return;
   }
 
-  // ✅ Comprobante
   let nro_comprobante = null;
   if (FORMAS_CON_COMPROBANTE.has(Number(formaPagoIdSeleccionada))) {
     const inp = document.getElementById("inputComprobante");
@@ -446,8 +460,6 @@ async function confirmarPagoFinal() {
     nro_comprobante,
     items: ventaItems
   };
-
-  console.log("ENVIANDO VENTA:", body);
 
   try {
     const res = await fetch("/ventas", {
@@ -493,6 +505,7 @@ async function confirmarPagoFinal() {
     alert("❌ Error al guardar la venta");
   }
 }
+
 /* ===============================
    EFECTIVO - VUELTO
 =============================== */
@@ -505,7 +518,10 @@ function formatearMontoRecibido() {
   if (!limpio) {
     input.value = "";
     const sp = document.getElementById("vuelto");
-    if (sp) { sp.textContent = "0"; sp.style.color = ""; }
+    if (sp) {
+      sp.textContent = "0";
+      sp.style.color = "";
+    }
     return;
   }
 
@@ -539,11 +555,11 @@ function calcularVuelto() {
 }
 
 /* ===============================
-   VENTAS LISTAR
+   LISTAR VENTAS
 =============================== */
 async function cargarVentas() {
   try {
-    const res = await fetch("/ventas");
+    const res = await fetch("/ventas", { credentials: "include" });
     const ventas = await res.json();
 
     const tbody = document.getElementById("tablaVentas");
@@ -551,17 +567,32 @@ async function cargarVentas() {
 
     tbody.innerHTML = "";
 
+    if (!Array.isArray(ventas)) {
+      console.error("Ventas no es un array:", ventas);
+      return;
+    }
+
     ventas.forEach(v => {
       const tr = document.createElement("tr");
+
+      const fecha = (typeof fmtDate === "function")
+        ? fmtDate(v.fecha)
+        : String(v.fecha || "").slice(0, 10);
+
+      const total = (typeof money === "function")
+        ? money(v.total)
+        : new Intl.NumberFormat("es-PY").format(v.total || 0);
+
       tr.innerHTML = `
-        <td>${v.id}</td>
-        <td>${(typeof fmtDate === "function") ? fmtDate(v.fecha) : String(v.fecha).slice(0, 10)}</td>
+        <td>${v.id ?? "-"}</td>
+        <td>${fecha}</td>
         <td>${v.cliente_nombre || "Consumidor Final"}</td>
-        <td>${v.forma_pago_nombre || "—"}</td>
-        <td>Gs. ${(typeof money === "function") ? money(v.total) : new Intl.NumberFormat("es-PY").format(v.total || 0)}</td>
+        <td>${v.productos || "-"}</td>
+        <td>${v.forma_pago_nombre || "-"}</td>
+        <td>Gs. ${total}</td>
         <td>
-          <span class="estado-badge ${v.estado_pago}">
-            ${v.estado_pago}
+          <span class="estado-badge ${v.estado_pago || ""}">
+            ${v.estado_pago || "-"}
           </span>
         </td>
         <td style="text-align:center;">
@@ -571,11 +602,12 @@ async function cargarVentas() {
           <button class="btn-icon delete" onclick="confirmarEliminarVenta(${v.id})" title="Eliminar">🗑</button>
         </td>
       `;
+
       tbody.appendChild(tr);
     });
 
   } catch (err) {
-    console.error("Error cargando ventas", err);
+    console.error("❌ Error cargando ventas:", err);
   }
 }
 
@@ -595,14 +627,13 @@ async function eliminarVentaConfirmada() {
 
     closeModal("modalEliminarVenta");
     cargarVentas();
-
   } catch (err) {
     alert("Error eliminando la venta");
   }
 }
 
 /* ===============================
-   EDITAR VENTA (tu código igual)
+   EDITAR VENTA
 =============================== */
 function editarVenta(id) {
   ventaPendienteEditar = id;
@@ -705,10 +736,8 @@ async function guardarEdicionVenta() {
     try {
       if (typeof window.cargarVentas === "function") await window.cargarVentas();
       else if (typeof cargarVentas === "function") await cargarVentas();
-      else alert("⚠️ Se guardó la venta pero no se pudo refrescar la tabla.");
     } catch (e) {
       console.error("cargarVentas falló:", e);
-      alert("⚠️ Se guardó la venta pero falló refrescar la tabla (mirá consola).");
     }
 
   } catch (err) {
@@ -742,24 +771,33 @@ async function abrirEditarVenta(id) {
       const sub = cant * precioUnit;
 
       tbody.innerHTML += `
-        <tr data-idx="${idx}">
-          <td>${it.producto_nombre}</td>
-          <td style="text-align:center; width:120px;">
-            <input type="number" min="1" class="form-control form-control-sm edit-cant"
-              value="${cant}" data-producto-id="${it.producto_id}" />
-          </td>
-          <td style="text-align:right; width:160px;">
-            <input type="number" min="0" class="form-control form-control-sm edit-precio"
-              value="${precioUnit}" />
-          </td>
-          <td style="text-align:right; width:160px;">
-            <span class="edit-subtotal">${nf(sub)}</span>
-          </td>
-          <td style="text-align:center; width:70px;">
-            <button class="btn btn-sm btn-danger btn-del-item" type="button">X</button>
-          </td>
-        </tr>
-      `;
+  <tr data-idx="${idx}">
+    <td>${it.producto_nombre || "-"}</td>
+    <td>
+      <input
+        type="number"
+        min="1"
+        class="form-control form-control-sm edit-cant"
+        value="${cant}"
+        data-producto-id="${it.producto_id}"
+      />
+    </td>
+    <td>
+      <input
+        type="number"
+        min="0"
+        class="form-control form-control-sm edit-precio"
+        value="${precioUnit}"
+      />
+    </td>
+    <td style="text-align:right;">
+      <span class="edit-subtotal">${nf(sub)}</span>
+    </td>
+    <td style="text-align:center;">
+      <button class="btn btn-sm btn-danger btn-del-item" type="button">X</button>
+    </td>
+  </tr>
+`;
     });
 
     recalcularEditTotales();
@@ -847,17 +885,14 @@ function togglePasswordEditar() {
 =============================== */
 async function refrescarCajaAbierta(tipo = "efectivo", fecha = null) {
   try {
-    // ✅ normalizar tipo (arregla el typo "trasferencia")
     let tipoKey = String(tipo || "").trim().toLowerCase();
     if (tipoKey === "trasferencia") tipoKey = "transferencia";
     if (tipoKey.includes("trans")) tipoKey = "transferencia";
     if (tipoKey.includes("efect")) tipoKey = "efectivo";
 
-    // ✅ fecha
     const fechaInput = (fecha || document.getElementById("v_fecha")?.value || "").trim();
     const ymd = fechaInput || new Date().toISOString().slice(0, 10);
 
-    // 🔁 probar 2 variantes de tipo (por si el backend es case-sensitive)
     const tiposAProbar = (tipoKey === "efectivo")
       ? ["efectivo", "Efectivo"]
       : ["transferencia", "Transferencia"];
@@ -876,20 +911,14 @@ async function refrescarCajaAbierta(tipo = "efectivo", fecha = null) {
       data = await r.json().catch(() => ({}));
       caja = data?.caja ?? data?.data?.caja ?? data?.data ?? null;
 
-      console.log("🔎 /caja/estado", { t, ymd, ok: r.ok, caja });
-
       if (caja && caja.id) break;
     }
 
-    // ✅ guardar SIEMPRE con clave normalizada
     window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
     window.cajasActuales[tipoKey] = (caja && caja.id) ? caja : null;
 
-    // compat
     window.cajaActual = caja;
     window.cajaAbierta = !!(caja && caja.id);
-
-    console.log("refrescarCajaAbierta OK ->", { tipoKey, ymd, abierta: window.cajaAbierta, caja });
 
     return window.cajaAbierta;
   } catch (e) {
@@ -908,6 +937,7 @@ async function refrescarCajaAbierta(tipo = "efectivo", fecha = null) {
     return false;
   }
 }
+
 /* ===============================
    NUEVA VENTA
 =============================== */
@@ -942,9 +972,132 @@ function imprimirPagare(id) {
   window.open(`/ventas/${id}/pagare`, "_blank");
 }
 
+/* ===============================
+   BUSCAR PRODUCTOS MANUAL
+=============================== */
+async function buscarProductosManual(texto) {
+  const lista = document.getElementById("listaProductosManual");
+  if (!lista) return;
+
+  const q = String(texto || "").trim();
+  productoManualSeleccionado = null;
+
+  const precioInput = document.getElementById("precioManualVenta");
+  if (precioInput) precioInput.value = "";
+
+  if (q.length < 2) {
+    lista.style.display = "none";
+    lista.innerHTML = "";
+    return;
+  }
+
+  try {
+    const res = await fetch(`/productos?buscar=${encodeURIComponent(q)}`, {
+      credentials: "include"
+    });
+
+    const productos = await res.json();
+
+    if (!Array.isArray(productos) || productos.length === 0) {
+      lista.style.display = "block";
+      lista.innerHTML = `
+        <div style="padding:10px; color:#666;">
+          No se encontraron productos
+        </div>
+      `;
+      return;
+    }
+
+    lista.style.display = "block";
+    lista.innerHTML = productos.map(p => `
+      <div
+        style="padding:10px; border-bottom:1px solid #eee; cursor:pointer;"
+        onclick="seleccionarProductoManualVenta(${p.id}, '${String(p.nombre || "").replace(/'/g, "\\'")}', ${Number(p.precio || 0)})"
+      >
+        <strong>${p.nombre || "-"}</strong><br>
+        <small>Código: ${p.codigo || "-"} | Precio: Gs. ${nf(Number(p.precio || 0))}</small>
+      </div>
+    `).join("");
+
+  } catch (err) {
+    console.error("Error buscando productos manualmente:", err);
+    lista.style.display = "block";
+    lista.innerHTML = `
+      <div style="padding:10px; color:red;">
+        Error al buscar productos
+      </div>
+    `;
+  }
+}
+
+function seleccionarProductoManualVenta(id, nombre, precio) {
+  productoManualSeleccionado = {
+    id: Number(id),
+    nombre,
+    precio: Number(precio || 0)
+  };
+
+  const buscar = document.getElementById("buscarProductoManual");
+  const precioInput = document.getElementById("precioManualVenta");
+  const lista = document.getElementById("listaProductosManual");
+
+  if (buscar) buscar.value = nombre;
+  if (precioInput) precioInput.value = nf(precio);
+
+  if (lista) {
+    lista.innerHTML = "";
+    lista.style.display = "none";
+  }
+}
+
+function agregarProductoManualVenta() {
+  if (!productoManualSeleccionado) {
+    alert("Seleccione un producto.");
+    return;
+  }
+
+  const cantidad = Number(document.getElementById("cantidadManualVenta")?.value || 1);
+
+  if (cantidad <= 0) {
+    alert("Cantidad inválida.");
+    return;
+  }
+
+  const existente = ventaItems.find(p => p.producto_id === productoManualSeleccionado.id);
+
+  if (existente) {
+    existente.cantidad += cantidad;
+    existente.subtotal = existente.cantidad * existente.precio;
+  } else {
+    ventaItems.push({
+      producto_id: productoManualSeleccionado.id,
+      nombre: productoManualSeleccionado.nombre,
+      precio: productoManualSeleccionado.precio,
+      cantidad: cantidad,
+      subtotal: productoManualSeleccionado.precio * cantidad
+    });
+  }
+
+  renderItemsVenta();
+
+  document.getElementById("buscarProductoManual").value = "";
+  document.getElementById("cantidadManualVenta").value = 1;
+  document.getElementById("precioManualVenta").value = "";
+
+  const lista = document.getElementById("listaProductosManual");
+  if (lista) {
+    lista.innerHTML = "";
+    lista.style.display = "none";
+  }
+
+  productoManualSeleccionado = null;
+}
+
+/* ===============================
+   EXPORTS
+=============================== */
 window.imprimirTicket = imprimirTicket;
 window.imprimirPagare = imprimirPagare;
-
 window.nuevaVenta = nuevaVenta;
 window.abrirPago = abrirPago;
 window.confirmarPago = confirmarPago;
@@ -957,7 +1110,8 @@ window.togglePasswordEditar = togglePasswordEditar;
 window.guardarEdicionVenta = guardarEdicionVenta;
 window.mostrarModalCajaCerrada = mostrarModalCajaCerrada;
 window.cargarVentas = cargarVentas;
-
-// si usás esto en input: oninput="formatearMontoRecibido()"
 window.formatearMontoRecibido = formatearMontoRecibido;
 window.calcularVuelto = calcularVuelto;
+window.buscarProductosManual = buscarProductosManual;
+window.seleccionarProductoManualVenta = seleccionarProductoManualVenta;
+window.agregarProductoManualVenta = agregarProductoManualVenta;
