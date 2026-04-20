@@ -1,0 +1,718 @@
+/* =========================
+   MODAL FIX LIMPIO
+========================= */
+
+#modalNuevaCompra,
+#modalEditarCompra,
+#modalVenta,
+#modalPago,
+#logoutModal {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  background: rgba(15, 23, 42, 0.68) !important;
+  z-index: 999999 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+}
+
+#modalNuevaCompra.show,
+#modalEditarCompra.show,
+#modalVenta.show,
+#modalPago.show,
+#logoutModal.show,
+#modalNuevaCompra[style*="display: flex"],
+#modalEditarCompra[style*="display: flex"],
+#modalVenta[style*="display: flex"],
+#modalPago[style*="display: flex"],
+#logoutModal[style*="display: flex"],
+#modalNuevaCompra[style*="display:block"],
+#modalEditarCompra[style*="display:block"],
+#modalVenta[style*="display:block"],
+#modalPago[style*="display:block"],
+#logoutModal[style*="display:block"] {
+  display: flex !important;
+}
+
+/* =========================
+   COMPRA
+========================= */
+
+#modalNuevaCompra .ec-modal,
+#modalEditarCompra .ec-modal {
+  width: min(1380px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  height: min(92vh, 920px) !important;
+  max-height: calc(100vh - 32px) !important;
+  background: #fff !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22) !important;
+  margin: 0 auto !important;
+}
+
+#modalNuevaCompra .ec-body,
+#modalEditarCompra .ec-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.95fr) !important;
+  gap: 16px !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+}
+
+#modalNuevaCompra .ec-main,
+#modalEditarCompra .ec-main,
+#modalNuevaCompra .ec-sidebar,
+#modalEditarCompra .ec-sidebar {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* =========================
+   VENTA
+========================= */
+
+#modalVenta .ec-modal {
+  width: min(1380px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  height: min(96vh, 980px) !important;
+  max-height: calc(100vh - 16px) !important;
+  background: #ffffff !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22) !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  z-index: 1000002 !important;
+}
+
+#modalVenta .ec-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  padding: 18px 22px !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #fff !important;
+}
+
+#modalVenta .ec-header h2 {
+  margin: 0 !important;
+  font-size: 2rem !important;
+  font-weight: 800 !important;
+}
+
+#modalVenta .ec-header p {
+  margin: 6px 0 0 0 !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 1rem !important;
+}
+
+#modalVenta .ec-close {
+  border: none !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #fff !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+  font-size: 28px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+#modalVenta .ec-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr) !important;
+  gap: 16px !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  align-items: stretch !important;
+}
+
+#modalVenta .ec-main,
+#modalVenta .ec-sidebar {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+#modalVenta .ec-card {
+  background: #f8fafc !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 16px !important;
+  padding: 18px !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05) !important;
+}
+
+#modalVenta .ec-card h3 {
+  margin: 0 0 14px 0 !important;
+  font-size: 1.1rem !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+}
+
+#modalVenta .ec-total-card {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #fff !important;
+}
+
+#modalVenta .ec-total-card h4 {
+  margin: 0 0 10px 0 !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+}
+
+#modalVenta .ec-total-amount {
+  font-size: 2rem !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  color: #fff !important;
+}
+
+#modalVenta .ec-field {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#modalVenta .ec-field label {
+  margin-bottom: 6px !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+}
+
+#modalVenta .input,
+#modalVenta .form-control,
+#modalVenta .form-select,
+#modalVenta input,
+#modalVenta select {
+  min-height: 44px !important;
+  border-radius: 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#modalVenta .ec-table-card {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 320px !important;
+}
+
+#modalVenta .ec-table-wrap {
+  flex: 1 1 auto !important;
+  overflow: auto !important;
+  border: 1px solid #dbeafe !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+}
+
+#modalVenta .ec-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  table-layout: auto !important;
+  min-width: 100% !important;
+}
+
+#modalVenta .ec-table thead th {
+  background: #e0f2fe !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  padding: 12px !important;
+  font-size: 0.95rem !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+}
+
+#modalVenta .ec-table tbody td {
+  padding: 12px !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  vertical-align: middle !important;
+}
+
+#modalVenta .ec-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  margin-top: 16px !important;
+  flex-wrap: wrap !important;
+}
+
+#modalVenta .ec-actions .btn {
+  min-width: 150px !important;
+}
+
+#modalVenta #listaProductosManual {
+  background: #fff !important;
+  border: 1px solid #dbeafe !important;
+  border-radius: 12px !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* =========================
+   PAGO
+========================= */
+
+#modalPago .pago-modal,
+#modalPago .pago-modal-pro {
+  width: min(980px, 96vw) !important;
+  max-width: min(980px, 96vw) !important;
+  max-height: 92vh !important;
+  overflow-y: auto !important;
+  border-radius: 20px !important;
+  background: #fff !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* =========================
+   BAJAR PRIORIDAD DEL FONDO
+========================= */
+
+.ventas-tabla,
+.ventas-tabla .table-responsive,
+.ventas-tabla table,
+.ventas-tabla th,
+.ventas-tabla td {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 900px) {
+  #modalNuevaCompra,
+  #modalEditarCompra,
+  #modalVenta,
+  #modalPago,
+  #logoutModal {
+    padding: 8px !important;
+  }
+
+  #modalNuevaCompra .ec-modal,
+  #modalEditarCompra .ec-modal,
+  #modalVenta .ec-modal {
+  width: min(1380px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: calc(100vh - 32px) !important;
+  margin: 0 auto !important;
+  border-radius: 20px !important;
+}
+
+  #modalNuevaCompra .ec-body,
+  #modalEditarCompra .ec-body,
+  #modalVenta .ec-body {
+    grid-template-columns: 1fr !important;
+  }
+
+  #modalPago .pago-modal,
+  #modalPago .pago-modal-pro {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100vh - 16px) !important;
+    border-radius: 16px !important;
+  }
+}
+
+.modal {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(15, 23, 42, 0.7) !important;
+  z-index: 9999999 !important;
+}
+
+/* FORZAR MODAL POR ENCIMA DE TODO */
+#modalNuevaCompra,
+#modalEditarCompra,
+#modalVenta,
+#modalPago,
+#logoutModal,
+.modal {
+  z-index: 99999999 !important;
+}
+
+/* BAJAR SIDEBAR */
+.sidebar,
+nav {
+  z-index: 1 !important;
+}
+
+/* ===== FIX DOBLE SCROLL ===== */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden !important;
+}
+
+.layout {
+  display: flex;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden !important;
+}
+
+.sidebar {
+  width: 260px !important;
+  height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding-bottom: 24px;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-nav {
+  width: 100% !important;
+  padding-bottom: 24px;
+}
+
+main {
+  flex: 1;
+  height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  margin-left: 260px;
+}
+
+/* ===== DASHBOARD ===== */
+
+.dashboard-grid-2 {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.sales-chart-card {
+  min-height: 100%;
+}
+
+.sales-bars-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 10px;
+}
+
+.sales-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sales-bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #334155;
+}
+
+.sales-bar-track {
+  width: 100%;
+  height: 16px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.sales-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.sales-bar-fill.ayer {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.sales-bar-fill.hoy {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  border-radius: 16px;
+  padding: 10px;
+  text-align: center;
+  transition: all 0.25s ease;
+}
+
+.quick-btn i {
+  margin-top: 8px;
+}
+
+.quick-btn-text span {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.quick-btn-text small {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.quick-btn:hover {
+  transform: translateY(-3px);
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    left: -260px;
+    transition: left 0.3s ease;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  main {
+    margin-left: 0;
+  }
+}
+
+
+
+
+
+/* ===== FIX FINAL MODAL VENTA FULL OVERLAY ===== */
+
+#modalVenta {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding: 16px !important;
+  margin: 0 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  z-index: 99999999 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#modalVenta.show,
+#modalVenta[style*="display: flex"],
+#modalVenta[style*="display:flex"],
+#modalVenta[style*="display:block"],
+#modalVenta[style*="display: block"] {
+  display: flex !important;
+}
+
+#modalVenta .ec-modal {
+  width: min(1380px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  height: min(92vh, 920px) !important;
+  max-height: calc(100vh - 32px) !important;
+  margin: 0 auto !important;
+  background: #fff !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22) !important;
+}
+
+#modalVenta .ec-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.35fr) minmax(360px, 1fr) !important;
+  gap: 16px !important;
+  padding: 16px !important;
+  align-items: stretch !important;
+}
+
+#modalVenta .ec-main,
+#modalVenta .ec-sidebar {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+#modalVenta .ec-sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#modalVenta .ec-table-card {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+#modalVenta .ec-table-wrap {
+  min-height: 220px !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
+}
+
+/* ===== CUANDO HAY MODAL, OCULTAR SCROLL DEL FONDO ===== */
+
+body:has(#modalVenta.show),
+body:has(#modalVenta[style*="display: flex"]),
+body:has(#modalVenta[style*="display:flex"]),
+body:has(#modalVenta[style*="display:block"]),
+body:has(#modalVenta[style*="display: block"]) {
+  overflow: hidden !important;
+}
+
+
+
+
+/* ===== COMPRAS Y VENTAS COMO MODAL CENTRADO ===== */
+
+#modalNuevaCompra,
+#modalEditarCompra,
+#modalVenta {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  padding: 16px !important;
+  margin: 0 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  z-index: 99999999 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#modalNuevaCompra.show,
+#modalEditarCompra.show,
+#modalVenta.show,
+#modalNuevaCompra[style*="display:flex"],
+#modalNuevaCompra[style*="display: flex"],
+#modalEditarCompra[style*="display:flex"],
+#modalEditarCompra[style*="display: flex"],
+#modalVenta[style*="display:flex"],
+#modalVenta[style*="display: flex"] {
+  display: flex !important;
+}
+
+#modalNuevaCompra .ec-modal,
+#modalEditarCompra .ec-modal,
+#modalVenta .ec-modal {
+  width: min(1380px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  height: min(90vh, 900px) !important;
+  max-height: calc(100vh - 32px) !important;
+  margin: 0 auto !important;
+  background: #fff !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22) !important;
+}
+
+#modalNuevaCompra .ec-body,
+#modalEditarCompra .ec-body,
+#modalVenta .ec-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+#modalNuevaCompra .ec-main,
+#modalNuevaCompra .ec-sidebar,
+#modalEditarCompra .ec-main,
+#modalEditarCompra .ec-sidebar,
+#modalVenta .ec-main,
+#modalVenta .ec-sidebar {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* ocultar scroll del fondo cuando se abre alguno */
+body:has(#modalNuevaCompra.show),
+body:has(#modalEditarCompra.show),
+body:has(#modalVenta.show),
+body:has(#modalNuevaCompra[style*="display:flex"]),
+body:has(#modalNuevaCompra[style*="display: flex"]),
+body:has(#modalEditarCompra[style*="display:flex"]),
+body:has(#modalEditarCompra[style*="display: flex"]),
+body:has(#modalVenta[style*="display:flex"]),
+body:has(#modalVenta[style*="display: flex"]) {
+  overflow: hidden !important;
+}

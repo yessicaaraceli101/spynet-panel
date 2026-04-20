@@ -20,11 +20,109 @@ const CLAVE_EDITAR = "editar123";
 const ID_DEBITO = 1;
 const ID_EFECTIVO = 2;
 
+const MONEDA_BASE = "PYG";
+const MONEDAS_SOPORTADAS = ["PYG", "USD", "BRL"];
+
 /* ===============================
    FORMAT NUMBER
 =============================== */
 function nf(n) {
-  return new Intl.NumberFormat("es-PY").format(n || 0);
+  return new Intl.NumberFormat("es-PY").format(Number(n || 0));
+}
+
+function nfDecimal(n, dec = 2) {
+  return new Intl.NumberFormat("es-PY", {
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec
+  }).format(Number(n || 0));
+}
+
+/* ===============================
+   HELPERS MONEDA
+=============================== */
+function getMonedaVenta() {
+  const moneda = (document.getElementById("v_moneda")?.value || MONEDA_BASE).trim().toUpperCase();
+  return MONEDAS_SOPORTADAS.includes(moneda) ? moneda : MONEDA_BASE;
+}
+
+function getTipoCambioVenta() {
+  const moneda = getMonedaVenta();
+  if (moneda === MONEDA_BASE) return 1;
+
+  const valor = Number(document.getElementById("v_tipo_cambio")?.value || 0);
+  return valor > 0 ? valor : 0;
+}
+
+function toggleTipoCambioVenta() {
+  const moneda = (document.getElementById("v_moneda")?.value || "PYG").toUpperCase();
+  const wrap = document.getElementById("wrapTipoCambio");
+  const input = document.getElementById("v_tipo_cambio");
+
+  if (!wrap || !input) return;
+
+  if (moneda === "PYG") {
+    wrap.style.display = "none";
+    input.value = "1";
+  } else {
+    wrap.style.display = "block";
+
+    // Solo completar automático si está vacío o si venía en 1
+    const actual = Number(input.value || 0);
+
+    if (moneda === "USD" && (!actual || actual === 1 || actual === 1450)) {
+      input.value = "7900";
+    } else if (moneda === "BRL" && (!actual || actual === 1 || actual === 7900)) {
+      input.value = "1450";
+    }
+  }
+  const labelMonto = document.getElementById("labelMontoRecibido");
+if (labelMonto) {
+  if (moneda === "USD") labelMonto.textContent = "Monto recibido (US$)";
+  else if (moneda === "BRL") labelMonto.textContent = "Monto recibido (R$)";
+  else labelMonto.textContent = "Monto recibido (Gs.)";
+}
+
+  actualizarResumenMonedaVenta();
+}
+
+function calcularTotalesVenta() {
+  const totalPyg = ventaItems.reduce((a, i) => a + (Number(i.subtotal) || 0), 0);
+  const moneda = getMonedaVenta();
+  const tipoCambio = getTipoCambioVenta();
+
+  let totalMoneda = totalPyg;
+
+  if (moneda !== MONEDA_BASE) {
+    totalMoneda = tipoCambio > 0 ? (totalPyg / tipoCambio) : 0;
+  }
+
+  return {
+    moneda,
+    tipoCambio: moneda === MONEDA_BASE ? 1 : tipoCambio,
+    total_pyg: totalPyg,
+    total_moneda: totalMoneda
+  };
+}
+
+function actualizarResumenMonedaVenta() {
+  const lblMoneda = document.getElementById("v_total_moneda");
+  const lblPyg = document.getElementById("v_total_pyg");
+
+  if (!lblMoneda || !lblPyg) return;
+
+  const { moneda, total_moneda, total_pyg } = calcularTotalesVenta();
+
+  if (moneda === "PYG") {
+    lblMoneda.innerText = `Gs. ${nf(total_moneda)}`;
+  } else if (moneda === "USD") {
+    lblMoneda.innerText = `US$ ${nfDecimal(total_moneda)}`;
+  } else if (moneda === "BRL") {
+    lblMoneda.innerText = `R$ ${nfDecimal(total_moneda)}`;
+  } else {
+    lblMoneda.innerText = nfDecimal(total_moneda);
+  }
+
+  lblPyg.innerText = `Gs. ${nf(total_pyg)}`;
 }
 
 /* ===============================
@@ -153,6 +251,12 @@ function iniciarPOS() {
     v.style.color = "";
   }
 
+  const moneda = document.getElementById("v_moneda");
+  const tipoCambio = document.getElementById("v_tipo_cambio");
+  if (moneda) moneda.value = "PYG";
+  if (tipoCambio) tipoCambio.value = "1";
+  toggleTipoCambioVenta();
+
   const buscarManual = document.getElementById("buscarProductoManual");
   const cantidadManual = document.getElementById("cantidadManualVenta");
   const precioManual = document.getElementById("precioManualVenta");
@@ -200,6 +304,16 @@ document.addEventListener("change", e => {
     const opt = e.target.selectedOptions[0];
     const ruc = document.getElementById("v_ruc");
     if (ruc) ruc.value = opt?.dataset?.ruc || "";
+  }
+
+  if (e.target.id === "v_moneda") {
+    toggleTipoCambioVenta();
+  }
+});
+
+document.addEventListener("input", e => {
+  if (e.target.id === "v_tipo_cambio") {
+    actualizarResumenMonedaVenta();
   }
 });
 
@@ -282,6 +396,8 @@ function renderItemsVenta() {
 
   const lbl = document.getElementById("v_total");
   if (lbl) lbl.textContent = nf(total);
+
+  actualizarResumenMonedaVenta();
 }
 
 /* ===============================
@@ -309,6 +425,7 @@ function abrirPago() {
     v.style.color = "";
   }
 
+  actualizarResumenMonedaVenta();
   openModal("modalPago");
 }
 
@@ -377,7 +494,12 @@ async function confirmarPagoFinal() {
     return;
   }
 
-  const total = ventaItems.reduce((a, i) => a + (Number(i.subtotal) || 0), 0);
+  const { moneda, tipoCambio, total_moneda, total_pyg } = calcularTotalesVenta();
+
+  if (moneda !== "PYG" && (!tipoCambio || tipoCambio <= 0)) {
+    alert("❌ Ingrese una cotización válida para la moneda seleccionada");
+    return;
+  }
 
   const clienteRaw = (document.getElementById("v_cliente")?.value || "").trim();
   const cliente_id = clienteRaw ? Number(clienteRaw) : null;
@@ -394,17 +516,26 @@ async function confirmarPagoFinal() {
   const esEfectivo = (formaPagoIdSeleccionada === ID_EFECTIVO);
 
   let vuelto = null;
-  if (esEfectivo) {
-    const input = document.getElementById("montoRecibido");
-    const montoRecibido = Number((input?.value || "").replace(/\D/g, "") || 0);
+if (esEfectivo) {
+  const input = document.getElementById("montoRecibido");
+  const monedaActual = moneda;
 
-    if (montoRecibido < total) {
-      alert("❌ El monto recibido es menor al total");
-      return;
-    }
-    vuelto = montoRecibido - total;
+  let montoRecibido = 0;
+  if (monedaActual === "PYG") {
+    montoRecibido = Number((input?.value || "").replace(/\D/g, "") || 0);
+  } else {
+    montoRecibido = Number(String(input?.value || "0").replace(",", "."));
   }
 
+  const totalComparar = monedaActual === "PYG" ? total_pyg : total_moneda;
+
+  if (montoRecibido < totalComparar) {
+    alert("❌ El monto recibido es menor al total");
+    return;
+  }
+
+  vuelto = montoRecibido - totalComparar;
+}
   window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
   const tipoCajaNecesaria = esEfectivo ? "efectivo" : "transferencia";
 
@@ -454,7 +585,11 @@ async function confirmarPagoFinal() {
     fecha,
     cliente_id,
     caja_id,
-    total,
+    total: total_pyg,
+    total_pyg,
+    total_moneda,
+    moneda,
+    tipo_cambio: tipoCambio,
     forma_pago_id: formaPagoIdSeleccionada,
     estado_pago,
     nro_comprobante,
@@ -485,10 +620,24 @@ async function confirmarPagoFinal() {
     }
 
     if (esEfectivo) {
-      alert(`✅ Venta registrada. Vuelto: ${Number(vuelto || 0).toLocaleString("es-PY")} Gs.`);
-    } else {
-      alert("✅ Venta registrada correctamente");
-    }
+  let simbolo = "Gs.";
+  let vueltoTexto = "0";
+
+  if (moneda === "USD") {
+    simbolo = "US$";
+    vueltoTexto = nfDecimal(vuelto || 0);
+  } else if (moneda === "BRL") {
+    simbolo = "R$";
+    vueltoTexto = nfDecimal(vuelto || 0);
+  } else {
+    simbolo = "Gs.";
+    vueltoTexto = nf(vuelto || 0);
+  }
+
+  alert(`✅ Venta registrada. Vuelto: ${vueltoTexto} ${simbolo}`);
+} else {
+  alert("✅ Venta registrada correctamente");
+}
 
     if (typeof closeModal === "function") closeModal("modalPago");
     if (typeof closeModal === "function") closeModal("modalVenta");
@@ -513,31 +662,47 @@ function formatearMontoRecibido() {
   const input = document.getElementById("montoRecibido");
   if (!input) return;
 
-  const limpio = input.value.replace(/\D/g, "");
+  const moneda = getMonedaVenta();
 
-  if (!limpio) {
-    input.value = "";
-    const sp = document.getElementById("vuelto");
-    if (sp) {
-      sp.textContent = "0";
-      sp.style.color = "";
+  if (moneda === "PYG") {
+    // SOLO guaraníes → formato con miles
+    const limpio = input.value.replace(/\D/g, "");
+
+    if (!limpio) {
+      input.value = "";
+      calcularVuelto();
+      return;
     }
-    return;
+
+    const monto = Number(limpio);
+    input.value = monto.toLocaleString("es-PY");
+
+  } else {
+    // USD / BRL → NO formatear miles
+    let valor = input.value.replace(/[^0-9.,]/g, "").replace(",", ".");
+    input.value = valor;
   }
 
-  const monto = Number(limpio);
-  input.value = monto.toLocaleString("es-PY");
   calcularVuelto();
 }
 
 function calcularVuelto() {
-  const total = ventaItems.reduce((a, i) => a + (Number(i.subtotal) || 0), 0);
-  const monto = Number((document.getElementById("montoRecibido")?.value || "").replace(/\D/g, "") || 0);
+  const { moneda, total_pyg, total_moneda } = calcularTotalesVenta();
+
+  const inputValue = document.getElementById("montoRecibido")?.value || "";
+  let monto = 0;
+
+  if (moneda === "PYG") {
+    monto = Number(inputValue.replace(/\D/g, "") || 0);
+  } else {
+    monto = Number(String(inputValue).replace(",", ".") || 0);
+  }
 
   const span = document.getElementById("vuelto");
   if (!span) return;
 
-  const vuelto = monto - total;
+  const totalComparar = moneda === "PYG" ? total_pyg : total_moneda;
+  const vuelto = monto - totalComparar;
 
   if (monto <= 0) {
     span.textContent = "0";
@@ -549,11 +714,19 @@ function calcularVuelto() {
     span.textContent = "Monto insuficiente";
     span.style.color = "#dc2626";
   } else {
-    span.textContent = vuelto.toLocaleString("es-PY") + " Gs.";
+    if (moneda === "PYG") {
+      span.textContent = `${nf(vuelto)} Gs.`;
+    } else if (moneda === "USD") {
+      span.textContent = `${nfDecimal(vuelto)} US$`;
+    } else if (moneda === "BRL") {
+      span.textContent = `${nfDecimal(vuelto)} R$`;
+    } else {
+      span.textContent = `${nfDecimal(vuelto)}`;
+    }
+
     span.style.color = "#065f46";
   }
 }
-
 /* ===============================
    LISTAR VENTAS
 =============================== */
@@ -579,9 +752,16 @@ async function cargarVentas() {
         ? fmtDate(v.fecha)
         : String(v.fecha || "").slice(0, 10);
 
-      const total = (typeof money === "function")
-        ? money(v.total)
-        : new Intl.NumberFormat("es-PY").format(v.total || 0);
+      const moneda = (v.moneda || "PYG").toUpperCase();
+
+      let totalMostrar = "";
+      if (moneda === "USD") {
+        totalMostrar = `US$ ${nfDecimal(v.total_moneda ?? 0)}`;
+      } else if (moneda === "BRL") {
+        totalMostrar = `R$ ${nfDecimal(v.total_moneda ?? 0)}`;
+      } else {
+        totalMostrar = `Gs. ${nf(v.total_pyg ?? v.total ?? 0)}`;
+      }
 
       tr.innerHTML = `
         <td>${v.id ?? "-"}</td>
@@ -589,7 +769,11 @@ async function cargarVentas() {
         <td>${v.cliente_nombre || "Consumidor Final"}</td>
         <td>${v.productos || "-"}</td>
         <td>${v.forma_pago_nombre || "-"}</td>
-        <td>Gs. ${total}</td>
+        <td>
+          ${totalMostrar}
+          <br>
+          <small style="color:#666;">Gs. ${nf(v.total_pyg ?? v.total ?? 0)}</small>
+        </td>
         <td>
           <span class="estado-badge ${v.estado_pago || ""}">
             ${v.estado_pago || "-"}
@@ -710,6 +894,7 @@ async function guardarEdicionVenta() {
     forma_pago_id: Number(document.getElementById("edit_forma_pago").value),
     estado_pago: document.getElementById("edit_estado").value,
     total,
+    total_pyg: total,
     items
   };
 
@@ -947,6 +1132,13 @@ async function nuevaVenta() {
   const f = document.getElementById("v_fecha");
   if (f) f.value = new Date().toISOString().slice(0, 10);
 
+  const moneda = document.getElementById("v_moneda");
+  const tipoCambio = document.getElementById("v_tipo_cambio");
+  if (moneda) moneda.value = "PYG";
+  if (tipoCambio) tipoCambio.value = "1";
+
+  toggleTipoCambioVenta();
+
   await cargarClientesVenta();
   await cargarFormasPago();
   iniciarPOS();
@@ -1115,3 +1307,5 @@ window.calcularVuelto = calcularVuelto;
 window.buscarProductosManual = buscarProductosManual;
 window.seleccionarProductoManualVenta = seleccionarProductoManualVenta;
 window.agregarProductoManualVenta = agregarProductoManualVenta;
+window.toggleTipoCambioVenta = toggleTipoCambioVenta;
+window.actualizarResumenMonedaVenta = actualizarResumenMonedaVenta;

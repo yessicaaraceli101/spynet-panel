@@ -6,6 +6,7 @@ let logoSpynet = "";
 let cajaAbierta = false;
 let cajaActual = null;
 let chartVentasComprasInstance = null;
+let cuentaPagarAEliminar = null;
 
 let cuentasPagar = JSON.parse(localStorage.getItem("cuentasPagar") || "[]");
 let cuentasPagarFiltradas = [...cuentasPagar];
@@ -44,7 +45,7 @@ let totalCompra = 0;
         
 let pp_item_edit_index = -1;
 let PP_PRODUCTO_ACTUAL = null;
-let pp_items = [];;
+let pp_items = [];
 
 // ================== AUTENTICACIÓN ==================
 function mustAuth() {
@@ -207,9 +208,9 @@ function show(hash) {
   const el = qs(hash || '#dashboard');
   if (el) el.classList.remove('hidden');
 
-  qsa('.nav a[data-link]').forEach(a =>
-    a.classList.toggle('active', a.getAttribute('href') === hash)
-  );
+  qsa('.sidebar-nav a[data-link]').forEach(a =>
+  a.classList.toggle('active', a.getAttribute('href') === hash)
+);
 
   if (hash === '#dashboard') cargarVentasResumen();
   if (hash === '#ventas') cargarVentas();
@@ -1058,13 +1059,15 @@ async function actualizarUser() {
 async function eliminarUser(id) { if (!confirm('¿Eliminar usuario?')) return; await jdel('/users/' + id); listarUsers(); }
 
 // ================== PROVEEDORES ==================
-let PROV_CACHE = [], PROV_FILTER = [];
+let PROV_CACHE = [];
+let PROV_FILTER = [];
 let provPaginaActual = 1;
 let provPorPagina = 8;
 let proveedoresOriginal = [];
 let proveedoresFiltrados = [];
 let PROV_PAGE = 1;
 const PROV_PER_PAGE = 8;
+
 async function listarProveedores() {
   const data = await jget('/proveedores');
 
@@ -1098,135 +1101,135 @@ function filtrarProveedores(q) {
   provPaginaActual = 1;
   renderProveedoresTabla();
 }
+
 function renderProveedoresTabla() {
-    const tbody = document.getElementById("tabla-proveedores");
-    const pag = document.getElementById("proveedores-paginacion");
+  const tbody = document.getElementById("tabla-proveedores");
+  const pag = document.getElementById("proveedores-paginacion");
 
-    tbody.innerHTML = "";
-    pag.innerHTML = "";
+  if (!tbody || !pag) return;
 
-    if (!proveedoresFiltrados.length) {
-        tbody.innerHTML = `
-            <tr><td colspan="10" style="text-align:center;padding:1rem;">
-                No se encontraron proveedores.
-            </td></tr>`;
-        return;
-    }
+  tbody.innerHTML = "";
+  pag.innerHTML = "";
 
-    const inicio = (provPaginaActual - 1) * provPorPagina;
-    const fin = inicio + provPorPagina;
+  if (!proveedoresFiltrados.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="10" style="text-align:center;padding:1rem;">
+          No se encontraron proveedores.
+        </td>
+      </tr>`;
+    return;
+  }
 
-    const pageData = proveedoresFiltrados.slice(inicio, fin);
+  const inicio = (provPaginaActual - 1) * provPorPagina;
+  const fin = inicio + provPorPagina;
+  const pageData = proveedoresFiltrados.slice(inicio, fin);
 
-    pageData.forEach(p => {
-        const tr = document.createElement("tr");
+  pageData.forEach(p => {
+    const tr = document.createElement("tr");
 
-        tr.innerHTML = `
-            <td>${p.id}</td>
-            <td>${p.nombre}</td>
-            <td>${p.ruc || ''}</td>
-            <td>${p.contacto || ''}</td>
-            <td>${p.telefono || ''}</td>
-            <td>${p.pais || ''}</td>
-            <td>${p.ciudad || ''}</td>
-            <td>${p.direccion || ''}</td>
+    tr.innerHTML = `
+      <td>${p.id}</td>
+      <td>${p.nombre}</td>
+      <td>${p.ruc || ''}</td>
+      <td>${p.contacto || ''}</td>
+      <td>${p.telefono || ''}</td>
+      <td>${p.pais || ''}</td>
+      <td>${p.ciudad || ''}</td>
+      <td>${p.direccion || ''}</td>
+      <td>
+        <span class="estado-badge ${p.estado ? "Activo" : "Inactivo"}">
+          ${p.estado ? "Activo" : "Inactivo"}
+        </span>
+      </td>
+      <td class="actions text-center">
+        <button class="btn-icon edit" onclick="abrirEditarProveedor(${p.id})">
+          <i class="fa fa-pen"></i>
+        </button>
+        <button class="btn-icon delete" onclick="eliminarProveedor(${p.id})">
+          <i class="fa fa-trash"></i>
+        </button>
+      </td>
+    `;
 
-            <td>
-                <span class="estado-badge ${p.estado ? "Activo" : "Inactivo"}">
-                    ${p.estado ? "Activo" : "Inactivo"}
-                </span>
-            </td>
+    tbody.appendChild(tr);
+  });
 
-            <td class="actions text-center">
-                <button class="btn-icon edit" onclick="abrirEditarProveedor(${p.id})">
-                    <i class="fa fa-pen"></i>
-                </button>
-
-                <button class="btn-icon delete" onclick="eliminarProveedor(${p.id})">
-                    <i class="fa fa-trash"></i>
-                </button>
-            </td>
-        `;
-
-        tbody.appendChild(tr);
-    });
-
-    renderPaginacionProveedores();
+  renderPaginacionProveedores();
 }
+
 function renderPaginacionProveedores() {
-    const div = document.getElementById("proveedores-paginacion");
-    div.innerHTML = "";
+  const div = document.getElementById("proveedores-paginacion");
+  if (!div) return;
 
-    const total = Math.ceil(proveedoresFiltrados.length / provPorPagina);
+  div.innerHTML = "";
 
-    if (total <= 1) return;
+  const total = Math.ceil(proveedoresFiltrados.length / provPorPagina);
+  if (total <= 1) return;
 
+  div.innerHTML += `
+    <button class="pag-btn" onclick="cambiarPaginaProveedores(${provPaginaActual - 1})"
+      ${provPaginaActual === 1 ? "disabled" : ""}>‹</button>
+  `;
+
+  for (let i = 1; i <= total; i++) {
     div.innerHTML += `
-        <button class="pag-btn" onclick="cambiarPaginaProveedores(${provPaginaActual - 1})"
-            ${provPaginaActual === 1 ? "disabled" : ""}>‹</button>
+      <button class="pag-btn ${i === provPaginaActual ? "active" : ""}"
+        onclick="cambiarPaginaProveedores(${i})">${i}</button>
     `;
+  }
 
-    for (let i = 1; i <= total; i++) {
-        div.innerHTML += `
-            <button class="pag-btn ${i === provPaginaActual ? "active" : ""}"
-                onclick="cambiarPaginaProveedores(${i})">${i}</button>
-        `;
-    }
-
-    div.innerHTML += `
-        <button class="pag-btn" onclick="cambiarPaginaProveedores(${provPaginaActual + 1})"
-            ${provPaginaActual === total ? "disabled" : ""}>›</button>
-    `;
+  div.innerHTML += `
+    <button class="pag-btn" onclick="cambiarPaginaProveedores(${provPaginaActual + 1})"
+      ${provPaginaActual === total ? "disabled" : ""}>›</button>
+  `;
 }
+
 function cambiarPaginaProveedores(nueva) {
-    const total = Math.ceil(proveedoresFiltrados.length / provPorPagina);
-    if (nueva < 1 || nueva > total) return;
+  const total = Math.ceil(proveedoresFiltrados.length / provPorPagina);
+  if (nueva < 1 || nueva > total) return;
 
-    provPaginaActual = nueva;
-    renderProveedoresTabla();
-}
-function filtrarProveedores(q) {
-    q = (q || "").toLowerCase();
-
-    PROV_FILTER = PROV_CACHE.filter(p =>
-        (p.nombre || "").toLowerCase().includes(q) ||
-        (p.ruc || "").toLowerCase().includes(q) ||
-        (p.contacto || "").toLowerCase().includes(q) ||
-        (p.telefono || "").toLowerCase().includes(q) ||
-        (p.ciudad || "").toLowerCase().includes(q)
-    );
-
-    PROV_PAGE = 1;
-    renderProveedores();
+  provPaginaActual = nueva;
+  renderProveedoresTabla();
 }
 
 async function guardarProveedor() {
   const body = {
-    nombre: gv('#p_nombre'), ruc: gv('#p_ruc'), contacto: gv('#p_contacto'),
-    telefono: gv('#p_tel'), pais: gv('#p_pais'), ciudad: gv('#p_ciudad'),
-    direccion: gv('#p_dir'), estado: (gv('#p_estado') !== 'Inactivo')
+    nombre: gv('#p_nombre'),
+    ruc: gv('#p_ruc'),
+    contacto: gv('#p_contacto'),
+    telefono: gv('#p_tel'),
+    pais: gv('#p_pais'),
+    ciudad: gv('#p_ciudad'),
+    direccion: gv('#p_dir'),
+    estado: (gv('#p_estado') !== 'Inactivo')
   };
+
   try {
     if (!body.nombre) return alert('El nombre es obligatorio');
     if (!body.ruc) return alert('El RUC es obligatorio');
+
     await jpost('/proveedores', body);
-    closeModal('modalProveedor'); listarProveedores();
-  } catch (e) { console.error(e); alert('No se pudo guardar el proveedor.\n' + e.message); }
+    closeModal('modalProveedor');
+    listarProveedores();
+  } catch (e) {
+    console.error(e);
+    alert('No se pudo guardar el proveedor.\n' + e.message);
+  }
 }
+
 function abrirEditarProveedor(id) {
   const _id = Number(id);
-
-  // ✅ usar la lista que realmente llenás en listarProveedores()
   const p = (proveedoresOriginal || []).find(x => Number(x.id) === _id);
 
-  if (!p) { 
-    alert('Proveedor no encontrado'); 
-    return; 
+  if (!p) {
+    alert('Proveedor no encontrado');
+    return;
   }
 
-  const set = (sel, val) => { 
-    const el = qs(sel); 
-    if (el) el.value = (val ?? ''); 
+  const set = (sel, val) => {
+    const el = qs(sel);
+    if (el) el.value = (val ?? '');
   };
 
   set('#prov_edit_id', p.id);
@@ -1238,35 +1241,53 @@ function abrirEditarProveedor(id) {
   set('#pe_ciudad', p.ciudad);
   set('#pe_dir', p.direccion);
 
-  // ✅ soporta boolean o texto
   const est = (p.estado === false || String(p.estado).toLowerCase() === 'inactivo')
     ? 'Inactivo'
     : 'Activo';
+
   set('#pe_estado', est);
 
   openModal('modalProveedorEdit');
 }
+
 async function actualizarProveedor() {
   const id = Number(gv('#prov_edit_id'));
   const body = {
-    nombre: gv('#pe_nombre'), ruc: gv('#pe_ruc'), contacto: gv('#pe_contacto'),
-    telefono: gv('#pe_tel'), pais: gv('#pe_pais'), ciudad: gv('#pe_ciudad'),
-    direccion: gv('#pe_dir'), estado: (gv('#pe_estado') !== 'Inactivo')
+    nombre: gv('#pe_nombre'),
+    ruc: gv('#pe_ruc'),
+    contacto: gv('#pe_contacto'),
+    telefono: gv('#pe_tel'),
+    pais: gv('#pe_pais'),
+    ciudad: gv('#pe_ciudad'),
+    direccion: gv('#pe_dir'),
+    estado: (gv('#pe_estado') !== 'Inactivo')
   };
+
   try {
     if (!id) return alert('ID inválido');
     if (!body.nombre) return alert('El nombre es obligatorio');
     if (!body.ruc) return alert('El RUC es obligatorio');
+
     await jput('/proveedores/' + id, body);
-    closeModal('modalProveedorEdit'); listarProveedores();
-  } catch (e) { console.error(e); alert('No se pudo actualizar el proveedor.\n' + e.message); }
-}
-async function eliminarProveedor(id) {
-  if (!confirm('¿Eliminar proveedor?')) return;
-  try { await jdel('/proveedores/' + id); listarProveedores(); }
-  catch (e) { console.error(e); alert('No se pudo eliminar.\n' + e.message); }
+    closeModal('modalProveedorEdit');
+    listarProveedores();
+  } catch (e) {
+    console.error(e);
+    alert('No se pudo actualizar el proveedor.\n' + e.message);
+  }
 }
 
+async function eliminarProveedor(id) {
+  if (!confirm('¿Eliminar proveedor?')) return;
+
+  try {
+    await jdel('/proveedores/' + id);
+    listarProveedores();
+  } catch (e) {
+    console.error(e);
+    alert('No se pudo eliminar.\n' + e.message);
+  }
+}
 // ================== PRODUCTOS ==================
 async function listarProductos() {
   const data = await jget('/productos');
@@ -1521,20 +1542,30 @@ function renderCategorias(list) {
       ? `<img src="${imgSrc}" alt="${c.nombre || 'Categoría'}" onerror="this.src='img/no-image.png'"
              style="width:38px;height:38px;border-radius:.5rem;object-fit:cover;">`
       : `<div style="width:38px;height:38px;border-radius:.5rem;background:#f3f4f6;border:1px solid #e5e7eb"></div>`;
+
     return `
       <tr data-id="${c.id}">
         <td class="text-center align-middle">${c.id}</td>
+
         <td class="text-center align-middle">${imgHtml}</td>
+
         <td class="align-middle">${(c.codigo ?? '').toString().trim() || '—'}</td>
-<td class="align-middle">${c.productos || '—'}</td>
-<td class="align-middle">${c.nombre || '—'}</td>
-<td class="text-center align-middle">
+
+        <td class="align-middle">${c.nombre || '—'}</td>
+
+        <!-- ✅ NUEVO -->
+        <td class="align-middle">${c.descripcion || '—'}</td>
+
+        <td class="text-center align-middle">
           <div class="btn-group">
-            <button class="btn btn-sm btn-light-primary me-1" title="Editar" onclick="abrirEditarCategoria(${c.id})"
+            <button class="btn btn-sm btn-light-primary me-1" title="Editar"
+              onclick="abrirEditarCategoria(${c.id})"
               style="background-color:#e0e7ff;color:#2563eb;border-radius:50%;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;">
               <i class="fa-solid fa-pen"></i>
             </button>
-            <button class="btn btn-sm btn-light-danger" title="Eliminar" onclick="eliminarCategoria(${c.id})"
+
+            <button class="btn btn-sm btn-light-danger" title="Eliminar"
+              onclick="eliminarCategoria(${c.id})"
               style="background-color:#fee2e2;color:#dc2626;border-radius:50%;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;">
               <i class="fa-solid fa-trash"></i>
             </button>
@@ -1542,19 +1573,23 @@ function renderCategorias(list) {
         </td>
       </tr>`;
   }).join('');
+
   qs('#tabla-categorias').innerHTML = `
     <table class="table align-middle">
       <thead>
-  <tr>
-    <th class="text-center" style="width:70px;">ID</th>
-    <th class="text-center" style="width:90px;">Imagen</th>
-    <th>Código</th>
-    <th>Producto</th>
-    <th>Categoría</th>
-    <th class="text-center">Acción</th>
-  </tr>
-</thead>
-      <tbody>${rows || '<tr><td colspan="6" class="text-center text-muted py-3">Sin categorías</td></tr>'}</tbody>
+        <tr>
+          <th class="text-center" style="width:70px;">ID</th>
+          <th class="text-center" style="width:90px;">Imagen</th>
+          <th>Código</th>
+          <th>Categoría</th>
+          <th>Descripción</th> <!-- ✅ YA LO TENÉS -->
+          <th class="text-center">Acción</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${rows || '<tr><td colspan="6" class="text-center text-muted py-3">Sin categorías</td></tr>'}
+      </tbody>
     </table>`;
 }
 function readFileAsDataUrl(file) {
@@ -2841,9 +2876,15 @@ function guardarProductoAListaPP() {
   closeModal("modalEditarPP");
 }
 
-function formatearMilesPY(input){
-  const raw = String(input.value || "").replace(/\D/g, "");
-  input.value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+function formatearMilesPY(input) {
+  let valor = String(input.value || "").replace(/\./g, "").replace(/\D/g, "");
+
+  if (!valor) {
+    input.value = "";
+    return;
+  }
+
+  input.value = Number(valor).toLocaleString("es-PY");
 }
 function cargarSelectModalPP() {
     const sel = document.getElementById("pp_select_producto");
@@ -3527,17 +3568,29 @@ function renderCuentasPagar(lista = cuentasPagar) {
   }
 
   tbody.innerHTML = lista.map(item => {
-    const monto = Number(item.monto || 0);
     const estado = (item.estado || "").toLowerCase();
     const fechaPago = item.fecha_pago || "-";
     const tipoCaja = item.tipo_caja || "-";
 
+    const moneda = item.moneda || "PYG";
+    const montoMoneda = Number(item.monto_moneda || item.monto || 0);
+    const montoPyg = Number(item.monto_pyg || item.monto || 0);
+
     return `
       <tr>
         <td>${item.id}</td>
-        <td>${item.proveedor}</td>
-        <td>${item.concepto}</td>
-        <td>Gs. ${monto.toLocaleString("es-PY")}</td>
+        <td>${item.proveedor || ""}</td>
+        <td>${item.concepto || ""}</td>
+        <td>
+          <div style="font-weight:700;">
+            ${fmtMonedaCuenta(moneda, montoMoneda)}
+          </div>
+          ${
+            moneda !== "PYG"
+              ? `<div style="font-size:.82rem; color:#6b7280;">Gs. ${montoPyg.toLocaleString("es-PY")}</div>`
+              : ""
+          }
+        </td>
         <td>${item.vencimiento || "-"}</td>
         <td>
           ${
@@ -3547,17 +3600,19 @@ function renderCuentasPagar(lista = cuentasPagar) {
           }
         </td>
         <td>
-          <div style="display:flex; gap:.4rem; flex-wrap:wrap;">
+          <div class="acciones-tabla">
             ${
               estado !== "pagado"
-                ? `<button class="btn btn-sm btn-success" onclick="pagarCuentaPagar(${item.id})">
-                    Pagar
-                   </button>`
+                ? `<button class="btn btn-sm btn-success" onclick="pagarCuentaPagar(${item.id})">Pagar</button>`
                 : ""
             }
 
-            <button class="btn btn-sm btn-danger" onclick="eliminarCuentaPagar(${item.id})">
-              Eliminar
+            <button class="btn-icon edit" title="Editar" onclick="editarCuentaPagar(${item.id})">
+              <i class="fa fa-pen"></i>
+            </button>
+
+            <button class="btn-icon delete" title="Eliminar" onclick="eliminarCuentaPagar(${item.id})">
+              <i class="fa fa-trash"></i>
             </button>
           </div>
 
@@ -3573,7 +3628,6 @@ function renderCuentasPagar(lista = cuentasPagar) {
     `;
   }).join("");
 }
-
 function pagarCuentaPagar(id) {
   const item = cuentasPagar.find(x => Number(x.id) === Number(id));
   if (!item) {
@@ -3636,41 +3690,70 @@ function pagarCuentaPagar(id) {
   alert(`Cuenta pagada desde caja ${tipo} correctamente.`);
 }
 function guardarCuentaPagar() {
+  const id = Number(document.getElementById("cp_id")?.value || 0);
   const proveedor = document.getElementById("cp_proveedor")?.value.trim();
+  const factura = document.getElementById("cp_factura")?.value.trim() || "";
   const concepto = document.getElementById("cp_concepto")?.value.trim();
-  const montoTexto = document.getElementById("cp_monto")?.value.trim() || "0";
+  const moneda = document.getElementById("cp_moneda")?.value || "PYG";
+  const tipoCambio = Number(document.getElementById("cp_tipo_cambio")?.value || 1);
+  const montoGsTexto = document.getElementById("cp_monto_gs")?.value.trim() || "0";
   const vencimiento = document.getElementById("cp_vencimiento")?.value;
   const estado = document.getElementById("cp_estado")?.value || "pendiente";
 
-  const monto = Number(montoTexto.replace(/\./g, "").replace(/,/g, ""));
+  const montoPyg = Number(
+    String(montoGsTexto).replace(/\./g, "").replace(/,/g, "")
+  ) || 0;
 
-  if (!proveedor || !concepto || !monto) {
+  let montoMoneda = montoPyg;
+
+  if (moneda === "USD" || moneda === "BRL") {
+    montoMoneda = tipoCambio > 0 ? (montoPyg / tipoCambio) : 0;
+  }
+
+  if (!proveedor || !concepto || !montoPyg) {
     alert("Complete proveedor, concepto y monto.");
     return;
   }
 
-  const nuevo = {
-    id: cuentasPagar.length ? cuentasPagar[cuentasPagar.length - 1].id + 1 : 1,
+  const data = {
+    id: id || (cuentasPagar.length ? cuentasPagar[cuentasPagar.length - 1].id + 1 : 1),
     proveedor,
+    factura,
     concepto,
-    monto,
+    moneda,
+    tipo_cambio: tipoCambio,
+    monto_moneda: montoMoneda,
+    monto_pyg: Math.round(montoPyg),
+    monto: Math.round(montoPyg),
     vencimiento,
     estado
   };
 
-  cuentasPagar.push(nuevo);
+  if (id) {
+    const idx = cuentasPagar.findIndex(x => Number(x.id) === id);
+    if (idx >= 0) {
+      cuentasPagar[idx] = data;
+    }
+  } else {
+    cuentasPagar.push(data);
+  }
+
   cuentasPagarFiltradas = [...cuentasPagar];
-
   guardarCuentasPagarStorage();
-
   renderCuentasPagar(cuentasPagarFiltradas);
   closeModal("modalCuentaPagar");
 
+  document.getElementById("cp_id").value = "";
   document.getElementById("cp_proveedor").value = "";
+  document.getElementById("cp_factura").value = "";
   document.getElementById("cp_concepto").value = "";
-  document.getElementById("cp_monto").value = "";
+  document.getElementById("cp_moneda").value = "PYG";
+  document.getElementById("cp_tipo_cambio").value = 1;
+  document.getElementById("cp_monto_gs").value = "";
   document.getElementById("cp_vencimiento").value = "";
   document.getElementById("cp_estado").value = "pendiente";
+
+  toggleMonedaCuentaPagar();
 }
 function filtrarCuentasPagar(texto) {
   const t = (texto || "").toLowerCase().trim();
@@ -3684,13 +3767,17 @@ function filtrarCuentasPagar(texto) {
   renderCuentasPagar(cuentasPagarFiltradas);
 }
 
-function eliminarCuentaPagar(id) {
-  cuentasPagar = cuentasPagar.filter(item => Number(item.id) !== Number(id));
+function confirmarEliminarCuentaPagar() {
+  if (cuentaPagarAEliminar == null) return;
+
+  cuentasPagar = cuentasPagar.filter(x => Number(x.id) !== cuentaPagarAEliminar);
   cuentasPagarFiltradas = [...cuentasPagar];
 
   guardarCuentasPagarStorage();
-
   renderCuentasPagar(cuentasPagarFiltradas);
+
+  cuentaPagarAEliminar = null;
+  closeModal("modalEliminarCuentaPagar");
 }
 
 async function descargarInformeCajaPDF() {
@@ -4048,6 +4135,163 @@ async function mostrarUsuarioLogueado() {
     if (nombreBox) nombreBox.textContent = "Usuario";
   }
 }
+
+function fmtMonedaCuenta(moneda, valor) {
+  const n = Number(valor || 0);
+
+  if (moneda === "USD") {
+    return "US$ " + n.toLocaleString("es-PY", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  if (moneda === "BRL") {
+    return "R$ " + n.toLocaleString("es-PY", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  return "Gs. " + n.toLocaleString("es-PY");
+}
+function toggleMonedaCuentaPagar() {
+  const moneda = document.getElementById("cp_moneda")?.value || "PYG";
+  const wrap = document.getElementById("wrap_cp_tipo_cambio");
+
+  if (wrap) {
+    if (moneda === "PYG") {
+      wrap.style.display = "none";
+      const tc = document.getElementById("cp_tipo_cambio");
+      if (tc) tc.value = 1;
+    } else {
+      wrap.style.display = "block";
+    }
+  }
+
+  actualizarResumenCuentaPagar();
+}
+
+function actualizarResumenCuentaPagar() {
+  const moneda = document.getElementById("cp_moneda")?.value || "PYG";
+  const tipoCambio = Number(document.getElementById("cp_tipo_cambio")?.value || 1);
+  const montoGsTexto = document.getElementById("cp_monto_gs")?.value || "0";
+
+  const montoGs = Number(
+    String(montoGsTexto).replace(/\./g, "").replace(/,/g, "")
+  ) || 0;
+
+  let montoConvertido = montoGs;
+
+  if (moneda === "USD" || moneda === "BRL") {
+    montoConvertido = tipoCambio > 0 ? (montoGs / tipoCambio) : 0;
+  }
+
+  const elPyg = document.getElementById("cp_resumen_pyg");
+  const elMoneda = document.getElementById("cp_resumen_moneda");
+
+  if (elPyg) {
+    elPyg.textContent = "Gs. " + montoGs.toLocaleString("es-PY");
+  }
+
+  if (elMoneda) {
+    if (moneda === "USD") {
+      elMoneda.textContent = "US$ " + montoConvertido.toLocaleString("es-PY", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    } else if (moneda === "BRL") {
+      elMoneda.textContent = "R$ " + montoConvertido.toLocaleString("es-PY", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    } else {
+      elMoneda.textContent = "Gs. " + montoGs.toLocaleString("es-PY");
+    }
+  }
+}
+
+function abrirNuevaCuentaPagar() {
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  };
+
+  const titulo = document.getElementById("cp_titulo_modal");
+  if (titulo) titulo.textContent = "Nueva Cuenta a Pagar";
+
+  setVal("cp_id", "");
+  setVal("cp_proveedor", "");
+  setVal("cp_factura", "");
+  setVal("cp_concepto", "");
+  setVal("cp_moneda", "PYG");
+  setVal("cp_tipo_cambio", 1);
+  setVal("cp_monto_gs", "");
+  setVal("cp_vencimiento", "");
+  setVal("cp_estado", "pendiente");
+
+  toggleMonedaCuentaPagar();
+  openModal("modalCuentaPagar");
+}
+
+function editarCuentaPagar(id) {
+  const item = cuentasPagar.find(x => Number(x.id) === Number(id));
+  if (!item) return;
+
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  };
+
+  const titulo = document.getElementById("cp_titulo_modal");
+  if (titulo) titulo.textContent = "Editar Cuenta a Pagar";
+
+  setVal("cp_id", item.id);
+  setVal("cp_proveedor", item.proveedor || "");
+  setVal("cp_factura", item.factura || "");
+  setVal("cp_concepto", item.concepto || "");
+  setVal("cp_moneda", item.moneda || "PYG");
+  setVal("cp_tipo_cambio", item.tipo_cambio || 1);
+  setVal("cp_monto_gs", Number(item.monto_pyg || item.monto || 0).toLocaleString("es-PY"));
+  setVal("cp_vencimiento", item.vencimiento || "");
+  setVal("cp_estado", item.estado || "pendiente");
+
+  toggleMonedaCuentaPagar();
+  openModal("modalCuentaPagar");
+}
+
+function eliminarCuentaPagar(id) {
+  cuentaPagarAEliminar = Number(id);
+  openModal("modalEliminarCuentaPagar");
+}
+
+function confirmarEliminarCuentaPagar() {
+  if (cuentaPagarAEliminar == null) return;
+
+  cuentasPagar = cuentasPagar.filter(x => Number(x.id) !== cuentaPagarAEliminar);
+  cuentasPagarFiltradas = [...cuentasPagar];
+
+  guardarCuentasPagarStorage();
+  renderCuentasPagar(cuentasPagarFiltradas);
+
+  cuentaPagarAEliminar = null;
+  closeModal("modalEliminarCuentaPagar");
+}
+
+function actualizarGraficoDashboard(ayer, hoy) {
+  const max = Math.max(ayer, hoy, 1);
+
+  const pctAyer = (ayer / max) * 100;
+  const pctHoy = (hoy / max) * 100;
+
+  document.getElementById("ayer-texto").innerText = "Gs. " + numberFormat(ayer || 0);
+  document.getElementById("hoy-texto").innerText = "Gs. " + numberFormat(hoy || 0);
+
+  document.getElementById("bar-ayer").style.width = pctAyer + "%";
+  document.getElementById("bar-hoy").style.width = pctHoy + "%";
+}
+
+
 window.addEventListener("load", async () => {
   try { await initPDF(); } catch (e) { console.warn("No cargó logos:", e); }
   await mostrarUsuarioLogueado();
@@ -4059,6 +4303,19 @@ window.addEventListener("load", () => {
   LAST_HASH = location.hash || "#dashboard";
   show(LAST_HASH);
 });
+
+window.addEventListener('DOMContentLoaded', () => {
+  show(location.hash || '#dashboard');
+
+  if (typeof cargarKpis === 'function') {
+    cargarKpis();
+  }
+});
+
+window.addEventListener('hashchange', () => {
+  show(location.hash || '#dashboard');
+});
+
 
 // Exportar para onclick del HTML
 window.logout = logout;
@@ -4074,3 +4331,21 @@ window.cargarRecaudacionFecha = cargarRecaudacionFecha;
 window.abrirModalSelProducto = abrirModalSelProducto;
 window.filtrarProductosModalPP = filtrarProductosModalPP;
 window.closeModalSelProducto = closeModalSelProducto;
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const modalIds = [
+    "modalVenta",
+    "modalPago",
+    "modalNuevaCompra",
+    "modalEditarCompra",
+    "logoutModal"
+  ];
+
+  modalIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== document.body) {
+      document.body.appendChild(el);
+    }
+  });
+});

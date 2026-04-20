@@ -411,6 +411,15 @@
       border-color:#b91c1c;
     }
 
+    #btnLogoutAdminPanel,
+    #cardStockBajo,
+    .kpi-link,
+    .logout-btn {
+      position:relative;
+      z-index:20;
+      pointer-events:auto;
+    }
+
     @media (max-width: 1100px){
       .dashboard-grid{
         grid-template-columns:repeat(2, minmax(0,1fr));
@@ -458,7 +467,7 @@
 
     <div class="topbar-buttons">
       <a href="index.html" class="volver-btn">← Volver</a>
-      <button type="button" class="logout-btn" id="btnLogoutAdminPanel">
+      <button type="button" class="logout-btn" id="btnLogoutAdminPanel" onclick="openLogoutModalAdmin()">
         Cerrar sesión
       </button>
     </div>
@@ -539,7 +548,7 @@
           <small class="kpi-sub">Ventas - Compras - Egresos del mes</small>
         </div>
 
-        <div class="card kpi-card kpi-bajo kpi-link" onclick="mostrarStockBajo()" title="Ver productos con stock bajo">
+        <div class="card kpi-card kpi-bajo kpi-link" id="cardStockBajo" onclick="mostrarStockBajo()" title="Ver productos con stock bajo">
           <div class="kpi-header">
             <b>Stock bajo</b>
             <span>Alerta</span>
@@ -640,21 +649,27 @@
   </div>
 
   <script>
-    function irA(seccion) {
+    window.irA = function(seccion) {
       window.location.href = `index.html#${seccion}`;
-    }
+    };
 
-    function openLogoutModalAdmin(){
-      const m = document.getElementById("modalCerrarSesionAdmin");
-      if(m) m.classList.add("show");
-    }
+    window.openLogoutModalAdmin = function() {
+      const modal = document.getElementById("modalCerrarSesionAdmin");
+      if (modal) {
+        modal.classList.add("show");
+        modal.style.display = "flex";
+      }
+    };
 
-    function closeLogoutModalAdmin(){
-      const m = document.getElementById("modalCerrarSesionAdmin");
-      if(m) m.classList.remove("show");
-    }
+    window.closeLogoutModalAdmin = function() {
+      const modal = document.getElementById("modalCerrarSesionAdmin");
+      if (modal) {
+        modal.classList.remove("show");
+        modal.style.display = "none";
+      }
+    };
 
-    function mostrarStockBajo() {
+    window.mostrarStockBajo = function() {
       const lista = document.getElementById("listaStockCritico");
       const contenido = document.getElementById("stockBajoContenido");
       const modal = document.getElementById("modalStockBajo");
@@ -691,39 +706,49 @@
       }
 
       modal.classList.add("show");
-    }
+      modal.style.display = "flex";
+    };
 
-    function cerrarModalStockBajo() {
+    window.cerrarModalStockBajo = function() {
       const modal = document.getElementById("modalStockBajo");
-      if (modal) modal.classList.remove("show");
-    }
+      if (modal) {
+        modal.classList.remove("show");
+        modal.style.display = "none";
+      }
+    };
 
-    function cerrarAdmin() {
+    window.cerrarAdmin = function() {
       localStorage.removeItem("adminAuth");
       sessionStorage.removeItem("adminAuth");
-      window.location.replace("admin_login.html");
-    }
+      window.location.href = "admin_login.html";
+    };
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const btn = document.getElementById("btnLogoutAdminPanel");
-      if (btn) btn.addEventListener("click", openLogoutModalAdmin);
+    document.addEventListener("DOMContentLoaded", function() {
+      const cardStock = document.getElementById("cardStockBajo");
+      if (cardStock) {
+        cardStock.addEventListener("click", function() {
+          mostrarStockBajo();
+        });
+      }
 
-      const m = document.getElementById("modalCerrarSesionAdmin");
-      if (m) {
-        m.addEventListener("click", (e) => {
-          if (e.target === m) closeLogoutModalAdmin();
+      const modalLogout = document.getElementById("modalCerrarSesionAdmin");
+      if (modalLogout) {
+        modalLogout.style.display = "none";
+        modalLogout.addEventListener("click", function(e) {
+          if (e.target === modalLogout) closeLogoutModalAdmin();
         });
       }
 
       const modalStock = document.getElementById("modalStockBajo");
       if (modalStock) {
-        modalStock.addEventListener("click", (e) => {
+        modalStock.style.display = "none";
+        modalStock.addEventListener("click", function(e) {
           if (e.target === modalStock) cerrarModalStockBajo();
         });
       }
     });
 
-    document.addEventListener("keydown", (e) => {
+    document.addEventListener("keydown", function(e) {
       if (e.key === "Escape") {
         closeLogoutModalAdmin();
         cerrarModalStockBajo();

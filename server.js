@@ -477,6 +477,68 @@ async function bootstrapComprasTipoPago() {
 }
 bootstrapComprasTipoPago();
 
+async function bootstrapComprasMoneda() {
+  try {
+    await pool.query(`
+      ALTER TABLE compras
+      ADD COLUMN IF NOT EXISTS moneda TEXT DEFAULT 'PYG'
+    `);
+
+    await pool.query(`
+      ALTER TABLE compras
+      ADD COLUMN IF NOT EXISTS tipo_cambio NUMERIC(14,2) DEFAULT 1
+    `);
+
+    await pool.query(`
+      ALTER TABLE compras
+      ADD COLUMN IF NOT EXISTS subtotal_moneda NUMERIC(14,2) DEFAULT 0
+    `);
+
+    await pool.query(`
+      ALTER TABLE compras
+      ADD COLUMN IF NOT EXISTS iva_moneda NUMERIC(14,2) DEFAULT 0
+    `);
+
+    await pool.query(`
+      ALTER TABLE compras
+      ADD COLUMN IF NOT EXISTS total_moneda NUMERIC(14,2) DEFAULT 0
+    `);
+
+    await pool.query(`
+      UPDATE compras
+      SET moneda = 'PYG'
+      WHERE moneda IS NULL OR TRIM(moneda) = ''
+    `);
+
+    await pool.query(`
+      UPDATE compras
+      SET tipo_cambio = 1
+      WHERE tipo_cambio IS NULL OR tipo_cambio <= 0
+    `);
+
+    await pool.query(`
+      UPDATE compras
+      SET subtotal_moneda = subtotal
+      WHERE subtotal_moneda IS NULL OR subtotal_moneda = 0
+    `);
+
+    await pool.query(`
+      UPDATE compras
+      SET iva_moneda = iva
+      WHERE iva_moneda IS NULL OR iva_moneda = 0
+    `);
+
+    await pool.query(`
+      UPDATE compras
+      SET total_moneda = total
+      WHERE total_moneda IS NULL OR total_moneda = 0
+    `);
+  } catch (e) {
+    console.error("bootstrapComprasMoneda:", e.message);
+  }
+}
+bootstrapComprasMoneda();
+
 app.post("/categorias", requireAuth, async (req, res) => {
   try {
     const { nombre = "", codigo = null, descripcion = null, imagen_base64 = null } = req.body || {};
@@ -1402,18 +1464,22 @@ app.get("/compras", requireAuth, async (_req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT 
-  c.id,
-  c.fecha,
-  c.factura,
-  c.subtotal,
-  c.iva,
-  c.total,
-  c.proveedor_id,
-  c.tipo_pago,
+        c.id,
+        c.fecha,
+        c.factura,
+        c.subtotal,
+        c.iva,
+        c.total,
+        c.subtotal_moneda,
+        c.iva_moneda,
+        c.total_moneda,
+        c.moneda,
+        c.tipo_cambio,
+        c.proveedor_id,
+        c.tipo_pago,
         p.nombre AS proveedor_nombre,
         p.ruc AS proveedor_ruc,
 
-        -- Solo códigos
         (
           SELECT STRING_AGG(
             COALESCE(pr.codigo, '-'),
@@ -1425,7 +1491,6 @@ app.get("/compras", requireAuth, async (_req, res) => {
           WHERE ci.compra_id = c.id
         ) AS productos,
 
-        -- Solo nombres
         (
           SELECT STRING_AGG(
             COALESCE(pr.nombre, 'SIN NOMBRE'),
@@ -1437,7 +1502,6 @@ app.get("/compras", requireAuth, async (_req, res) => {
           WHERE ci.compra_id = c.id
         ) AS nombres_productos,
 
-        -- Categorías
         (
           SELECT STRING_AGG(
             DISTINCT COALESCE(cat.nombre, 'Sin categoría'),
@@ -1450,14 +1514,12 @@ app.get("/compras", requireAuth, async (_req, res) => {
           WHERE ci.compra_id = c.id
         ) AS categorias,
 
-        -- Cantidad total de ítems
         (
           SELECT COALESCE(SUM(ci.cantidad), 0)
           FROM compras_items ci
           WHERE ci.compra_id = c.id
         ) AS cantidad_total,
 
-        -- Detalle completo: código - nombre x cantidad
         (
           SELECT STRING_AGG(
             COALESCE(pr.codigo, '-') || ' - ' ||
@@ -1484,9 +1546,25 @@ app.get("/compras", requireAuth, async (_req, res) => {
   }
 });
 app.post("/compras", requireAuth, async (req, res) => {
-  const { proveedor_id, fecha, factura, tipo_pago, items } = req.body || {};
+  const {
+    proveedor_id,
+    fecha,
+    factura,
+    tipo_pago,
+    moneda = "PYG",
+    tipo_cambio = 1,
+    subtotal = 0,
+    iva = 0,
+    total = 0,
+    subtotal_moneda = 0,
+    iva_moneda = 0,
+    total_moneda = 0,
+    items
+  } = req.body || {};
 
   const tipoPagoFinal = normTipoCaja(tipo_pago || "efectivo");
+  const monedaFinal = String(moneda || "PYG").trim().toUpperCase();
+  const tipoCambioFinal = Number(tipo_cambio || 1);
 
   if (!proveedor_id || !fecha || !Array.isArray(items) || !items.length) {
     return res.status(400).json({
@@ -1502,23 +1580,81 @@ app.post("/compras", requireAuth, async (req, res) => {
     });
   }
 
+  if (!["PYG", "USD", "BRL"].includes(monedaFinal)) {
+    return res.status(400).json({
+      ok: false,
+      msg: "Moneda inválida"
+    });
+  }
+
+  if (monedaFinal !== "PYG" && (!Number.isFinite(tipoCambioFinal) || tipoCambioFinal <= 0)) {
+    return res.status(400).json({
+      ok: false,
+      msg: "Tipo de cambio inválido"
+    });
+  }
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
-    let subtotal = 0;
-    for (const it of items) {
-      subtotal += Number(it.cantidad) * Number(it.costo);
+    let subtotalPyg = Number(subtotal || 0);
+
+    if (!subtotalPyg || subtotalPyg <= 0) {
+      subtotalPyg = 0;
+      for (const it of items) {
+        subtotalPyg += Number(it.cantidad || 0) * Number(it.costo || 0);
+      }
     }
 
-    const iva = Math.round(subtotal * 0.10);
-    const total = subtotal + iva;
+    const ivaPyg = Number(iva || Math.round(subtotalPyg * 0.10));
+    const totalPyg = Number(total || (subtotalPyg + ivaPyg));
+
+    let subtotalMon = Number(subtotal_moneda || 0);
+    let ivaMon = Number(iva_moneda || 0);
+    let totalMon = Number(total_moneda || 0);
+
+    if (monedaFinal === "PYG") {
+      subtotalMon = subtotalPyg;
+      ivaMon = ivaPyg;
+      totalMon = totalPyg;
+    } else {
+      if (!subtotalMon || subtotalMon <= 0) subtotalMon = subtotalPyg / tipoCambioFinal;
+      if (!ivaMon || ivaMon <= 0) ivaMon = ivaPyg / tipoCambioFinal;
+      if (!totalMon || totalMon <= 0) totalMon = totalPyg / tipoCambioFinal;
+    }
 
     const qCab = await client.query(
-      `INSERT INTO compras (proveedor_id, fecha, factura, tipo_pago, subtotal, iva, total)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO compras (
+        proveedor_id,
+        fecha,
+        factura,
+        tipo_pago,
+        moneda,
+        tipo_cambio,
+        subtotal,
+        iva,
+        total,
+        subtotal_moneda,
+        iva_moneda,
+        total_moneda
+      )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING id`,
-      [proveedor_id, fecha, factura, tipoPagoFinal, subtotal, iva, total]
+      [
+        proveedor_id,
+        fecha,
+        factura,
+        tipoPagoFinal,
+        monedaFinal,
+        tipoCambioFinal,
+        subtotalPyg,
+        ivaPyg,
+        totalPyg,
+        subtotalMon,
+        ivaMon,
+        totalMon
+      ]
     );
 
     const compraId = qCab.rows[0].id;
@@ -1527,7 +1663,13 @@ app.post("/compras", requireAuth, async (req, res) => {
       await client.query(
         `INSERT INTO compras_items (compra_id, producto_id, cantidad, costo, subtotal)
          VALUES ($1,$2,$3,$4,$5)`,
-        [compraId, it.producto_id, it.cantidad, it.costo, it.cantidad * it.costo]
+        [
+          compraId,
+          it.producto_id,
+          it.cantidad,
+          it.costo,
+          Number(it.cantidad) * Number(it.costo)
+        ]
       );
 
       const prod = await client.query(
@@ -1542,9 +1684,9 @@ app.post("/compras", requireAuth, async (req, res) => {
 
         const cNew =
           sAnt + Number(it.cantidad) === 0
-            ? it.costo
+            ? Number(it.costo)
             : Math.round(
-                ((sAnt * cAnt) + (Number(it.cantidad) * it.costo)) /
+                ((sAnt * cAnt) + (Number(it.cantidad) * Number(it.costo))) /
                 (sAnt + Number(it.cantidad))
               );
 
@@ -1573,14 +1715,19 @@ app.get("/compras/:id", requireAuth, async (req, res) => {
     const cab = await pool.query(
       `
       SELECT 
-  c.id,
-  c.proveedor_id,
-  c.fecha,
-  c.factura,
-  c.tipo_pago,
-  c.subtotal,
-  c.iva,
-  c.total,
+        c.id,
+        c.proveedor_id,
+        c.fecha,
+        c.factura,
+        c.tipo_pago,
+        c.moneda,
+        c.tipo_cambio,
+        c.subtotal,
+        c.iva,
+        c.total,
+        c.subtotal_moneda,
+        c.iva_moneda,
+        c.total_moneda,
         p.nombre AS proveedor_nombre,
         p.ruc AS proveedor_ruc
       FROM compras c
@@ -1602,7 +1749,7 @@ app.get("/compras/:id", requireAuth, async (req, res) => {
         ci.producto_id,
         pr.nombre AS producto_nombre,
         pr.codigo,
-        cat.nombre AS categoria_nombre,      -- ✅ nombre de categoría
+        cat.nombre AS categoria_nombre,
         ci.cantidad,
         ci.costo,
         ci.subtotal
@@ -1618,32 +1765,52 @@ app.get("/compras/:id", requireAuth, async (req, res) => {
     return res.json({
       ok: true,
       ...cab.rows[0],
-      items: items.rows,
+      items: items.rows
     });
   } catch (e) {
     console.error("GET /compras/:id", e);
     return res.status(500).json({ ok: false, error: "Error al obtener compra" });
   }
 });
-
 app.put("/compras/:id", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
-  const { proveedor_id, fecha, factura, tipo_pago, items } = req.body || {};
+
+  const {
+    proveedor_id,
+    fecha,
+    factura,
+    tipo_pago,
+    moneda,
+    tipo_cambio,
+    subtotal,
+    iva,
+    total,
+    subtotal_moneda,
+    iva_moneda,
+    total_moneda,
+    items
+  } = req.body || {};
 
   const tipoPagoFinal = normTipoCaja(tipo_pago || "efectivo");
+  const monedaFinal = String(moneda || "PYG").toUpperCase();
+  const tipoCambioFinal = Number(tipo_cambio || 1);
 
-  if (!id) return res.status(400).json({ ok:false, msg:"ID inválido" });
-  if (!proveedor_id) return res.status(400).json({ ok:false, msg:"Falta proveedor_id" });
-  if (!fecha) return res.status(400).json({ ok:false, msg:"Falta fecha" });
+  if (!id) return res.status(400).json({ ok: false, msg: "ID inválido" });
+  if (!proveedor_id) return res.status(400).json({ ok: false, msg: "Falta proveedor_id" });
+  if (!fecha) return res.status(400).json({ ok: false, msg: "Falta fecha" });
   if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ ok:false, msg:"No hay items" });
+    return res.status(400).json({ ok: false, msg: "No hay items" });
+  }
+
+  if (monedaFinal !== "PYG" && (!tipoCambioFinal || tipoCambioFinal <= 0)) {
+    return res.status(400).json({ ok: false, msg: "Tipo de cambio inválido" });
   }
 
   const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
 
-    // 1) traer items anteriores (para devolver stock)
     const prevItemsQ = await client.query(
       `SELECT producto_id, cantidad, costo
        FROM compras_items
@@ -1652,62 +1819,104 @@ app.put("/compras/:id", requireAuth, async (req, res) => {
     );
     const prevItems = prevItemsQ.rows || [];
 
-    // 2) borrar items anteriores
-    await client.query(`DELETE FROM compras_items WHERE compra_id=$1`, [id]);
+    await client.query(`DELETE FROM compras_items WHERE compra_id = $1`, [id]);
 
-    // 3) recalcular totales + insertar items nuevos
-    let subtotal = 0;
+    let subtotalCalc = 0;
+
     for (const it of items) {
       const producto_id = Number(it.producto_id);
       const cantidad = Number(it.cantidad || 0);
       const costo = Number(it.costo || 0);
+
       if (!producto_id || cantidad <= 0 || costo <= 0) {
         await client.query("ROLLBACK");
-        return res.status(400).json({ ok:false, msg:"Item inválido (producto/cantidad/costo)" });
+        return res.status(400).json({ ok: false, msg: "Item inválido (producto/cantidad/costo)" });
       }
+
       const sub = cantidad * costo;
-      subtotal += sub;
+      subtotalCalc += sub;
 
       await client.query(
         `INSERT INTO compras_items (compra_id, producto_id, cantidad, costo, subtotal)
-         VALUES ($1,$2,$3,$4,$5)`,
+         VALUES ($1, $2, $3, $4, $5)`,
         [id, producto_id, cantidad, costo, sub]
       );
     }
 
-    const iva = Math.round(subtotal * 0.10);
-    const total = subtotal + iva;
+    const ivaCalc = Math.round(subtotalCalc * 0.10);
+    const totalCalc = subtotalCalc + ivaCalc;
 
-    // 4) actualizar cabecera
+    let subtotalMonedaFinal = Number(subtotal_moneda || 0);
+    let ivaMonedaFinal = Number(iva_moneda || 0);
+    let totalMonedaFinal = Number(total_moneda || 0);
+
+    if (monedaFinal === "PYG") {
+      subtotalMonedaFinal = subtotalCalc;
+      ivaMonedaFinal = ivaCalc;
+      totalMonedaFinal = totalCalc;
+    } else {
+      if (!subtotalMonedaFinal) subtotalMonedaFinal = subtotalCalc / tipoCambioFinal;
+      if (!ivaMonedaFinal) ivaMonedaFinal = ivaCalc / tipoCambioFinal;
+      if (!totalMonedaFinal) totalMonedaFinal = totalCalc / tipoCambioFinal;
+    }
+
     await client.query(
-  `UPDATE compras
-   SET proveedor_id=$1, fecha=$2, factura=$3, tipo_pago=$4, subtotal=$5, iva=$6, total=$7
-   WHERE id=$8`,
-  [Number(proveedor_id), fecha, factura || null, tipoPagoFinal, subtotal, iva, total, id]
-);
+      `UPDATE compras
+       SET proveedor_id = $1,
+           fecha = $2,
+           factura = $3,
+           tipo_pago = $4,
+           moneda = $5,
+           tipo_cambio = $6,
+           subtotal = $7,
+           iva = $8,
+           total = $9,
+           subtotal_moneda = $10,
+           iva_moneda = $11,
+           total_moneda = $12
+       WHERE id = $13`,
+      [
+        Number(proveedor_id),
+        fecha,
+        factura || null,
+        tipoPagoFinal,
+        monedaFinal,
+        tipoCambioFinal,
+        subtotalCalc,
+        ivaCalc,
+        totalCalc,
+        subtotalMonedaFinal,
+        ivaMonedaFinal,
+        totalMonedaFinal,
+        id
+      ]
+    );
 
-    // 5) ✅ ajustar stock correctamente
-    // devolver stock anterior
     for (const p of prevItems) {
       await client.query(
-        `UPDATE productos SET stock = stock - $1 WHERE id = $2`,
+        `UPDATE productos
+         SET stock = stock - $1
+         WHERE id = $2`,
         [Number(p.cantidad), Number(p.producto_id)]
       );
     }
-    // aplicar stock nuevo
+
     for (const it of items) {
       await client.query(
-        `UPDATE productos SET stock = stock + $1, costo = $2 WHERE id = $3`,
+        `UPDATE productos
+         SET stock = stock + $1,
+             costo = $2
+         WHERE id = $3`,
         [Number(it.cantidad), Number(it.costo), Number(it.producto_id)]
       );
     }
 
     await client.query("COMMIT");
-    return res.json({ ok:true });
+    return res.json({ ok: true });
   } catch (e) {
     try { await client.query("ROLLBACK"); } catch {}
     console.error("PUT /compras/:id", e);
-    return res.status(500).json({ ok:false, msg:"Error actualizando compra", error: e.message });
+    return res.status(500).json({ ok: false, msg: "Error actualizando compra", error: e.message });
   } finally {
     client.release();
   }
@@ -1742,6 +1951,10 @@ app.get("/ventas", async (_req, res) => {
         v.id,
         v.fecha,
         v.total,
+        v.total_pyg,
+        v.total_moneda,
+        v.moneda,
+        v.tipo_cambio,
         v.estado_pago,
         v.nro_comprobante,
         fp.nombre AS forma_pago_nombre,
@@ -1769,31 +1982,56 @@ app.get("/ventas", async (_req, res) => {
   }
 });
 app.post("/ventas", async (req, res) => {
-  const { cliente_id, total, forma_pago_id, items, estado_pago, nro_comprobante } = req.body || {};
+  const {
+    cliente_id,
+    total,
+    total_pyg,
+    total_moneda,
+    moneda,
+    tipo_cambio,
+    forma_pago_id,
+    items,
+    estado_pago,
+    nro_comprobante,
+    fecha
+  } = req.body || {};
+
   const client = await pool.connect();
 
   try {
     if (!forma_pago_id) {
       return res.status(400).json({ ok: false, msg: "Falta forma_pago_id" });
     }
+
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ ok: false, msg: "No hay items" });
     }
 
-    // ✅ IDs reales en tu BD
     const EFECTIVO_ID = 2;
-
     const fpId = Number(forma_pago_id);
-    const totalFinal = Number(total || 0);
+
+    const monedaFinal = String(moneda || "PYG").trim().toUpperCase();
+    const tipoCambioFinal = Number(tipo_cambio || 1);
+    const totalPygFinal = Number(total_pyg || total || 0);
+    const totalMonedaFinal = Number(total_moneda || totalPygFinal || 0);
+    const totalFinal = totalPygFinal;
+
+    if (!["PYG", "USD", "BRL"].includes(monedaFinal)) {
+      return res.status(400).json({ ok: false, msg: "Moneda inválida" });
+    }
 
     if (!Number.isFinite(fpId) || fpId <= 0) {
       return res.status(400).json({ ok: false, msg: "forma_pago_id inválido" });
     }
-    if (!Number.isFinite(totalFinal) || totalFinal <= 0) {
+
+    if (!Number.isFinite(totalPygFinal) || totalPygFinal <= 0) {
       return res.status(400).json({ ok: false, msg: "Total inválido" });
     }
 
-    // ✅ Solo estas formas requieren comprobante
+    if (monedaFinal !== "PYG" && (!Number.isFinite(tipoCambioFinal) || tipoCambioFinal <= 0)) {
+      return res.status(400).json({ ok: false, msg: "tipo_cambio inválido" });
+    }
+
     const FORMAS_CON_COMPROBANTE = new Set([4, 5, 6, 7, 8, 9, 10]);
     const compStr = (nro_comprobante || "").toString().trim();
 
@@ -1801,14 +2039,10 @@ app.post("/ventas", async (req, res) => {
       return res.status(400).json({ ok: false, msg: "Falta nro_comprobante" });
     }
 
-    // ✅ tipo de caja requerido
     const tipoCajaNecesaria = (fpId === EFECTIVO_ID) ? "efectivo" : "transferencia";
 
     await client.query("BEGIN");
 
-    // ✅ buscar caja abierta del tipo correcto (robusto a mayúsculas/variantes)
-    // - efectivo: busca "efectivo"
-    // - transferencia: busca "transferencia" o "transferencias" (y variantes)
     const tipoPattern =
       (tipoCajaNecesaria === "efectivo")
         ? "%efectiv%"
@@ -1836,24 +2070,40 @@ app.post("/ventas", async (req, res) => {
 
     const caja_id_final = cajaQ.rows[0].id;
 
-    // Normalizar cliente_id
     const clienteIdFinal =
       cliente_id && String(cliente_id) !== "0" ? Number(cliente_id) : null;
 
-    // ✅ comprobante: si no aplica, NULL
     const compFinal = FORMAS_CON_COMPROBANTE.has(fpId) ? compStr : null;
 
-    // ✅ insertar venta
+    const fechaFinal = fecha || new Date().toISOString().slice(0, 10);
+
     const v = await client.query(
       `
-      INSERT INTO ventas (fecha, cliente_id, caja_id, total, forma_pago_id, estado_pago, nro_comprobante)
-      VALUES ((now() AT TIME ZONE 'America/Asuncion')::date, $1, $2, $3, $4, $5, $6)
+      INSERT INTO ventas (
+        fecha,
+        cliente_id,
+        caja_id,
+        total,
+        total_pyg,
+        total_moneda,
+        moneda,
+        tipo_cambio,
+        forma_pago_id,
+        estado_pago,
+        nro_comprobante
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING id
       `,
       [
+        fechaFinal,
         clienteIdFinal,
         caja_id_final,
         totalFinal,
+        totalPygFinal,
+        totalMonedaFinal,
+        monedaFinal,
+        tipoCambioFinal,
         fpId,
         (estado_pago || "pendiente").toString().trim().toLowerCase(),
         compFinal,
@@ -1862,7 +2112,6 @@ app.post("/ventas", async (req, res) => {
 
     const ventaId = v.rows[0].id;
 
-    // ✅ items + stock
     for (const it of items) {
       const productoId = Number(it.producto_id);
       const cantidad = Number(it.cantidad || 0);
@@ -1873,10 +2122,12 @@ app.post("/ventas", async (req, res) => {
         await client.query("ROLLBACK");
         return res.status(400).json({ ok: false, msg: "Item con producto_id inválido" });
       }
+
       if (!Number.isFinite(cantidad) || cantidad <= 0) {
         await client.query("ROLLBACK");
         return res.status(400).json({ ok: false, msg: "Item con cantidad inválida" });
       }
+
       if (!Number.isFinite(precio) || precio < 0) {
         await client.query("ROLLBACK");
         return res.status(400).json({ ok: false, msg: "Item con precio inválido" });
@@ -1890,7 +2141,6 @@ app.post("/ventas", async (req, res) => {
         [ventaId, productoId, cantidad, precio, subtotal]
       );
 
-      // ✅ evitar stock negativo (si querés permitir negativo, avisame y lo quito)
       const upd = await client.query(
         `
         UPDATE productos
@@ -1911,14 +2161,13 @@ app.post("/ventas", async (req, res) => {
       }
     }
 
-    // ✅ sumar a caja
     await client.query(
       `
       UPDATE caja
       SET saldo_actual = COALESCE(saldo_actual, 0) + $1
       WHERE id = $2
       `,
-      [totalFinal, caja_id_final]
+      [totalPygFinal, caja_id_final]
     );
 
     await client.query("COMMIT");
@@ -1952,7 +2201,11 @@ app.get("/ventas/:id", async (req, res) => {
         v.forma_pago_id,
         v.estado_pago,
         v.nro_comprobante,
-        v.total
+        v.total,
+        v.total_pyg,
+        v.total_moneda,
+        v.moneda,
+        v.tipo_cambio
       FROM ventas v
       WHERE v.id = $1
       LIMIT 1
@@ -1990,6 +2243,10 @@ app.get("/ventas/:id", async (req, res) => {
       estado_pago: ven.rows[0].estado_pago,
       nro_comprobante: ven.rows[0].nro_comprobante,
       total: ven.rows[0].total,
+      total_pyg: ven.rows[0].total_pyg,
+      total_moneda: ven.rows[0].total_moneda,
+      moneda: ven.rows[0].moneda,
+      tipo_cambio: ven.rows[0].tipo_cambio,
       items: items.rows.map(it => ({
         id: it.id,
         producto_id: it.producto_id,
@@ -2020,7 +2277,17 @@ app.delete("/ventas/:id", async (req, res) => {
 
 app.put("/ventas/:id", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
-  const { fecha, forma_pago_id, estado_pago, total, items } = req.body || {};
+  const {
+    fecha,
+    forma_pago_id,
+    estado_pago,
+    total,
+    total_pyg,
+    total_moneda,
+    moneda,
+    tipo_cambio,
+    items
+  } = req.body || {};
 
   if (!id) return res.status(400).json({ ok: false, msg: "ID inválido" });
   if (!fecha) return res.status(400).json({ ok: false, msg: "Falta fecha" });
@@ -2029,11 +2296,15 @@ app.put("/ventas/:id", requireAuth, async (req, res) => {
     return res.status(400).json({ ok: false, msg: "No hay items" });
   }
 
+  const monedaFinal = String(moneda || "PYG").trim().toUpperCase();
+  const tipoCambioFinal = Number(tipo_cambio || 1);
+  const totalPygFinal = Number(total_pyg || total || 0);
+  const totalMonedaFinal = Number(total_moneda || totalPygFinal || 0);
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
-    // 1) Traer items anteriores para ajustar stock
     const prevItemsQ = await client.query(
       `SELECT producto_id, cantidad
        FROM ventas_items
@@ -2042,27 +2313,32 @@ app.put("/ventas/:id", requireAuth, async (req, res) => {
     );
     const prevItems = prevItemsQ.rows || [];
 
-    // 2) Actualizar cabecera (incluye total)
     await client.query(
       `UPDATE ventas
        SET fecha = $1,
            forma_pago_id = $2,
            estado_pago = $3,
-           total = $4
-       WHERE id = $5`,
+           total = $4,
+           total_pyg = $5,
+           total_moneda = $6,
+           moneda = $7,
+           tipo_cambio = $8
+       WHERE id = $9`,
       [
         fecha,
         Number(forma_pago_id),
         (estado_pago || "pendiente").toString().trim().toLowerCase(),
-        Number(total || 0),
+        totalPygFinal,
+        totalPygFinal,
+        totalMonedaFinal,
+        monedaFinal,
+        tipoCambioFinal,
         id
       ]
     );
 
-    // 3) Borrar items anteriores
     await client.query(`DELETE FROM ventas_items WHERE venta_id = $1`, [id]);
 
-    // 4) Reinsertar items nuevos
     for (const it of items) {
       const producto_id = Number(it.producto_id);
       const cantidad = Number(it.cantidad);
@@ -2080,15 +2356,13 @@ app.put("/ventas/:id", requireAuth, async (req, res) => {
       );
     }
 
-    // 5) ✅ Ajustar stock correctamente
-    //    (a) devolver cantidades previas
     for (const p of prevItems) {
       await client.query(
         `UPDATE productos SET stock = stock + $1 WHERE id = $2`,
         [Number(p.cantidad), Number(p.producto_id)]
       );
     }
-    //    (b) descontar cantidades nuevas
+
     for (const it of items) {
       await client.query(
         `UPDATE productos SET stock = stock - $1 WHERE id = $2`,
@@ -2108,95 +2382,150 @@ app.put("/ventas/:id", requireAuth, async (req, res) => {
   }
 });
 app.get("/ventas/:id/ticket", async (req, res) => {
-    const ventaId = req.params.id;
+  const ventaId = Number(req.params.id);
 
-    try {
-        const v = await pool.query(
-            `SELECT v.*, c.nombre, c.apellido 
-             FROM ventas v 
-             LEFT JOIN clientes c ON c.id = v.cliente_id 
-             WHERE v.id = $1`,
-            [ventaId]
-        );
+  try {
+    const v = await pool.query(
+      `
+      SELECT
+        v.*,
+        c.nombre,
+        c.apellido,
+        fp.nombre AS forma_pago_nombre
+      FROM ventas v
+      LEFT JOIN clientes c ON c.id = v.cliente_id
+      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+      WHERE v.id = $1
+      `,
+      [ventaId]
+    );
 
-        if (v.rows.length === 0)
-            return res.status(404).send("Venta no encontrada");
-
-        const venta = v.rows[0];
-
-        const items = await pool.query(
-            `SELECT vi.*, p.nombre AS producto_nombre
-             FROM ventas_items vi 
-             JOIN productos p ON p.id = vi.producto_id
-             WHERE vi.venta_id = $1`,
-            [ventaId]
-        );
-
-        /* --------------- TICKET ESTILO SUPERMERCADO (80mm) --------------- */
-
-        // Ancho: 80 mm ≈ 226 puntos PDF
-        const ticketWidth = 226;
-        const maxItems = items.rows.length;
-        const ticketHeight = 200 + maxItems * 25; // altura dinámica
-
-        const doc = new PDFDocument({
-            size: [ticketWidth, ticketHeight],
-            margins: { top: 10, left: 10, right: 10, bottom: 10 }
-        });
-
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `inline; filename=ticket_${ventaId}.pdf`);
-
-        doc.pipe(res);
-
-        const fmt = n => Number(n || 0).toLocaleString("es-PY");
-
-        /* --- HEADER --- */
-        doc.fontSize(12).text("SPYnet / Productos", { align: "center" });
-        doc.moveDown(0.3);
-        doc.fontSize(8).text(`Ticket Nº: ${ventaId}`, { align: "center" });
-        doc.text(`Fecha: ${venta.fecha.toISOString().slice(0,10)}`, { align: "center" });
-
-        doc.moveDown(0.5);
-        doc.text("----------------------------------------");
-
-        /* --- CLIENTE --- */
-        doc.fontSize(9).text("CLIENTE:", { bold: true });
-        doc.fontSize(8).text(`${venta.nombre || "Consumidor Final"} ${venta.apellido || ""}`);
-        doc.text(`Pago: ${venta.forma_pago_id}`);
-        doc.text("----------------------------------------");
-
-        /* --- DETALLE --- */
-        doc.fontSize(9).text("DETALLE:");
-        doc.moveDown(0.2);
-
-        items.rows.forEach(it => {
-            doc.fontSize(8)
-                .text(it.producto_nombre)
-                .text(
-                    `${it.cantidad} x Gs. ${fmt(it.precio)}  =  Gs. ${fmt(it.subtotal)}`,
-                    { align: "right" }
-                );
-            doc.moveDown(0.2);
-        });
-
-        doc.text("----------------------------------------");
-
-        /* --- TOTAL --- */
-        doc.fontSize(10).text(`TOTAL: Gs. ${fmt(venta.total)}`, {
-            align: "right",
-            bold: true
-        });
-
-        doc.moveDown(1);
-        doc.fontSize(9).text("¡Gracias por su compra!", { align: "center" });
-
-        doc.end();
-
-    } catch (err) {
-        console.error("❌ Error generando ticket:", err);
-        res.status(500).send("Error generando ticket");
+    if (v.rows.length === 0) {
+      return res.status(404).send("Venta no encontrada");
     }
+
+    const venta = v.rows[0];
+
+    const items = await pool.query(
+      `
+      SELECT
+        vi.*,
+        p.nombre AS producto_nombre
+      FROM ventas_items vi
+      JOIN productos p ON p.id = vi.producto_id
+      WHERE vi.venta_id = $1
+      `,
+      [ventaId]
+    );
+
+    const ticketWidth = 226;
+    const maxItems = items.rows.length;
+    const ticketHeight = 230 + maxItems * 28;
+
+    const doc = new PDFDocument({
+      size: [ticketWidth, ticketHeight],
+      margins: { top: 10, left: 10, right: 10, bottom: 10 }
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=ticket_${ventaId}.pdf`);
+
+    doc.pipe(res);
+
+    const fmtGs = (n) => Number(n || 0).toLocaleString("es-PY");
+    const fmtDec = (n) =>
+      Number(n || 0).toLocaleString("es-PY", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+
+    const moneda = String(venta.moneda || "PYG").toUpperCase();
+    const simbolo = moneda === "USD" ? "US$" : moneda === "BRL" ? "R$" : "Gs.";
+
+    const precioTexto = (n) => {
+      if (moneda === "PYG") return `Gs. ${fmtGs(n)}`;
+      return `${simbolo} ${fmtDec(n)}`;
+    };
+
+    const fechaTexto = venta.fecha
+      ? new Date(venta.fecha).toISOString().slice(0, 10)
+      : "";
+
+    doc.fontSize(12).text("SPYnet / Productos", { align: "center" });
+    doc.moveDown(0.3);
+    doc.fontSize(8).text(`Ticket Nº: ${ventaId}`, { align: "center" });
+    doc.text(`Fecha: ${fechaTexto}`, { align: "center" });
+
+    doc.moveDown(0.5);
+    doc.text("----------------------------------------");
+
+    doc.fontSize(9).text("CLIENTE:");
+    doc.fontSize(8).text(`${venta.nombre || "Consumidor Final"} ${venta.apellido || ""}`.trim());
+    doc.text(`Pago: ${venta.forma_pago_nombre || venta.forma_pago_id || "-"}`);
+    doc.text(`Moneda: ${moneda}`);
+    if (moneda !== "PYG") {
+      doc.text(`Cambio: Gs. ${fmtGs(venta.tipo_cambio || 0)}`);
+    }
+    if (venta.nro_comprobante) {
+      doc.text(`Comprobante: ${venta.nro_comprobante}`);
+    }
+
+    doc.text("----------------------------------------");
+
+    doc.fontSize(9).text("DETALLE:");
+    doc.moveDown(0.2);
+
+    items.rows.forEach((it) => {
+      const cantidad = Number(it.cantidad || 0);
+      const subtotalPyg = Number(it.subtotal || 0);
+
+      let precioUnitMostrar = Number(it.precio || 0);
+      let subtotalMostrar = subtotalPyg;
+
+      if (moneda !== "PYG") {
+        const tc = Number(venta.tipo_cambio || 0);
+        precioUnitMostrar = tc > 0 ? precioUnitMostrar / tc : 0;
+        subtotalMostrar = tc > 0 ? subtotalPyg / tc : 0;
+      }
+
+      doc.fontSize(8)
+        .text(it.producto_nombre || "-")
+        .text(
+          `${cantidad} x ${precioTexto(precioUnitMostrar)} = ${precioTexto(subtotalMostrar)}`,
+          { align: "right" }
+        );
+
+      doc.moveDown(0.2);
+    });
+
+    doc.text("----------------------------------------");
+
+    const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
+    const totalMoneda = Number(
+      venta.total_moneda ?? (moneda === "PYG" ? totalPyg : 0)
+    );
+
+    if (moneda === "PYG") {
+      doc.fontSize(10).text(`TOTAL: Gs. ${fmtGs(totalPyg)}`, {
+        align: "right"
+      });
+    } else {
+      doc.fontSize(10).text(`TOTAL: ${simbolo} ${fmtDec(totalMoneda)}`, {
+        align: "right"
+      });
+      doc.fontSize(8).text(`Equivale a: Gs. ${fmtGs(totalPyg)}`, {
+        align: "right"
+      });
+    }
+
+    doc.moveDown(1);
+    doc.fontSize(9).text("¡Gracias por su compra!", { align: "center" });
+
+    doc.end();
+  } catch (err) {
+    console.error("❌ Error generando ticket:", err);
+    res.status(500).send("Error generando ticket");
+  }
 });
 
 app.get("/formas-pago", async (req, res) => {
@@ -2815,6 +3144,10 @@ app.get("/ventas/:id/pagare", async (req, res) => {
         v.id,
         v.fecha,
         v.total,
+        v.total_pyg,
+        v.total_moneda,
+        v.moneda,
+        v.tipo_cambio,
         v.estado_pago,
         v.nro_comprobante,
         fp.nombre AS forma_pago_nombre,
@@ -2854,22 +3187,36 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     const doc = new PDFDocument({ size: "A4", margin: 40 });
     doc.pipe(res);
 
-    const fmt = (n) => Number(n || 0).toLocaleString("es-PY");
+    const fmtGs = (n) => Number(n || 0).toLocaleString("es-PY");
+    const fmtDec = (n) =>
+      Number(n || 0).toLocaleString("es-PY", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+
+    const moneda = String(venta.moneda || "PYG").toUpperCase();
+    const simbolo = moneda === "USD" ? "US$" : moneda === "BRL" ? "R$" : "Gs.";
+    const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
+    const totalMoneda = Number(
+      venta.total_moneda ?? (moneda === "PYG" ? totalPyg : 0)
+    );
+    const tipoCambio = Number(venta.tipo_cambio || 1);
+
+    const precioTexto = (n) => {
+      if (moneda === "PYG") return `Gs. ${fmtGs(n)}`;
+      return `${simbolo} ${fmtDec(n)}`;
+    };
+
     const fechaStr = venta.fecha ? new Date(venta.fecha).toISOString().slice(0, 10) : "";
 
-    // =========================================================
-    // ✅ LOGOS + ENCABEZADO COMO TU IMAGEN
-    // =========================================================
-    const logoLeft  = path.join(process.cwd(), "public", "img", "logo1.jpg");
+    const logoLeft = path.join(process.cwd(), "public", "img", "logo1.jpg");
     const logoRight = path.join(process.cwd(), "public", "img", "logo2.png");
 
     const pageW = doc.page.width;
     const leftX = 40;
     const rightX = pageW - 40;
-
     const headerTopY = 35;
 
-    // Logos
     if (fs.existsSync(logoLeft)) {
       doc.image(logoLeft, leftX, headerTopY, { width: 90 });
     }
@@ -2877,11 +3224,9 @@ app.get("/ventas/:id/pagare", async (req, res) => {
       doc.image(logoRight, rightX - 90, headerTopY + 5, { width: 90 });
     }
 
-    // Bloque centrado (entre logos)
-    const midX = leftX + 100;              // deja espacio al logo izquierdo
-    const midW = (rightX - 100) - midX;    // deja espacio al logo derecho
+    const midX = leftX + 100;
+    const midW = (rightX - 100) - midX;
 
-    // Título grande
     doc.font("Helvetica")
       .fontSize(28)
       .text("Consorcio Spy E.A.S.", midX, headerTopY, {
@@ -2889,14 +3234,12 @@ app.get("/ventas/:id/pagare", async (req, res) => {
         align: "center"
       });
 
-    // Línea "Servicio de Internet..."
     doc.fontSize(14)
       .text("Servicio de Internet (Telecomunicaciones)", midX, headerTopY + 32, {
         width: midW,
         align: "center"
       });
 
-    // Texto chico (2 líneas)
     doc.fontSize(9)
       .text("Comercio al por menor de equipos de telecomunicaciones", midX, headerTopY + 52, {
         width: midW,
@@ -2907,12 +3250,10 @@ app.get("/ventas/:id/pagare", async (req, res) => {
         align: "center"
       });
 
-    // Línea horizontal (tipo separador del encabezado)
     const lineY1 = headerTopY + 82;
     doc.lineWidth(1);
     doc.moveTo(midX + 25, lineY1).lineTo(midX + midW - 25, lineY1).stroke();
 
-    // Dirección grande centrada
     doc.fontSize(14)
       .text("Calle, Tte Eligio Montania - Valenzuela", midX, headerTopY + 92, {
         width: midW,
@@ -2923,21 +3264,14 @@ app.get("/ventas/:id/pagare", async (req, res) => {
         align: "center"
       });
 
-    // Línea final del encabezado
     const lineY2 = headerTopY + 132;
     doc.moveTo(leftX, lineY2).lineTo(rightX, lineY2).stroke();
 
-    // =========================================================
-    // ✅ TITULO PAGARÉ (debajo del encabezado)
-    // =========================================================
     doc.font("Helvetica-Bold")
       .fontSize(18)
       .text("PAGARÉ", 0, lineY2 + 12, { align: "center" });
 
-    // =========================================================
-    // ✅ CAJA PRINCIPAL (bajamos todo porque ahora hay encabezado)
-    // =========================================================
-    const boxX = 40, boxY = lineY2 + 55, boxW = 515, boxH = 250;
+    const boxX = 40, boxY = lineY2 + 55, boxW = 515, boxH = 270;
     doc.roundedRect(boxX, boxY, boxW, boxH, 10).lineWidth(1).stroke();
 
     doc.font("Helvetica").fontSize(11);
@@ -2958,27 +3292,40 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     doc.font("Helvetica-Bold").text((venta.estado_pago || "-").toString(), boxX + 130, boxY + 105);
     doc.font("Helvetica");
 
-    doc.text("Comprobante:", boxX + 15, boxY + 130);
-    doc.font("Helvetica-Bold").text(venta.nro_comprobante || "—", boxX + 130, boxY + 130);
+    doc.text("Moneda:", boxX + 15, boxY + 130);
+    doc.font("Helvetica-Bold").text(moneda, boxX + 130, boxY + 130);
     doc.font("Helvetica");
 
-    doc.text("Monto:", boxX + 15, boxY + 155);
-    doc.font("Helvetica-Bold").text(`Gs. ${fmt(venta.total)}`, boxX + 130, boxY + 155);
+    doc.text("Comprobante:", boxX + 15, boxY + 155);
+    doc.font("Helvetica-Bold").text(venta.nro_comprobante || "—", boxX + 130, boxY + 155);
     doc.font("Helvetica");
+
+    let montoTexto = `Gs. ${fmtGs(totalPyg)}`;
+    if (moneda !== "PYG") {
+      montoTexto = `${simbolo} ${fmtDec(totalMoneda)}  (Gs. ${fmtGs(totalPyg)})`;
+    }
+
+    doc.text("Monto:", boxX + 15, boxY + 180);
+    doc.font("Helvetica-Bold").text(montoTexto, boxX + 130, boxY + 180, { width: 340 });
+    doc.font("Helvetica");
+
+    if (moneda !== "PYG") {
+      doc.text("Tipo de cambio:", boxX + 15, boxY + 205);
+      doc.font("Helvetica-Bold").text(`Gs. ${fmtGs(tipoCambio)}`, boxX + 130, boxY + 205);
+      doc.font("Helvetica");
+    }
 
     const textoLegal =
       "Por este PAGARÉ me obligo a pagar incondicionalmente a la orden de la empresa el monto indicado. " +
       "En caso de mora, asumiré los gastos e intereses que correspondan según lo acordado.";
-    doc.fontSize(10).text(textoLegal, boxX + 15, boxY + 185, { width: boxW - 30, align: "justify" });
+    doc.fontSize(10).text(textoLegal, boxX + 15, boxY + 230, { width: boxW - 30, align: "justify" });
 
-    // Firmas
     const sigY = boxY + boxH + 55;
     doc.moveTo(70, sigY).lineTo(270, sigY).stroke();
     doc.moveTo(330, sigY).lineTo(530, sigY).stroke();
     doc.fontSize(10).text("Firma del Cliente", 70, sigY + 5, { width: 200, align: "center" });
     doc.fontSize(10).text("Firma / Encargado", 330, sigY + 5, { width: 200, align: "center" });
 
-    // Detalle
     doc.fontSize(12).text("Detalle", 40, sigY + 45);
 
     let y = sigY + 65;
@@ -2991,18 +3338,40 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     y += 8;
 
     items.slice(0, 12).forEach((it) => {
+      const cantidad = Number(it.cantidad || 0);
+      const precioPyg = Number(it.precio || 0);
+      const subtotalPygItem = Number(it.subtotal || 0);
+
+      let precioMostrar = precioPyg;
+      let subtotalMostrar = subtotalPygItem;
+
+      if (moneda !== "PYG") {
+        precioMostrar = tipoCambio > 0 ? precioPyg / tipoCambio : 0;
+        subtotalMostrar = tipoCambio > 0 ? subtotalPygItem / tipoCambio : 0;
+      }
+
       doc.text(it.producto_nombre || "", 40, y, { width: 290 });
-      doc.text(String(it.cantidad ?? ""), 340, y);
-      doc.text(`Gs. ${fmt(it.precio ?? 0)}`, 400, y);
-      doc.text(`Gs. ${fmt(it.subtotal ?? 0)}`, 470, y);
+      doc.text(String(cantidad), 340, y);
+      doc.text(precioTexto(precioMostrar), 400, y);
+      doc.text(precioTexto(subtotalMostrar), 470, y);
       y += 16;
     });
 
     doc.moveTo(40, y + 5).lineTo(555, y + 5).stroke();
     doc.font("Helvetica-Bold").text("TOTAL:", 380, y + 12);
-    doc.text(`Gs. ${fmt(venta.total)}`, 470, y + 12);
-    doc.font("Helvetica");
 
+    if (moneda === "PYG") {
+      doc.text(`Gs. ${fmtGs(totalPyg)}`, 470, y + 12);
+    } else {
+      doc.text(`${simbolo} ${fmtDec(totalMoneda)}`, 470, y + 12);
+      y += 16;
+      doc.font("Helvetica").text(`Equivale a: Gs. ${fmtGs(totalPyg)}`, 380, y + 12, {
+        width: 175,
+        align: "right"
+      });
+    }
+
+    doc.font("Helvetica");
     doc.end();
   } catch (err) {
     console.error("❌ Error generando pagaré:", err);
@@ -3622,6 +3991,30 @@ app.get("/cuentas-pagar", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("GET /cuentas-pagar", err);
     res.status(500).json({ error: "Error al listar cuentas a pagar" });
+  }
+});
+
+app.put("/api/usuarios/:id", async (req, res) => {
+  const id = req.params.id;
+  const { nombre, usuario, password, rol } = req.body;
+
+  try {
+    if (password && password.trim() !== "") {
+      await db.query(
+        "UPDATE usuarios SET nombre=$1, usuario=$2, password=$3, rol=$4 WHERE id=$5",
+        [nombre, usuario, password, rol, id]
+      );
+    } else {
+      await db.query(
+        "UPDATE usuarios SET nombre=$1, usuario=$2, rol=$3 WHERE id=$4",
+        [nombre, usuario, rol, id]
+      );
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al actualizar usuario" });
   }
 });
 
