@@ -3479,52 +3479,131 @@ app.post("/usuarios/seed-admin", async (_req, res) => {
   }
 });
 
-app.post("/api/usuarios", async (req, res) => {
+app.get("/api/usuarios", requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT id, nombre, usuario, rol
+      FROM usuarios
+      ORDER BY id ASC
+    `);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/usuarios", err);
+    res.status(500).json({ error: "Error al listar usuarios" });
+  }
+});
+
+app.post("/api/usuarios", requireAuth, async (req, res) => {
   try {
     const { nombre, usuario, password, rol } = req.body;
 
     if (!nombre || !usuario || !password) {
-      return res.status(400).json({ error: "Faltan datos" });
+      return res.status(400).json({ error: "Faltan datos obligatorios" });
     }
 
-    const existe = await pool.query(
-      "SELECT id FROM usuarios WHERE usuario = $1",
-      [usuario]
+    const hash = await bcrypt.hash(password, 10);
+
+    const { rows } = await pool.query(
+      `INSERT INTO usuarios (nombre, usuario, password_hash, rol)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, nombre, usuario, rol`,
+      [nombre, usuario, hash, rol || "usuario"]
     );
 
-    if (existe.rows.length > 0) {
-      return res.status(400).json({ error: "El usuario ya existe" });
-    }
-
-    await pool.query(
-      "INSERT INTO usuarios (nombre, usuario, password_hash, rol) VALUES ($1,$2,$3,$4)",
-      [nombre, usuario, password, rol || "usuario"]
-    );
-
-    res.json({ ok: true });
-
-  } catch (error) {
-    console.error("POST /api/usuarios", error);
-    res.status(500).json({ error: "Error creando usuario" });
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error("POST /api/usuarios", err);
+    res.status(500).json({ error: "Error al crear usuario" });
   }
 });
-app.get("/api/usuarios", async(req,res)=>{
 
-const result = await pool.query("SELECT id,nombre,usuario,rol FROM usuarios")
+app.put("/api/usuarios/:id", requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { nombre, usuario, password, rol } = req.body;
 
-res.json(result.rows)
+    if (!id) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
 
-})
-app.delete("/api/usuarios/:id", async(req,res)=>{
+    if (password && password.trim() !== "") {
+      const hash = await bcrypt.hash(password, 10);
 
-const id=req.params.id
+      const { rows } = await pool.query(
+        `UPDATE usuarios
+         SET nombre = $1, usuario = $2, password_hash = $3, rol = $4
+         WHERE id = $5
+         RETURNING id, nombre, usuario, rol`,
+        [nombre, usuario, hash, rol, id]
+      );
 
-await pool.query("DELETE FROM usuarios WHERE id=$1",[id])
+      if (!rows.length) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
 
-res.json({ok:true})
+      return res.json(rows[0]);
+    } else {
+      const { rows } = await pool.query(
+        `UPDATE usuarios
+         SET nombre = $1, usuario = $2, rol = $3
+         WHERE id = $4
+         RETURNING id, nombre, usuario, rol`,
+        [nombre, usuario, rol, id]
+      );
 
-})
+      if (!rows.length) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
 
+      return res.json(rows[0]);
+    }
+  } catch (err) {
+    console.error("PUT /api/usuarios/:id", err);
+    res.status(500).json({ error: "Error al actualizar usuario" });
+  }
+});
+
+app.delete("/api/usuarios/:id", requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    const { rowCount } = await pool.query(
+      "DELETE FROM usuarios WHERE id = $1",
+      [id]
+    );
+
+    if (!rowCount) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /api/usuarios/:id", err);
+    res.status(500).json({ error: "Error al eliminar usuario" });
+  }
+});
+
+
+
+app.get("/api/usuarios", requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT id, nombre, usuario, rol
+      FROM usuarios
+      ORDER BY id ASC
+    `);
+
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/usuarios", err);
+    res.status(500).json({ error: "Error al listar usuarios" });
+  }
+});
 
 function fmtGs(n) {
   return `Gs. ${Number(n || 0).toLocaleString("es-PY")}`;

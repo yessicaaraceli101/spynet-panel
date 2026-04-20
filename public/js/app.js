@@ -212,7 +212,10 @@ function show(hash) {
   a.classList.toggle('active', a.getAttribute('href') === hash)
 );
 
-  if (hash === '#dashboard') cargarVentasResumen();
+  if (hash === '#dashboard') {
+  cargarVentasResumen();
+  cargarVentasComparadas();
+}
   if (hash === '#ventas') cargarVentas();
   if (hash === '#clientes') listarClientes();
   if (hash === '#productos') listarProductos();
@@ -2951,6 +2954,37 @@ async function cargarDashboardKpis() {
   if (elHoy) elHoy.textContent = "Gs. " + money(totalHoy);
   if (elMes) elMes.textContent = "Gs. " + money(totalMes);
 }
+
+
+async function cargarVentasComparadas() {
+  try {
+    const ventas = await jget("/ventas");
+
+    const hoyYMD = toYMD(new Date());
+
+    const ayerDate = new Date();
+    ayerDate.setDate(ayerDate.getDate() - 1);
+    const ayerYMD = toYMD(ayerDate);
+
+    let totalHoy = 0;
+    let totalAyer = 0;
+
+    ventas.forEach(v => {
+      const fecha = toYMD(v.fecha || v.created_at);
+      const total = Number(v.total || 0);
+
+      if (fecha === hoyYMD) totalHoy += total;
+      if (fecha === ayerYMD) totalAyer += total;
+    });
+
+    actualizarGraficoDashboard(totalAyer, totalHoy);
+  } catch (err) {
+    console.error("Error cargando ventas comparadas:", err);
+    actualizarGraficoDashboard(0, 0);
+  }
+}
+
+
 async function filtrarVentasPorDia() {
     const fecha = qs("#filtro-dia").value;
     if (!fecha) return;
@@ -3455,32 +3489,28 @@ async function verificarCaja() {
 
     // 4) Pintar estado caja EFECTIVO
     if (cajaE?.id) {
-      const saldoInicialE = Number(cajaE.saldo_inicial || 0);
-      const ingresoDiaE = Number(dia.efectivo || 0);
-      const saldoRealE = saldoInicialE + ingresoDiaE - egresoDiaEfectivo;
+  const ingresoDiaE = Number(dia.ingreso_efectivo || dia.efectivo || 0);
+  const saldoRealE = ingresoDiaE - egresoDiaEfectivo;
 
-      _setHTML(
-        "estadoCajaEfectivo",
-        `🟢 Caja ABIERTA (Efectivo) — Saldo: Gs. ${money(saldoRealE)}`
-      );
-    } else {
-      _setHTML("estadoCajaEfectivo", "🔴 Caja CERRADA");
-    }
-
+  _setHTML(
+    "estadoCajaEfectivo",
+    `🟢 Caja ABIERTA (Efectivo) — Saldo actual del día: Gs. ${money(saldoRealE)}`
+  );
+} else {
+  _setHTML("estadoCajaEfectivo", "🔴 Caja CERRADA");
+}
     // 5) Pintar estado caja TRANSFERENCIA
     if (cajaT?.id) {
-      const saldoInicialT = Number(cajaT.saldo_inicial || 0);
-      const ingresoDiaT = Number(dia.transferencia || 0);
-      const saldoRealT = saldoInicialT + ingresoDiaT - egresoDiaTransferencia;
+  const ingresoDiaT = Number(dia.ingreso_transferencia || dia.transferencia || 0);
+  const saldoRealT = ingresoDiaT - egresoDiaTransferencia;
 
-      _setHTML(
-        "estadoCajaTransferencia",
-        `🟢 Caja ABIERTA (Transferencia) — Saldo: Gs. ${money(saldoRealT)}`
-      );
-    } else {
-      _setHTML("estadoCajaTransferencia", "🔴 Caja CERRADA");
-    }
-
+  _setHTML(
+    "estadoCajaTransferencia",
+    `🟢 Caja ABIERTA (Transferencia) — Saldo actual del día: Gs. ${money(saldoRealT)}`
+  );
+} else {
+  _setHTML("estadoCajaTransferencia", "🔴 Caja CERRADA");
+}
     // 6) Compatibilidad con #estadoCaja viejo
     if (document.getElementById("estadoCaja")) {
       const saldoTotalDia =
@@ -4279,16 +4309,21 @@ function confirmarEliminarCuentaPagar() {
 }
 
 function actualizarGraficoDashboard(ayer, hoy) {
-  const max = Math.max(ayer, hoy, 1);
+  const max = Math.max(Number(ayer || 0), Number(hoy || 0), 1);
 
-  const pctAyer = (ayer / max) * 100;
-  const pctHoy = (hoy / max) * 100;
+  const pctAyer = (Number(ayer || 0) / max) * 100;
+  const pctHoy = (Number(hoy || 0) / max) * 100;
 
-  document.getElementById("ayer-texto").innerText = "Gs. " + numberFormat(ayer || 0);
-  document.getElementById("hoy-texto").innerText = "Gs. " + numberFormat(hoy || 0);
+  const ayerTexto = document.getElementById("ayer-texto");
+  const hoyTexto = document.getElementById("hoy-texto");
+  const barAyer = document.getElementById("bar-ayer");
+  const barHoy = document.getElementById("bar-hoy");
 
-  document.getElementById("bar-ayer").style.width = pctAyer + "%";
-  document.getElementById("bar-hoy").style.width = pctHoy + "%";
+  if (ayerTexto) ayerTexto.innerText = "Gs. " + money(ayer || 0);
+  if (hoyTexto) hoyTexto.innerText = "Gs. " + money(hoy || 0);
+
+  if (barAyer) barAyer.style.width = pctAyer + "%";
+  if (barHoy) barHoy.style.width = pctHoy + "%";
 }
 
 
@@ -4309,6 +4344,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (typeof cargarKpis === 'function') {
     cargarKpis();
+  }
+
+  if ((location.hash || '#dashboard') === '#dashboard') {
+    cargarVentasComparadas();
   }
 });
 

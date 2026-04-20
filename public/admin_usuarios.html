@@ -116,12 +116,6 @@
       color: var(--text);
     }
 
-    .page-header p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
     .grid-layout {
       display: grid;
       grid-template-columns: 340px 1fr;
@@ -837,7 +831,10 @@
 
     async function cargarUsuarios() {
       try {
-        const res = await fetch("/api/usuarios");
+        const res = await fetch("/api/usuarios", {
+          credentials: "include"
+        });
+
         if (!res.ok) {
           throw new Error("No se pudo cargar la lista");
         }
@@ -871,6 +868,7 @@
         if (editId) {
           res = await fetch("/api/usuarios/" + editId, {
             method: "PUT",
+            credentials: "include",
             headers: {
               "Content-Type": "application/json"
             },
@@ -892,6 +890,7 @@
 
           res = await fetch("/api/usuarios", {
             method: "POST",
+            credentials: "include",
             headers: {
               "Content-Type": "application/json"
             },
@@ -974,7 +973,8 @@
         const id = usuarioAEliminar;
 
         const res = await fetch(`/api/usuarios/${id}`, {
-          method: "DELETE"
+          method: "DELETE",
+          credentials: "include"
         });
 
         if (!res.ok) {
