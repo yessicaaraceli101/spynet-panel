@@ -209,14 +209,18 @@ app.get("/supabase-test", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { usuario, password } = req.body || {};
+
   if (!usuario || !password) {
     return res.status(400).json({ error: "Faltan credenciales" });
   }
 
   try {
     const { rows } = await pool.query(
-      "SELECT id, usuario, nombre, password_hash, rol, activo FROM usuarios WHERE usuario=$1 LIMIT 1",
-      [usuario]
+      `SELECT id, usuario, nombre, password_hash, rol, activo
+       FROM usuarios
+       WHERE lower(usuario) = lower($1)
+       LIMIT 1`,
+      [usuario.trim()]
     );
 
     if (!rows.length) {
@@ -229,7 +233,14 @@ app.post("/login", async (req, res) => {
       return res.status(403).json({ error: "Usuario inactivo" });
     }
 
-    const ok = password === u.password_hash;
+    let ok = false;
+
+    if (u.password_hash?.startsWith("$2")) {
+      ok = await bcrypt.compare(password, u.password_hash);
+    } else {
+      ok = password === u.password_hash;
+    }
+
     if (!ok) {
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
@@ -242,12 +253,12 @@ app.post("/login", async (req, res) => {
     };
 
     res.json({ ok: true, user: req.session.user });
+
   } catch (e) {
     console.error("POST /login", e);
     res.status(500).json({ error: "Error en el servidor" });
   }
 });
-
 app.post("/ventas/validar-edicion", requireAuth, async (req, res) => {
   const { password } = req.body;
 
@@ -1202,23 +1213,23 @@ app.post("/api/pedidos", requireAuth, async (req, res) => {
     await client.query("BEGIN");
 
     const fechaPedidoFinal = fecha_pedido || hoyStr();
-    const fechaRecepcionFinal = fecha_recepcion || fecha_pedido;
+    const fechaRecepcionFinal = null;
 
     // INSERT CORRECTO (4 valores + estado)
     const { rows: rp } = await client.query(
-      `
-      INSERT INTO pedidos_prov 
-        (proveedor_id, fecha_pedido, fecha_recepcion, observacion, estado)
-      VALUES ($1, $2, $3, $4, 'pendiente')
-      RETURNING id
-      `,
-      [
-        proveedor_id,
-        fechaPedidoFinal,
-        fechaRecepcionFinal,
-        observacion || ""
-      ]
-    );
+  `
+  INSERT INTO pedidos_prov 
+    (proveedor_id, fecha_pedido, fecha_recepcion, observacion, estado)
+  VALUES ($1, $2, $3, $4, 'pendiente')
+  RETURNING id
+  `,
+  [
+    proveedor_id,
+    fechaPedidoFinal,
+    fechaRecepcionFinal,
+    observacion || ""
+  ]
+);
 
     const pedidoId = rp[0].id;
 
@@ -1296,8 +1307,17 @@ app.put("/api/pedidos/:id/estado", requireAuth, async (req, res) => {
     if (!prs.length) { await client.query("ROLLBACK"); return res.status(404).json({ ok:false, msg:"Pedido no encontrado" }); }
     const prev = prs[0].estado;
 
-    await client.query(`UPDATE pedidos_prov SET estado=$1 WHERE id=$2`, [estado, id]);
-
+    if (estado === "recibido") {
+  await client.query(
+    `UPDATE pedidos_prov SET estado=$1, fecha_recepcion=NOW() WHERE id=$2`,
+    [estado, id]
+  );
+} else {
+  await client.query(
+    `UPDATE pedidos_prov SET estado=$1, fecha_recepcion=NULL WHERE id=$2`,
+    [estado, id]
+  );
+}
     // Si se recibe el pedido: actualizar stock y costo promedio
     if (estado === "recibido" && prev !== "recibido") {
       const { rows: items } = await client.query(`SELECT * FROM pedidos_prov_items WHERE pedido_id=$1`, [id]);
@@ -1369,7 +1389,7 @@ app.post("/pedidos/:id/enviar", requireAuth, async (req, res) => {
 });
 
 // Front antiguo: POST /pedidos/:id/recibir
-app.post("/pedidos/:id/recibir", requireAuth, async (req, res) => {
+app.put("/api/pedidos/:id/recibir", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   const client = await pool.connect();
   try {
@@ -1392,7 +1412,10 @@ app.post("/pedidos/:id/recibir", requireAuth, async (req, res) => {
         await client.query(`UPDATE productos SET stock=$1, costo=$2 WHERE id=$3`, [nuevoStock, nuevoCosto, it.producto_id]);
       }
       await client.query(`UPDATE productos SET alerta = (stock <= 3)`);
-      await client.query(`UPDATE pedidos_prov SET estado='recibido' WHERE id=$1`, [id]);
+      await client.query(
+  `UPDATE pedidos_prov SET estado='recibido', fecha_recepcion=NOW() WHERE id=$1`,
+  [id]
+);
     }
     await client.query("COMMIT");
     res.json({ ok: true, compra_generada: id, total: call.rows[0].total });
@@ -2039,12 +2062,12 @@ app.post("/ventas", async (req, res) => {
       return res.status(400).json({ ok: false, msg: "Falta nro_comprobante" });
     }
 
-    const tipoCajaNecesaria = (fpId === EFECTIVO_ID) ? "efectivo" : "transferencia";
+    const tipoCajaNecesaria = fpId === EFECTIVO_ID ? "efectivo" : "transferencia";
 
     await client.query("BEGIN");
 
     const tipoPattern =
-      (tipoCajaNecesaria === "efectivo")
+      tipoCajaNecesaria === "efectivo"
         ? "%efectiv%"
         : "%transf%";
 
@@ -2053,7 +2076,7 @@ app.post("/ventas", async (req, res) => {
       SELECT id, tipo
       FROM caja
       WHERE estado = 'abierta'
-        AND (lower(tipo) LIKE lower($1))
+        AND lower(tipo) LIKE lower($1)
       ORDER BY id DESC
       LIMIT 1
       `,
@@ -2074,7 +2097,6 @@ app.post("/ventas", async (req, res) => {
       cliente_id && String(cliente_id) !== "0" ? Number(cliente_id) : null;
 
     const compFinal = FORMAS_CON_COMPROBANTE.has(fpId) ? compStr : null;
-
     const fechaFinal = fecha || new Date().toISOString().slice(0, 10);
 
     const v = await client.query(
@@ -2092,7 +2114,7 @@ app.post("/ventas", async (req, res) => {
         estado_pago,
         nro_comprobante
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       RETURNING id
       `,
       [
@@ -2116,7 +2138,7 @@ app.post("/ventas", async (req, res) => {
       const productoId = Number(it.producto_id);
       const cantidad = Number(it.cantidad || 0);
       const precio = Number(it.precio ?? it.precio_unitario ?? 0);
-      const subtotal = Number(it.subtotal ?? (cantidad * precio));
+      const subtotal = Number(it.subtotal ?? cantidad * precio);
 
       if (!productoId || productoId <= 0) {
         await client.query("ROLLBACK");
@@ -2136,7 +2158,7 @@ app.post("/ventas", async (req, res) => {
       await client.query(
         `
         INSERT INTO ventas_items (venta_id, producto_id, cantidad, precio, subtotal)
-        VALUES ($1, $2, $3, $4, $5)
+        VALUES ($1,$2,$3,$4,$5)
         `,
         [ventaId, productoId, cantidad, precio, subtotal]
       );
@@ -2161,14 +2183,35 @@ app.post("/ventas", async (req, res) => {
       }
     }
 
-    await client.query(
-      `
-      UPDATE caja
-      SET saldo_actual = COALESCE(saldo_actual, 0) + $1
-      WHERE id = $2
-      `,
-      [totalPygFinal, caja_id_final]
-    );
+    if (monedaFinal === "USD") {
+      await client.query(
+        `
+        UPDATE caja
+        SET saldo_us = COALESCE(saldo_us, 0) + $1
+        WHERE id = $2
+        `,
+        [totalMonedaFinal, caja_id_final]
+      );
+    } else if (monedaFinal === "BRL") {
+      await client.query(
+        `
+        UPDATE caja
+        SET saldo_rs = COALESCE(saldo_rs, 0) + $1
+        WHERE id = $2
+        `,
+        [totalMonedaFinal, caja_id_final]
+      );
+    } else {
+      await client.query(
+        `
+        UPDATE caja
+        SET saldo_gs = COALESCE(saldo_gs, saldo_inicial, 0) + $1,
+            saldo_actual = COALESCE(saldo_actual, 0) + $1
+        WHERE id = $2
+        `,
+        [totalPygFinal, caja_id_final]
+      );
+    }
 
     await client.query("COMMIT");
 
@@ -2178,12 +2221,19 @@ app.post("/ventas", async (req, res) => {
       caja_id: caja_id_final,
       tipo_caja: tipoCajaNecesaria,
       caja_tipo_real: cajaQ.rows[0].tipo,
+      moneda: monedaFinal,
+      total_pyg: totalPygFinal,
+      total_moneda: totalMonedaFinal
     });
 
   } catch (err) {
     try { await client.query("ROLLBACK"); } catch {}
     console.error("❌ Error guardando venta:", err);
-    return res.status(500).json({ ok: false, msg: "Error guardando venta", error: err.message });
+    return res.status(500).json({
+      ok: false,
+      msg: "Error guardando venta",
+      error: err.message
+    });
   } finally {
     client.release();
   }
@@ -2391,6 +2441,7 @@ app.get("/ventas/:id/ticket", async (req, res) => {
         v.*,
         c.nombre,
         c.apellido,
+        c.ci,
         fp.nombre AS forma_pago_nombre
       FROM ventas v
       LEFT JOIN clientes c ON c.id = v.cliente_id
@@ -2419,12 +2470,11 @@ app.get("/ventas/:id/ticket", async (req, res) => {
     );
 
     const ticketWidth = 226;
-    const maxItems = items.rows.length;
-    const ticketHeight = 230 + maxItems * 28;
+    const ticketHeight = 330 + items.rows.length * 32;
 
     const doc = new PDFDocument({
       size: [ticketWidth, ticketHeight],
-      margins: { top: 10, left: 10, right: 10, bottom: 10 }
+      margins: { top: 8, left: 10, right: 10, bottom: 10 }
     });
 
     res.setHeader("Content-Type", "application/pdf");
@@ -2433,101 +2483,109 @@ app.get("/ventas/:id/ticket", async (req, res) => {
     doc.pipe(res);
 
     const fmtGs = (n) => Number(n || 0).toLocaleString("es-PY");
-    const fmtDec = (n) =>
-      Number(n || 0).toLocaleString("es-PY", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
-
-    const moneda = String(venta.moneda || "PYG").toUpperCase();
-    const simbolo = moneda === "USD" ? "US$" : moneda === "BRL" ? "R$" : "Gs.";
-
-    const precioTexto = (n) => {
-      if (moneda === "PYG") return `Gs. ${fmtGs(n)}`;
-      return `${simbolo} ${fmtDec(n)}`;
-    };
 
     const fechaTexto = venta.fecha
       ? new Date(venta.fecha).toISOString().slice(0, 10)
       : "";
 
-    doc.fontSize(12).text("SPYnet / Productos", { align: "center" });
-    doc.moveDown(0.3);
-    doc.fontSize(8).text(`Ticket Nº: ${ventaId}`, { align: "center" });
-    doc.text(`Fecha: ${fechaTexto}`, { align: "center" });
+    const logoPath = path.join(process.cwd(), "public", "img", "logo2.png");
 
-    doc.moveDown(0.5);
-    doc.text("----------------------------------------");
-
-    doc.fontSize(9).text("CLIENTE:");
-    doc.fontSize(8).text(`${venta.nombre || "Consumidor Final"} ${venta.apellido || ""}`.trim());
-    doc.text(`Pago: ${venta.forma_pago_nombre || venta.forma_pago_id || "-"}`);
-    doc.text(`Moneda: ${moneda}`);
-    if (moneda !== "PYG") {
-      doc.text(`Cambio: Gs. ${fmtGs(venta.tipo_cambio || 0)}`);
-    }
-    if (venta.nro_comprobante) {
-      doc.text(`Comprobante: ${venta.nro_comprobante}`);
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 10, 8, { width: 58 });
     }
 
-    doc.text("----------------------------------------");
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .text("SPYNET VALENZUELA", 72, 10, { width: 135, align: "center" });
 
-    doc.fontSize(9).text("DETALLE:");
-    doc.moveDown(0.2);
+    doc
+      .font("Helvetica-Oblique")
+      .fontSize(7)
+      .text("Telefono: 0983 399 215", 72, 24, { width: 135, align: "center" })
+      .text("info@spynet.com.py", 72, 34, { width: 135, align: "center" });
 
-    items.rows.forEach((it) => {
-      const cantidad = Number(it.cantidad || 0);
-      const subtotalPyg = Number(it.subtotal || 0);
+    doc.moveDown(2.2);
 
-      let precioUnitMostrar = Number(it.precio || 0);
-      let subtotalMostrar = subtotalPyg;
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .text("RECIBO DE DINERO", { align: "center" });
 
-      if (moneda !== "PYG") {
-        const tc = Number(venta.tipo_cambio || 0);
-        precioUnitMostrar = tc > 0 ? precioUnitMostrar / tc : 0;
-        subtotalMostrar = tc > 0 ? subtotalPyg / tc : 0;
-      }
+    doc
+      .fontSize(8)
+      .text(`** ${String(ventaId).padStart(3, "0")} **`, { align: "center" });
 
-      doc.fontSize(8)
-        .text(it.producto_nombre || "-")
-        .text(
-          `${cantidad} x ${precioTexto(precioUnitMostrar)} = ${precioTexto(subtotalMostrar)}`,
-          { align: "right" }
-        );
+    doc.moveDown(0.6);
 
-      doc.moveDown(0.2);
-    });
-
-    doc.text("----------------------------------------");
-
+    const cliente = `${venta.nombre || "Consumidor Final"} ${venta.apellido || ""}`.trim();
+    const ruc = venta.ci || "—";
     const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
-    const totalMoneda = Number(
-      venta.total_moneda ?? (moneda === "PYG" ? totalPyg : 0)
-    );
 
-    if (moneda === "PYG") {
-      doc.fontSize(10).text(`TOTAL: Gs. ${fmtGs(totalPyg)}`, {
-        align: "right"
+    const yBox = doc.y;
+    doc.rect(10, yBox, ticketWidth - 20, 92).stroke();
+
+    const productosTexto = items.rows
+  .map(it => {
+    const cantidad = Number(it.cantidad || 0);
+    const nombre = it.producto_nombre || "-";
+    return `${nombre} x${cantidad}`;
+  })
+  .join(", ");
+
+doc
+  .font("Helvetica")
+  .fontSize(8)
+  .text(
+    `Recibí (mos) de ${cliente}, RUC ${ruc}, la cantidad de Gs ${fmtGs(totalPyg)} en concepto de COMPRA de: ${productosTexto}.`,
+    14,
+    yBox + 8,
+    { width: ticketWidth - 28, align: "left" }
+  );
+    doc
+      .text(`Fecha: ${fechaTexto}`, 14, yBox + 58, {
+        width: ticketWidth - 28,
+        align: "left"
       });
-    } else {
-      doc.fontSize(10).text(`TOTAL: ${simbolo} ${fmtDec(totalMoneda)}`, {
-        align: "right"
-      });
-      doc.fontSize(8).text(`Equivale a: Gs. ${fmtGs(totalPyg)}`, {
-        align: "right"
+
+    if (venta.nro_comprobante) {
+      doc.text(`Comprobante: ${venta.nro_comprobante}`, 14, yBox + 70, {
+        width: ticketWidth - 28,
+        align: "left"
       });
     }
 
-    doc.moveDown(1);
-    doc.fontSize(9).text("¡Gracias por su compra!", { align: "center" });
+    doc.y = yBox + 105;
+
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .text(new Date().toLocaleDateString("es-PY", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      }), { align: "center" });
+
+    doc.moveDown(2.8);
+
+    doc
+      .fontSize(8)
+      .text("Firma", { align: "center" });
+
+    doc.moveDown(0.3);
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .text(String(ventaId).padStart(5, "0"), { align: "center" });
 
     doc.end();
+
   } catch (err) {
     console.error("❌ Error generando ticket:", err);
     res.status(500).send("Error generando ticket");
   }
 });
-
 app.get("/formas-pago", async (req, res) => {
   const result = await pool.query("SELECT * FROM formas_pago WHERE activo = true ORDER BY nombre");
   res.json(result.rows);
@@ -2680,7 +2738,14 @@ function toISODate(fecha) {
 
 
 app.post("/caja/abrir", async (req, res) => {
-  const { tipo, fecha, saldo_inicial } = req.body || {};
+  const {
+    tipo,
+    fecha,
+    saldo_gs = 0,
+    saldo_us = 0,
+    saldo_rs = 0,
+    saldo_inicial = 0
+  } = req.body || {};
 
   try {
     const tipoNorm = normTipoCaja(tipo);
@@ -2695,11 +2760,30 @@ app.post("/caja/abrir", async (req, res) => {
       return res.status(400).json({ ok: false, msg: "Ya existe una caja abierta" });
     }
 
+    const saldoGsFinal = Number(saldo_gs || saldo_inicial || 0);
+    const saldoUsFinal = Number(saldo_us || 0);
+    const saldoRsFinal = Number(saldo_rs || 0);
+
     const q = await pool.query(
-      `INSERT INTO caja (tipo, fecha, saldo_inicial, estado)
-       VALUES ($1, $2, $3, 'abierta')
+      `INSERT INTO caja (
+        tipo,
+        fecha,
+        saldo_inicial,
+        saldo_gs,
+        saldo_us,
+        saldo_rs,
+        estado
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, 'abierta')
        RETURNING *`,
-      [tipoNorm, fechaISO, Number(saldo_inicial || 0)]
+      [
+        tipoNorm,
+        fechaISO,
+        saldoGsFinal,
+        saldoGsFinal,
+        saldoUsFinal,
+        saldoRsFinal
+      ]
     );
 
     return res.json({ ok: true, caja: q.rows[0] });
@@ -2708,45 +2792,72 @@ app.post("/caja/abrir", async (req, res) => {
     return res.status(500).json({ ok: false, msg: "Error al abrir caja" });
   }
 });
-
 app.get("/caja/abierta", async (req, res) => {
   try {
     const tipo = req.query.tipo ? normTipoCaja(req.query.tipo) : null;
+    const fecha = req.query.fecha ? toISODate(req.query.fecha) : null;
 
-    const q = tipo
-      ? `
-        SELECT
-          c.*,
-          (COALESCE(c.saldo_inicial,0) + COALESCE(SUM(v.total),0))::numeric AS saldo_actual
-        FROM caja c
-        LEFT JOIN ventas v ON v.caja_id = c.id
-        WHERE c.estado='abierta' AND c.tipo=$1
-        GROUP BY c.id
-        ORDER BY c.id DESC
-        LIMIT 1
-      `
-      : `
-        SELECT
-          c.*,
-          (COALESCE(c.saldo_inicial,0) + COALESCE(SUM(v.total),0))::numeric AS saldo_actual
-        FROM caja c
-        LEFT JOIN ventas v ON v.caja_id = c.id
-        WHERE c.estado='abierta'
-        GROUP BY c.id
-        ORDER BY c.id DESC
-        LIMIT 1
-      `;
+    let q = `
+      SELECT
+        c.*,
 
-    const params = tipo ? [tipo] : [];
+        COALESCE(c.saldo_gs, c.saldo_inicial, 0)::numeric AS saldo_gs,
+        COALESCE(c.saldo_us, 0)::numeric AS saldo_us,
+        COALESCE(c.saldo_rs, 0)::numeric AS saldo_rs,
+
+        (
+          COALESCE(c.saldo_gs, c.saldo_inicial, 0)
+          + COALESCE(SUM(CASE WHEN COALESCE(v.moneda, 'PYG') = 'PYG' THEN COALESCE(v.total_pyg, v.total, 0) ELSE 0 END), 0)
+        )::numeric AS saldo_actual_gs,
+
+        (
+          COALESCE(c.saldo_us, 0)
+          + COALESCE(SUM(CASE WHEN v.moneda = 'USD' THEN COALESCE(v.total_moneda, 0) ELSE 0 END), 0)
+        )::numeric AS saldo_actual_us,
+
+        (
+          COALESCE(c.saldo_rs, 0)
+          + COALESCE(SUM(CASE WHEN v.moneda = 'BRL' THEN COALESCE(v.total_moneda, 0) ELSE 0 END), 0)
+        )::numeric AS saldo_actual_rs
+
+      FROM caja c
+      LEFT JOIN ventas v ON v.caja_id = c.id
+      WHERE c.estado = 'abierta'
+    `;
+
+    const params = [];
+
+    if (tipo) {
+      params.push(tipo);
+      q += ` AND c.tipo = $${params.length}`;
+    }
+
+    if (fecha) {
+      params.push(fecha);
+      q += ` AND c.fecha = $${params.length}`;
+    }
+
+    q += `
+      GROUP BY c.id
+      ORDER BY c.id DESC
+      LIMIT 1
+    `;
+
     const r = await pool.query(q, params);
 
-    res.json({ abierta: r.rows.length > 0, caja: r.rows[0] || null });
+    res.json({
+      abierta: r.rows.length > 0,
+      caja: r.rows[0] || null
+    });
+
   } catch (err) {
     console.error("GET /caja/abierta", err);
-    res.status(500).json({ abierta: false, msg: "Error consultando caja" });
+    res.status(500).json({
+      abierta: false,
+      msg: "Error consultando caja"
+    });
   }
 });
-
 app.get("/caja/estado", async (req, res) => {
   try {
     const tipo = req.query.tipo ? normTipoCaja(req.query.tipo) : null;
@@ -3151,7 +3262,8 @@ app.get("/ventas/:id/pagare", async (req, res) => {
         v.estado_pago,
         v.nro_comprobante,
         fp.nombre AS forma_pago_nombre,
-        COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente_nombre
+        COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente_nombre,
+        COALESCE(c.ci, '') AS cliente_ruc
       FROM ventas v
       LEFT JOIN clientes c ON c.id = v.cliente_id
       LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
@@ -3182,203 +3294,102 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     const items = itemsQ.rows;
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=pagare_${ventaId}.pdf`);
+    res.setHeader("Content-Disposition", `inline; filename=recibo_${ventaId}.pdf`);
 
-    const doc = new PDFDocument({ size: "A4", margin: 40 });
+    const doc = new PDFDocument({ size: [595, 300], margin: 28 });
     doc.pipe(res);
 
     const fmtGs = (n) => Number(n || 0).toLocaleString("es-PY");
-    const fmtDec = (n) =>
-      Number(n || 0).toLocaleString("es-PY", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
-
-    const moneda = String(venta.moneda || "PYG").toUpperCase();
-    const simbolo = moneda === "USD" ? "US$" : moneda === "BRL" ? "R$" : "Gs.";
-    const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
-    const totalMoneda = Number(
-      venta.total_moneda ?? (moneda === "PYG" ? totalPyg : 0)
-    );
-    const tipoCambio = Number(venta.tipo_cambio || 1);
-
-    const precioTexto = (n) => {
-      if (moneda === "PYG") return `Gs. ${fmtGs(n)}`;
-      return `${simbolo} ${fmtDec(n)}`;
-    };
-
     const fechaStr = venta.fecha ? new Date(venta.fecha).toISOString().slice(0, 10) : "";
+    const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
 
-    const logoLeft = path.join(process.cwd(), "public", "img", "logo1.jpg");
-    const logoRight = path.join(process.cwd(), "public", "img", "logo2.png");
+    const logoLeft = path.join(process.cwd(), "public", "img", "logo2.png");
+    const logoRight = path.join(process.cwd(), "public", "img", "logo1.jpg");
+
+    const hoy = new Date();
+    const reciboNro = `** ${String(hoy.getMonth() + 1).padStart(2, "0")}/${hoy.getFullYear()}-${String(venta.id).padStart(3, "0")} **`;
+
+    const productosTexto = items.map(it => {
+      const cant = Number(it.cantidad || 0);
+      return `${it.producto_nombre || "-"} x${cant}`;
+    }).join(", ");
 
     const pageW = doc.page.width;
-    const leftX = 40;
-    const rightX = pageW - 40;
-    const headerTopY = 35;
+    const boxX = 35;
+    const boxY = 35;
+    const boxW = pageW - 70;
+    const boxH = 145;
+
+    doc.lineWidth(1);
+    doc.rect(boxX, boxY, boxW, boxH).stroke();
 
     if (fs.existsSync(logoLeft)) {
-      doc.image(logoLeft, leftX, headerTopY, { width: 90 });
+      doc.image(logoLeft, boxX + 10, boxY + 8, { width: 46 });
     }
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .text("SPYNET VALENZUELA", boxX + 62, boxY + 8, { width: 150, align: "left" });
+
+    doc
+      .font("Helvetica-Oblique")
+      .fontSize(6.8)
+      .text("Teléfono: 0983 399 215", boxX + 62, boxY + 21, { width: 150, align: "left" })
+      .text("info@spynet.com.py", boxX + 62, boxY + 31, { width: 150, align: "left" });
+
     if (fs.existsSync(logoRight)) {
-      doc.image(logoRight, rightX - 90, headerTopY + 5, { width: 90 });
+      doc.image(logoRight, boxX + boxW - 92, boxY + 10, { width: 48 });
     }
 
-    const midX = leftX + 100;
-    const midW = (rightX - 100) - midX;
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(8.5)
+      .text("RECIBO DE DINERO", boxX + boxW - 230, boxY + 8, { width: 120, align: "center" })
+      .fontSize(7.5)
+      .text(reciboNro, boxX + boxW - 230, boxY + 21, { width: 120, align: "center" })
+      .text(`Gs ${fmtGs(totalPyg)}`, boxX + boxW - 230, boxY + 32, { width: 120, align: "center" });
 
-    doc.font("Helvetica")
-      .fontSize(28)
-      .text("Consorcio Spy E.A.S.", midX, headerTopY, {
-        width: midW,
-        align: "center"
+    doc
+      .font("Helvetica")
+      .fontSize(7.5)
+      .text(
+        `Recibí (mos) de ${venta.cliente_nombre || "Consumidor Final"}, RUC ${venta.cliente_ruc || "—"}, la cantidad de Gs ${fmtGs(totalPyg)} en concepto de ${productosTexto || "COMPRA"}.`,
+        boxX + 10,
+        boxY + 54,
+        { width: boxW - 20, align: "left" }
+      );
+
+    doc
+      .fontSize(7.5)
+      .text(`Fecha: ${fechaStr}`, boxX + 10, boxY + 95, { width: 180, align: "left" });
+
+    doc
+      .fontSize(7.5)
+      .text(hoy.toLocaleDateString("es-PY", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      }), boxX + boxW - 180, boxY + 95, { width: 145, align: "center" });
+
+    doc
+      .moveTo(boxX + boxW - 200, boxY + 125)
+      .lineTo(boxX + boxW - 35, boxY + 125)
+      .stroke();
+
+    doc
+      .fontSize(7)
+      .text(`Ref.: VENTA N° ${String(venta.id).padStart(5, "0")}`, boxX + 10, boxY + 128, {
+        width: 190,
+        align: "left"
       });
 
-    doc.fontSize(14)
-      .text("Servicio de Internet (Telecomunicaciones)", midX, headerTopY + 32, {
-        width: midW,
-        align: "center"
-      });
-
-    doc.fontSize(9)
-      .text("Comercio al por menor de equipos de telecomunicaciones", midX, headerTopY + 52, {
-        width: midW,
-        align: "center"
-      })
-      .text("Instalaciones eléctricas, electromecánicas y electrónicas", midX, headerTopY + 64, {
-        width: midW,
-        align: "center"
-      });
-
-    const lineY1 = headerTopY + 82;
-    doc.lineWidth(1);
-    doc.moveTo(midX + 25, lineY1).lineTo(midX + midW - 25, lineY1).stroke();
-
-    doc.fontSize(14)
-      .text("Calle, Tte Eligio Montania - Valenzuela", midX, headerTopY + 92, {
-        width: midW,
-        align: "center"
-      })
-      .text("Cordillera - Paraguay", midX, headerTopY + 110, {
-        width: midW,
-        align: "center"
-      });
-
-    const lineY2 = headerTopY + 132;
-    doc.moveTo(leftX, lineY2).lineTo(rightX, lineY2).stroke();
-
-    doc.font("Helvetica-Bold")
-      .fontSize(18)
-      .text("PAGARÉ", 0, lineY2 + 12, { align: "center" });
-
-    const boxX = 40, boxY = lineY2 + 55, boxW = 515, boxH = 270;
-    doc.roundedRect(boxX, boxY, boxW, boxH, 10).lineWidth(1).stroke();
-
-    doc.font("Helvetica").fontSize(11);
-    doc.text(`N° Venta: ${venta.id}`, boxX + 15, boxY + 15);
-    doc.text(`Fecha: ${fechaStr}`, boxX + 380, boxY + 15);
-
-    doc.moveTo(boxX + 15, boxY + 40).lineTo(boxX + boxW - 15, boxY + 40).stroke();
-
-    doc.text("Deudor (Cliente):", boxX + 15, boxY + 55);
-    doc.font("Helvetica-Bold").text(venta.cliente_nombre, boxX + 130, boxY + 55, { width: 360 });
-    doc.font("Helvetica");
-
-    doc.text("Forma de pago:", boxX + 15, boxY + 80);
-    doc.font("Helvetica-Bold").text(venta.forma_pago_nombre || "-", boxX + 130, boxY + 80);
-    doc.font("Helvetica");
-
-    doc.text("Estado:", boxX + 15, boxY + 105);
-    doc.font("Helvetica-Bold").text((venta.estado_pago || "-").toString(), boxX + 130, boxY + 105);
-    doc.font("Helvetica");
-
-    doc.text("Moneda:", boxX + 15, boxY + 130);
-    doc.font("Helvetica-Bold").text(moneda, boxX + 130, boxY + 130);
-    doc.font("Helvetica");
-
-    doc.text("Comprobante:", boxX + 15, boxY + 155);
-    doc.font("Helvetica-Bold").text(venta.nro_comprobante || "—", boxX + 130, boxY + 155);
-    doc.font("Helvetica");
-
-    let montoTexto = `Gs. ${fmtGs(totalPyg)}`;
-    if (moneda !== "PYG") {
-      montoTexto = `${simbolo} ${fmtDec(totalMoneda)}  (Gs. ${fmtGs(totalPyg)})`;
-    }
-
-    doc.text("Monto:", boxX + 15, boxY + 180);
-    doc.font("Helvetica-Bold").text(montoTexto, boxX + 130, boxY + 180, { width: 340 });
-    doc.font("Helvetica");
-
-    if (moneda !== "PYG") {
-      doc.text("Tipo de cambio:", boxX + 15, boxY + 205);
-      doc.font("Helvetica-Bold").text(`Gs. ${fmtGs(tipoCambio)}`, boxX + 130, boxY + 205);
-      doc.font("Helvetica");
-    }
-
-    const textoLegal =
-      "Por este PAGARÉ me obligo a pagar incondicionalmente a la orden de la empresa el monto indicado. " +
-      "En caso de mora, asumiré los gastos e intereses que correspondan según lo acordado.";
-    doc.fontSize(10).text(textoLegal, boxX + 15, boxY + 230, { width: boxW - 30, align: "justify" });
-
-    const sigY = boxY + boxH + 55;
-    doc.moveTo(70, sigY).lineTo(270, sigY).stroke();
-    doc.moveTo(330, sigY).lineTo(530, sigY).stroke();
-    doc.fontSize(10).text("Firma del Cliente", 70, sigY + 5, { width: 200, align: "center" });
-    doc.fontSize(10).text("Firma / Encargado", 330, sigY + 5, { width: 200, align: "center" });
-
-    doc.fontSize(12).text("Detalle", 40, sigY + 45);
-
-    let y = sigY + 65;
-    doc.fontSize(10).text("Descripción", 40, y);
-    doc.text("Cant.", 340, y);
-    doc.text("Precio", 400, y);
-    doc.text("Subtotal", 470, y);
-    y += 15;
-    doc.moveTo(40, y).lineTo(555, y).stroke();
-    y += 8;
-
-    items.slice(0, 12).forEach((it) => {
-      const cantidad = Number(it.cantidad || 0);
-      const precioPyg = Number(it.precio || 0);
-      const subtotalPygItem = Number(it.subtotal || 0);
-
-      let precioMostrar = precioPyg;
-      let subtotalMostrar = subtotalPygItem;
-
-      if (moneda !== "PYG") {
-        precioMostrar = tipoCambio > 0 ? precioPyg / tipoCambio : 0;
-        subtotalMostrar = tipoCambio > 0 ? subtotalPygItem / tipoCambio : 0;
-      }
-
-      doc.text(it.producto_nombre || "", 40, y, { width: 290 });
-      doc.text(String(cantidad), 340, y);
-      doc.text(precioTexto(precioMostrar), 400, y);
-      doc.text(precioTexto(subtotalMostrar), 470, y);
-      y += 16;
-    });
-
-    doc.moveTo(40, y + 5).lineTo(555, y + 5).stroke();
-    doc.font("Helvetica-Bold").text("TOTAL:", 380, y + 12);
-
-    if (moneda === "PYG") {
-      doc.text(`Gs. ${fmtGs(totalPyg)}`, 470, y + 12);
-    } else {
-      doc.text(`${simbolo} ${fmtDec(totalMoneda)}`, 470, y + 12);
-      y += 16;
-      doc.font("Helvetica").text(`Equivale a: Gs. ${fmtGs(totalPyg)}`, 380, y + 12, {
-        width: 175,
-        align: "right"
-      });
-    }
-
-    doc.font("Helvetica");
     doc.end();
   } catch (err) {
-    console.error("❌ Error generando pagaré:", err);
-    res.status(500).send("Error generando pagaré");
+    console.error("❌ Error generando recibo:", err);
+    res.status(500).send("Error generando recibo");
   }
 });
-
 app.post("/caja/cerrar", async (req, res) => {
   try {
     const tipo = req.body?.tipo ? String(req.body.tipo).trim().toLowerCase() : null;
@@ -3479,21 +3490,6 @@ app.post("/usuarios/seed-admin", async (_req, res) => {
   }
 });
 
-app.get("/api/usuarios", requireAuth, async (req, res) => {
-  try {
-    const { rows } = await pool.query(`
-      SELECT id, nombre, usuario, rol
-      FROM usuarios
-      ORDER BY id ASC
-    `);
-
-    res.json(rows);
-  } catch (err) {
-    console.error("GET /api/usuarios", err);
-    res.status(500).json({ error: "Error al listar usuarios" });
-  }
-});
-
 app.post("/api/usuarios", requireAuth, async (req, res) => {
   try {
     const { nombre, usuario, password, rol } = req.body;
@@ -3563,33 +3559,6 @@ app.put("/api/usuarios/:id", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Error al actualizar usuario" });
   }
 });
-
-app.delete("/api/usuarios/:id", requireAuth, async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-
-    if (!id) {
-      return res.status(400).json({ error: "ID inválido" });
-    }
-
-    const { rowCount } = await pool.query(
-      "DELETE FROM usuarios WHERE id = $1",
-      [id]
-    );
-
-    if (!rowCount) {
-      return res.status(404).json({ error: "Usuario no encontrado" });
-    }
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("DELETE /api/usuarios/:id", err);
-    res.status(500).json({ error: "Error al eliminar usuario" });
-  }
-});
-
-
-
 app.get("/api/usuarios", requireAuth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -4073,27 +4042,231 @@ app.get("/cuentas-pagar", requireAuth, async (req, res) => {
   }
 });
 
-app.put("/api/usuarios/:id", async (req, res) => {
-  const id = req.params.id;
-  const { nombre, usuario, password, rol } = req.body;
+app.put("/api/pedidos/:id/recibir", requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  const client = await pool.connect();
 
   try {
-    if (password && password.trim() !== "") {
-      await db.query(
-        "UPDATE usuarios SET nombre=$1, usuario=$2, password=$3, rol=$4 WHERE id=$5",
-        [nombre, usuario, password, rol, id]
+    await client.query("BEGIN");
+
+    const { rows: pedidoRows } = await client.query(
+      `SELECT estado FROM pedidos_prov WHERE id = $1`,
+      [id]
+    );
+
+    if (!pedidoRows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ ok: false, msg: "Pedido no encontrado" });
+    }
+
+    const estadoActual = pedidoRows[0].estado;
+
+    if (estadoActual !== "recibido") {
+      const { rows: items } = await client.query(
+        `SELECT * FROM pedidos_prov_items WHERE pedido_id = $1`,
+        [id]
       );
-    } else {
-      await db.query(
-        "UPDATE usuarios SET nombre=$1, usuario=$2, rol=$3 WHERE id=$4",
-        [nombre, usuario, rol, id]
+
+      for (const it of items) {
+        const { rows: prd } = await client.query(
+          `SELECT stock, costo FROM productos WHERE id = $1`,
+          [it.producto_id]
+        );
+
+        if (!prd.length) continue;
+
+        const stockAnterior = Number(prd[0].stock || 0);
+        const costoAnterior = Number(prd[0].costo || 0);
+        const nuevoStock = stockAnterior + Number(it.cantidad || 0);
+        const nuevoCosto = costoPromedio(
+          costoAnterior,
+          stockAnterior,
+          Number(it.precio_unit || 0),
+          Number(it.cantidad || 0)
+        );
+
+        await client.query(
+          `UPDATE productos SET stock = $1, costo = $2 WHERE id = $3`,
+          [nuevoStock, nuevoCosto, it.producto_id]
+        );
+      }
+
+      await client.query(`UPDATE productos SET alerta = (stock <= 3)`);
+
+      await client.query(
+        `UPDATE pedidos_prov
+         SET estado = 'recibido',
+             fecha_recepcion = NOW()
+         WHERE id = $1`,
+        [id]
       );
     }
 
+    await client.query("COMMIT");
     res.json({ ok: true });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error al actualizar usuario" });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    console.error("PUT /api/pedidos/:id/recibir", e);
+    res.status(500).json({ ok: false, msg: "No se pudo recibir el pedido" });
+  } finally {
+    client.release();
+  }
+});
+
+function requireAdmin(req, res, next) {
+  const rol = String(req.session?.user?.rol || "").toLowerCase();
+
+  if (rol === "admin" || rol === "administrador") return next();
+
+  return res.status(403).json({
+    ok: false,
+    msg: "Solo el administrador puede cambiar el tipo de cambio"
+  });
+}
+
+app.get("/config/monedas", requireAuth, async (_req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT moneda, tipo_cambio
+      FROM configuracion_monedas
+      ORDER BY moneda
+    `);
+
+    res.json({
+      ok: true,
+      monedas: rows
+    });
+  } catch (err) {
+    console.error("GET /config/monedas", err);
+    res.status(500).json({ ok: false, msg: "Error obteniendo monedas" });
+  }
+});
+
+app.put("/config/monedas", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const usd = Number(req.body?.USD || 0);
+    const brl = Number(req.body?.BRL || 0);
+
+    if (usd <= 0 || brl <= 0) {
+      return res.status(400).json({
+        ok: false,
+        msg: "Tipo de cambio inválido"
+      });
+    }
+
+    await pool.query(`
+      INSERT INTO configuracion_monedas (moneda, tipo_cambio, actualizado_en)
+      VALUES 
+        ('USD', $1, NOW()),
+        ('BRL', $2, NOW())
+      ON CONFLICT (moneda)
+      DO UPDATE SET 
+        tipo_cambio = EXCLUDED.tipo_cambio,
+        actualizado_en = NOW()
+    `, [usd, brl]);
+
+    res.json({ ok: true, msg: "Tipo de cambio actualizado" });
+  } catch (err) {
+    console.error("PUT /config/monedas", err);
+    res.status(500).json({ ok: false, msg: "Error actualizando monedas" });
+  }
+});
+
+app.post("/cuentas-pagar", async (req, res) => {
+  try {
+    const {
+      proveedor,
+      concepto,
+      monto,
+      vencimiento,
+      estado,
+      fecha_pago,
+      caja_tipo
+    } = req.body;
+
+    const { data, error } = await supabase
+      .from("cuentas_pagar")
+      .insert([{
+        proveedor,
+        concepto,
+        monto,
+        vencimiento,
+        estado,
+        fecha_pago,
+        caja_tipo
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (err) {
+    console.error("Error POST /cuentas-pagar:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/cuentas-pagar/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const {
+      proveedor,
+      concepto,
+      monto,
+      vencimiento,
+      estado,
+      fecha_pago,
+      caja_tipo
+    } = req.body;
+
+    const { data, error } = await supabase
+      .from("cuentas_pagar")
+      .update({
+        proveedor,
+        concepto,
+        monto,
+        vencimiento,
+        estado,
+        fecha_pago,
+        caja_tipo
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (err) {
+    console.error("Error PUT /cuentas-pagar/:id:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+app.delete("/api/usuarios/:id", requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    const { rowCount } = await pool.query(
+      "DELETE FROM usuarios WHERE id = $1",
+      [id]
+    );
+
+    if (rowCount === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /api/usuarios/:id", err);
+    res.status(500).json({ error: "Error al eliminar usuario" });
   }
 });
 

@@ -755,80 +755,81 @@
     }
 
     function renderUsuarios() {
-      const lista = document.getElementById("listaUsuarios");
-      const listaMobile = document.getElementById("listaUsuariosMobile");
-      const filtrados = obtenerUsuariosFiltrados();
+  const lista = document.getElementById("listaUsuarios");
+  const listaMobile = document.getElementById("listaUsuariosMobile");
+  const filtrados = obtenerUsuariosFiltrados();
 
-      actualizarContador(filtrados.length);
+  actualizarContador(filtrados.length);
 
-      lista.innerHTML = "";
-      listaMobile.innerHTML = "";
+  lista.innerHTML = "";
+  listaMobile.innerHTML = "";
 
-      if (filtrados.length === 0) {
-        lista.innerHTML = `
-          <tr>
-            <td colspan="5" class="empty">No se encontraron usuarios.</td>
-          </tr>
-        `;
-        listaMobile.innerHTML = `<div class="empty">No se encontraron usuarios.</div>`;
-        return;
-      }
+  if (filtrados.length === 0) {
+    lista.innerHTML = `
+      <tr>
+        <td colspan="5" class="empty">No se encontraron usuarios.</td>
+      </tr>
+    `;
+    listaMobile.innerHTML = `<div class="empty">No se encontraron usuarios.</div>`;
+    return;
+  }
 
-      filtrados.forEach((u) => {
-        lista.innerHTML += `
-          <tr>
-            <td>${u.id}</td>
-            <td>${u.nombre}</td>
-            <td>${u.usuario}</td>
-            <td>${badgeRol(u.rol)}</td>
-            <td>
-              <div class="actions">
-                <button type="button" class="icon-btn edit" onclick="editarUsuario(${u.id})" title="Editar">
-                  ${iconEdit()}
-                </button>
-                <button type="button" class="icon-btn delete" onclick="abrirModalEliminar(${u.id})" title="Eliminar">
-                  ${iconDelete()}
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
+  filtrados.forEach((u) => {
+    lista.innerHTML += `
+      <tr>
+        <td>${u.id}</td>
+        <td>${u.nombre}</td>
+        <td>${u.usuario}</td>
+        <td>${badgeRol(u.rol)}</td>
+        <td>
+          <div class="actions">
+            <button type="button" class="icon-btn edit" onclick="editarUsuario(${u.id})">
+              ${iconEdit()}
+            </button>
 
-        listaMobile.innerHTML += `
-          <div class="user-card">
-            <div class="user-card-top">
-              <div>
-                <div class="user-name">${u.nombre}</div>
-                <div class="user-username">@${u.usuario}</div>
-              </div>
-              <div>${badgeRol(u.rol)}</div>
-            </div>
-
-            <div class="user-meta">
-              <div class="meta-box">
-                <div class="meta-label">ID</div>
-                <div class="meta-value">${u.id}</div>
-              </div>
-
-              <div class="meta-box">
-                <div class="meta-label">Rol</div>
-                <div class="meta-value">${u.rol}</div>
-              </div>
-            </div>
-
-            <div class="user-actions">
-              <button type="button" class="icon-btn edit" onclick="editarUsuario(${u.id})" title="Editar">
-                ${iconEdit()}
-              </button>
-              <button type="button" class="icon-btn delete" onclick="abrirModalEliminar(${u.id})" title="Eliminar">
-                ${iconDelete()}
-              </button>
-            </div>
+            <button type="button" class="icon-btn delete" onclick="eliminarUsuario(${u.id})">
+              ${iconDelete()}
+            </button>
           </div>
-        `;
-      });
-    }
+        </td>
+      </tr>
+    `;
 
+    listaMobile.innerHTML += `
+      <div class="user-card">
+        <div class="user-card-top">
+          <div>
+            <div class="user-name">${u.nombre}</div>
+            <div class="user-username">@${u.usuario}</div>
+          </div>
+          <div>${badgeRol(u.rol)}</div>
+        </div>
+
+        <div class="user-meta">
+          <div class="meta-box">
+            <div class="meta-label">ID</div>
+            <div class="meta-value">${u.id}</div>
+          </div>
+
+          <div class="meta-box">
+            <div class="meta-label">Rol</div>
+            <div class="meta-value">${u.rol}</div>
+          </div>
+        </div>
+
+        <div class="user-actions">
+          <button type="button" class="icon-btn edit" onclick="editarUsuario(${u.id})">
+            ${iconEdit()}
+          </button>
+
+          <button type="button" class="icon-btn delete" onclick="eliminarUsuario(${u.id})">
+            ${iconDelete()}
+          </button>
+        </div>
+      </div>
+    `;
+  });
+}
     async function cargarUsuarios() {
       try {
         const res = await fetch("/api/usuarios", {
@@ -950,21 +951,48 @@
     }
 
     function abrirModalEliminar(id) {
-      usuarioAEliminar = id;
+  usuarioAEliminar = id;
 
-      const usuario = usuariosData.find(u => String(u.id) === String(id));
-      const nombre = usuario ? usuario.nombre : "este usuario";
+  const usuario = usuariosData.find(u => String(u.id) === String(id));
+  const nombre = usuario ? usuario.nombre : "este usuario";
 
-      document.getElementById("deleteText").textContent =
-        `¿Seguro que querés eliminar a ${nombre}? Esta acción no se puede deshacer.`;
+  document.getElementById("deleteText").textContent =
+    `¿Seguro que querés eliminar a ${nombre}? Esta acción no se puede deshacer.`;
 
-      document.getElementById("deleteModal").classList.add("active");
-    }
+  document.getElementById("deleteModal").classList.add("active");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
     function cerrarModalEliminar() {
       usuarioAEliminar = null;
       document.getElementById("deleteModal").classList.remove("active");
     }
+
+   async function eliminarUsuario(id) {
+  if (!confirm("¿Seguro que querés eliminar este usuario?")) return;
+
+  try {
+    const res = await fetch(`/api/usuarios/${id}`, {
+      method: "DELETE",
+      credentials: "include"
+    });
+
+    const texto = await res.text();
+    console.log("STATUS:", res.status);
+    console.log("RESPUESTA:", texto);
+
+    if (!res.ok) {
+      alert("Error: " + texto);
+      return;
+    }
+
+    await cargarUsuarios();
+    alert("Usuario eliminado");
+  } catch (error) {
+    console.error(error);
+    alert("Error al eliminar");
+  }
+}
 
     async function confirmarEliminar() {
       if (usuarioAEliminar === null || usuarioAEliminar === undefined) return;
@@ -980,7 +1008,7 @@
         if (!res.ok) {
           const errorText = await res.text();
           console.error("Error al eliminar:", errorText);
-          throw new Error("No se pudo eliminar");
+          throw new Error(errorText);
         }
 
         cerrarModalEliminar();

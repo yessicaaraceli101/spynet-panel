@@ -587,16 +587,7 @@ main {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22) !important;
 }
 
-#modalVenta .ec-body {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  overflow: hidden !important;
-  display: grid !important;
-  grid-template-columns: minmax(0, 1.35fr) minmax(360px, 1fr) !important;
-  gap: 16px !important;
-  padding: 16px !important;
-  align-items: stretch !important;
-}
+
 
 #modalVenta .ec-main,
 #modalVenta .ec-sidebar {
@@ -623,6 +614,361 @@ main {
   overflow-y: auto !important;
   overflow-x: auto !important;
 }
+
+
+
+
+
+/* ===== FIX FINAL MODAL VENTA FULL ===== */
+
+#modalVenta.modal,
+#modalVenta {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  min-width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+  z-index: 99999999 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#modalVenta.show {
+  display: flex !important;
+}
+
+#modalVenta .ec-modal,
+#modalVenta .sheet,
+#modalVenta .modal-content {
+  width: calc(100vw - 32px) !important;
+  max-width: calc(100vw - 32px) !important;
+  height: calc(100vh - 32px) !important;
+  max-height: calc(100vh - 32px) !important;
+  margin: 0 auto !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+}
+
+#modalVenta .ec-body,
+#modalVenta .modal-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+body.modal-open {
+  overflow: hidden !important;
+}
+
+/* =========================
+   FIX FINAL MODAL NUEVA COMPRA
+========================= */
+
+#modalNuevaCompra,
+#modalNuevaCompra.modal,
+#modalNuevaCompra.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+  z-index: 99999999 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+#modalNuevaCompra.show {
+  display: flex !important;
+}
+
+#modalNuevaCompra .ec-modal {
+  width: calc(100vw - 32px) !important;
+  max-width: calc(100vw - 32px) !important;
+  height: calc(100vh - 32px) !important;
+  max-height: calc(100vh - 32px) !important;
+  margin: 0 auto !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: #fff !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+}
+
+#modalNuevaCompra .ec-header {
+  flex: 0 0 auto !important;
+}
+
+#modalNuevaCompra .ec-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-bottom: 18px !important;
+}
+
+#modalNuevaCompra .ec-main,
+#modalNuevaCompra .ec-sidebar {
+  min-height: 0 !important;
+}
+
+#modalNuevaCompra .ec-table-wrap {
+  max-height: 320px !important;
+  overflow-y: auto !important;
+}
+
+body.modal-open {
+  overflow: hidden !important;
+}
+
+.modal-overlay {
+  display: none;
+}
+
+.modal-overlay.show {
+  display: flex !important;
+}
+
+/* =========================
+   NUEVA COMPRA — FIX FINAL
+========================= */
+
+#modalNuevaCompra {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  z-index: 99999999 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+#modalNuevaCompra.show,
+#modalNuevaCompra[style*="display: flex"],
+#modalNuevaCompra[style*="display:flex"] {
+  display: flex !important;
+}
+
+#modalNuevaCompra > .ec-modal {
+  width: min(1320px, calc(100% - 32px)) !important;
+  max-width: min(1320px, calc(100% - 32px)) !important;
+  height: calc(100vh - 32px) !important;
+  max-height: calc(100vh - 32px) !important;
+  margin: 0 auto !important;
+  background: #fff !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22) !important;
+}
+
+#modalNuevaCompra > .ec-modal > .ec-header {
+  flex: 0 0 auto !important;
+}
+
+#modalNuevaCompra > .ec-modal > .ec-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.25fr) 420px !important;
+  gap: 14px !important;
+  padding: 14px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#modalNuevaCompra .ec-main,
+#modalNuevaCompra .ec-sidebar {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+#modalNuevaCompra .ec-sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+#modalNuevaCompra .ec-table-card {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+#modalNuevaCompra .ec-table-wrap {
+  height: 100% !important;
+  min-height: 220px !important;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
+}
+
+#modalNuevaCompra .ec-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+  margin-top: 14px !important;
+}
+
+@media (max-width: 980px) {
+  #modalNuevaCompra {
+    padding: 8px !important;
+  }
+
+  #modalNuevaCompra > .ec-modal {
+    width: calc(100% - 16px) !important;
+    max-width: calc(100% - 16px) !important;
+    height: calc(100vh - 16px) !important;
+    max-height: calc(100vh - 16px) !important;
+    border-radius: 16px !important;
+  }
+
+  #modalNuevaCompra > .ec-modal > .ec-body {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================
+   EDITAR COMPRA — SCROLL Y ALTURA
+========================= */
+
+#modalEditarCompra {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  z-index: 99999999 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+#modalEditarCompra.show,
+#modalEditarCompra[style*="display:flex"],
+#modalEditarCompra[style*="display: flex"] {
+  display: flex !important;
+}
+
+#modalEditarCompra > .ec-modal {
+  width: min(1320px, calc(100% - 32px)) !important;
+  max-width: min(1320px, calc(100% - 32px)) !important;
+  height: calc(100vh - 32px) !important;
+  max-height: calc(100vh - 32px) !important;
+  margin: 0 auto !important;
+  background: #fff !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+}
+
+#modalEditarCompra > .ec-modal > .ec-header {
+  flex: 0 0 auto !important;
+}
+
+#modalEditarCompra > .ec-modal > .ec-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.25fr) 420px !important;
+  gap: 14px !important;
+  padding: 14px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#modalEditarCompra .ec-main,
+#modalEditarCompra .ec-sidebar {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+#modalEditarCompra .ec-sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+#modalEditarCompra .ec-table-card {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+#modalEditarCompra .ec-table-wrap {
+  min-height: 220px !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
+}
+
+#modalEditarCompra .ec-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+  margin-top: 14px !important;
+}
+
+@media (max-width: 980px) {
+  #modalEditarCompra {
+    padding: 8px !important;
+  }
+
+  #modalEditarCompra > .ec-modal {
+    width: calc(100% - 16px) !important;
+    max-width: calc(100% - 16px) !important;
+    height: calc(100vh - 16px) !important;
+    max-height: calc(100vh - 16px) !important;
+    border-radius: 16px !important;
+  }
+
+  #modalEditarCompra > .ec-modal > .ec-body {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 
 /* ===== CUANDO HAY MODAL, OCULTAR SCROLL DEL FONDO ===== */
 
@@ -715,4 +1061,987 @@ body:has(#modalEditarCompra[style*="display: flex"]),
 body:has(#modalVenta[style*="display:flex"]),
 body:has(#modalVenta[style*="display: flex"]) {
   overflow: hidden !important;
+}
+
+
+@media (max-width: 900px) {
+  #modalVenta .ec-body {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+}
+
+
+
+@media (max-width: 900px) {
+  #modalVenta .ec-body {
+    padding-bottom: 140px !important;
+  }
+
+ @media (max-width: 900px) {
+  #modalVenta .ec-actions,
+  #modalVenta .pos-footer {
+    position: relative !important;
+    bottom: auto !important;
+  }
+}
+
+  #modalVenta .ec-table-wrap,
+  #modalVenta .productos-table-wrap,
+  #modalVenta .tabla-productos-venta {
+    max-height: 260px !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #modalVenta table {
+    width: 100% !important;
+    min-width: 520px !important;
+  }
+}
+
+.logo-brand {
+  height: 34px;
+  padding: 6px 10px;
+  background: #fff;
+  border-radius: 12px;
+  object-fit: contain;
+
+  /* mejora visual */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-top {
+  height: 70px;
+  padding: 6px 12px;
+  background: #fff;
+  border-radius: 14px;
+  object-fit: contain;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+
+
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 270px !important;
+    max-width: 85vw !important;
+    height: 100vh !important;
+    background: #fff !important;
+    padding: 16px !important;
+    overflow-y: auto !important;
+    z-index: 9999999 !important;
+    transform: translateX(-110%) !important;
+    transition: transform .25s ease !important;
+  }
+
+  .sidebar.open {
+    transform: translateX(0) !important;
+  }
+
+  main {
+    margin-left: 0 !important;
+    padding: 12px !important;
+    width: 100% !important;
+  }
+}
+
+
+
+
+
+/* ===== FIX MODALES EN CELULAR ===== */
+@media (max-width: 900px) {
+  .modal {
+    align-items: flex-start !important;
+    justify-content: center !important;
+    padding: 70px 14px 20px !important;
+    overflow-y: auto !important;
+    z-index: 999999 !important;
+  }
+
+  .modal .sheet,
+  .modal-content {
+    width: 100% !important;
+    max-width: 94vw !important;
+    max-height: calc(100vh - 100px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    border-radius: 18px !important;
+    padding: 18px !important;
+  }
+
+  .modal .grid.cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .modal .actions {
+    position: sticky !important;
+    bottom: 0 !important;
+    background: #fff !important;
+    padding-top: 12px !important;
+    padding-bottom: 8px !important;
+    z-index: 10 !important;
+  }
+
+  .modal .actions .btn,
+  .modal button {
+    width: 100% !important;
+  }
+
+  body:has(.modal[style*="display: block"]) .menu-btn,
+  body:has(.modal[style*="display:flex"]) .menu-btn {
+    display: none !important;
+  }
+}
+
+
+
+
+
+.sidebar {
+  background: #2563eb !important;
+  padding: 20px 12px !important;
+}
+
+.sidebar-nav {
+  background: transparent !important;
+  width: 100% !important;
+  padding: 10px 0 !important;
+  border-right: none !important;
+}
+
+.sidebar-nav a {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 12px 14px !important;
+  margin: 4px 0 !important;
+  color: rgba(255,255,255,.88) !important;
+  background: transparent !important;
+  border-radius: 8px !important;
+  border-left: none !important;
+}
+
+.sidebar-nav a i {
+  color: rgba(255,255,255,.85) !important;
+  width: 20px !important;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a.active {
+  background: rgba(255,255,255,.18) !important;
+  color: #fff !important;
+}
+
+.sidebar-nav a.active i {
+  color: #fff !important;
+}
+
+.brand {
+  color: #fff !important;
+  padding: 10px 12px !important;
+}
+
+
+
+
+
+/* ===== FIX REAL MODALES SIMPLES EN CELULAR ===== */
+@media (max-width: 900px) {
+  #modalCliente,
+  #modalClienteEdit,
+  #modalProveedor,
+  #modalProveedorEdit,
+  #modalProducto,
+  #modalProductoEdit,
+  #modalCategoria,
+  #modalCategoriaEdit {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    padding: 70px 12px 18px !important;
+    display: none;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  #modalCliente[style*="display: block"],
+  #modalCliente[style*="display:block"],
+  #modalCliente[style*="display: flex"],
+  #modalCliente[style*="display:flex"],
+  #modalClienteEdit[style*="display: block"],
+  #modalClienteEdit[style*="display:block"],
+  #modalProveedor[style*="display: block"],
+  #modalProveedor[style*="display:block"],
+  #modalProveedorEdit[style*="display: block"],
+  #modalProveedorEdit[style*="display:block"],
+  #modalProducto[style*="display: block"],
+  #modalProducto[style*="display:block"],
+  #modalProductoEdit[style*="display: block"],
+  #modalProductoEdit[style*="display:block"],
+  #modalCategoria[style*="display: block"],
+  #modalCategoria[style*="display:block"],
+  #modalCategoriaEdit[style*="display: block"],
+  #modalCategoriaEdit[style*="display:block"] {
+    display: flex !important;
+  }
+
+  #modalCliente .sheet,
+  #modalClienteEdit .sheet,
+  #modalProveedor .sheet,
+  #modalProveedorEdit .sheet,
+  #modalProducto .sheet,
+  #modalProductoEdit .sheet,
+  #modalCategoria .sheet,
+  #modalCategoriaEdit .sheet {
+    width: 100% !important;
+    max-width: 94vw !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    border-radius: 20px !important;
+    padding: 20px !important;
+    margin: 0 auto !important;
+  }
+
+  #modalCliente .grid.cols-2,
+  #modalClienteEdit .grid.cols-2,
+  #modalProveedor .grid.cols-2,
+  #modalProveedorEdit .grid.cols-2,
+  #modalProducto .grid.cols-2,
+  #modalProductoEdit .grid.cols-2,
+  #modalCategoria .grid.cols-2,
+  #modalCategoriaEdit .grid.cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  #modalCliente .actions,
+  #modalClienteEdit .actions,
+  #modalProveedor .actions,
+  #modalProveedorEdit .actions,
+  #modalProducto .actions,
+  #modalProductoEdit .actions,
+  #modalCategoria .actions,
+  #modalCategoriaEdit .actions {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-top: 16px !important;
+    background: transparent !important;
+  }
+
+  #modalCliente .actions .btn,
+  #modalClienteEdit .actions .btn,
+  #modalProveedor .actions .btn,
+  #modalProveedorEdit .actions .btn,
+  #modalProducto .actions .btn,
+  #modalProductoEdit .actions .btn,
+  #modalCategoria .actions .btn,
+  #modalCategoriaEdit .actions .btn {
+    width: 100% !important;
+    min-height: 48px !important;
+  }
+}
+
+/* ===== FIX CAJA CELULAR ===== */
+@media (max-width: 900px) {
+
+  .caja-top-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .caja-box {
+    width: 100% !important;
+  }
+
+  .grid.cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .caja-btn-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .caja-btn-row .btn {
+    width: 100% !important;
+  }
+
+}
+
+
+/* ===== FIX BOTONES CELULAR ===== */
+@media (max-width: 900px) {
+  .btn,
+  button {
+    width: auto !important;
+  }
+
+  /* Solo estos botones pueden ocupar todo el ancho */
+  .btn-full,
+  .quick-btn,
+  .acc-btn,
+  .caja-btn-row .btn {
+    width: 100% !important;
+  }
+
+  /* Botones de modales simples */
+  .modal .actions {
+    display: flex !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .modal .actions .btn {
+    width: auto !important;
+    flex: 1 1 auto !important;
+  }
+}
+
+/* ===== FIX MODAL VENTA CELULAR ===== */
+@media (max-width: 900px) {
+
+  #modalVenta .ec-actions {
+    position: relative !important;
+    bottom: auto !important;
+    width: 100% !important;
+    margin-top: 16px !important;
+  }
+
+  #modalVenta .pos-footer {
+    position: relative !important;
+    bottom: auto !important;
+  }
+
+  #modalVenta .ec-body {
+    padding-bottom: 20px !important;
+  }
+
+}
+/* ===== FIX DEFINITIVO MODAL VENTA CELULAR ===== */
+@media (max-width: 900px) {
+
+  #modalVenta .ec-modal {
+    height: calc(100dvh - 32px) !important;
+    max-height: calc(100dvh - 32px) !important;
+    overflow: hidden !important;
+  }
+
+  #modalVenta .ec-body {
+    display: block !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 16px !important;
+  }
+
+  #modalVenta .ec-main,
+  #modalVenta .ec-sidebar {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  #modalVenta .ec-table-card {
+    margin-top: 14px !important;
+    min-height: auto !important;
+  }
+
+  #modalVenta .ec-table-wrap {
+    max-height: 260px !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+  }
+
+  #modalVenta .ec-actions {
+    position: static !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-top: 18px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    transform: none !important;
+  }
+
+  #modalVenta .ec-actions .btn {
+    position: static !important;
+    width: 100% !important;
+    min-height: 50px !important;
+    transform: none !important;
+  }
+}
+@media (max-width: 900px) {
+  #modalVenta .ec-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 10px !important;
+  }
+
+  #modalVenta .ec-actions .btn {
+    flex: 1 !important;
+    width: 100% !important;
+    min-height: 50px !important;
+  }
+}
+
+/* ===== FORZAR BOTONES EN FILA EN MODALES SIMPLES ===== */
+@media (max-width: 900px) {
+
+  #modalCliente .actions,
+  #modalClienteEdit .actions,
+  #modalProveedor .actions,
+  #modalProveedorEdit .actions,
+  #modalProducto .actions,
+  #modalProductoEdit .actions,
+  #modalCategoria .actions,
+  #modalCategoriaEdit .actions,
+  #modalCuentaPagar .actions {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 10px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  #modalCliente .actions button,
+  #modalClienteEdit .actions button,
+  #modalProveedor .actions button,
+  #modalProveedorEdit .actions button,
+  #modalProducto .actions button,
+  #modalProductoEdit .actions button,
+  #modalCategoria .actions button,
+  #modalCategoriaEdit .actions button,
+  #modalCuentaPagar .actions button {
+    width: 50% !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+}
+
+
+@media (max-width: 900px) {
+  #modalSelProducto {
+    padding: 70px 10px 16px !important;
+    align-items: flex-start !important;
+  }
+
+ #modalSelProducto .modal-productos-pos {
+  width: 100% !important;
+  max-width: calc(100vw - 20px) !important;
+  height: calc(100dvh - 20px) !important;
+  max-height: calc(100dvh - 20px) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+  #modalSelProducto .modal-body-pos {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+#modalSelProducto .tabla-scroll-pos {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+}
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.45) !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  z-index: 999999 !important;
+}
+
+.modal-overlay.active {
+  display: flex !important;
+}
+
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.45) !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  z-index: 999999 !important;
+}
+#modalSelProducto.modal {
+  max-width: none !important;
+  width: 100vw !important;
+  background: rgba(15, 23, 42, 0.45) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+
+
+
+#modalSelProducto.modal {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 10px !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  z-index: 99999999 !important;
+  overflow: hidden !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#modalSelProducto.modal.show,
+#modalSelProducto.modal[style*="display: flex"],
+#modalSelProducto.modal[style*="display:flex"] {
+  display: flex !important;
+}
+
+#modalSelProducto .modal-productos-pos {
+  width: min(950px, calc(100vw - 20px)) !important;
+  height: min(88dvh, 680px) !important;
+  background: #fff !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+@media (max-width: 768px) {
+  #modalSelProducto .modal-productos-pos {
+    width: calc(100vw - 16px) !important;
+    height: calc(100dvh - 16px) !important;
+  }
+}
+
+
+
+
+
+
+
+/* ===== MODAL SELECCIONAR PRODUCTO - CELULAR CORRECTO ===== */
+
+@media (max-width: 768px) {
+
+  #modalSelProducto.modal {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    z-index: 99999999 !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  #modalSelProducto .modal-productos-pos {
+    width: 100% !important;
+    height: calc(100dvh - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    border-radius: 18px !important;
+    background: #fff !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  #modalSelProducto .modal-header-pos {
+    padding: 14px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+
+  #modalSelProducto .modal-header-pos h2 {
+    font-size: 20px !important;
+    margin: 0 !important;
+  }
+
+  #modalSelProducto .modal-body-pos {
+    flex: 1 !important;
+    min-height: 0 !important;
+    padding: 12px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  #modalSelProducto .buscador-productos-pos {
+    width: 100% !important;
+    margin-bottom: 12px !important;
+  }
+
+  #modalSelProducto .tabla-scroll-pos {
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  #modalSelProducto table,
+  #modalSelProducto thead,
+  #modalSelProducto tbody,
+  #modalSelProducto tr,
+  #modalSelProducto td {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #modalSelProducto thead {
+    display: none !important;
+  }
+
+  #modalSelProducto tbody tr {
+    background: #fff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 16px !important;
+    padding: 14px !important;
+    margin-bottom: 12px !important;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  #modalSelProducto tbody td {
+    border: none !important;
+    padding: 6px 0 !important;
+    font-size: 15px !important;
+  }
+
+  #modalSelProducto tbody td:nth-child(1)::before {
+    content: "Código: ";
+    font-weight: 700;
+  }
+
+  #modalSelProducto tbody td:nth-child(2)::before {
+    content: "Marca: ";
+    font-weight: 700;
+  }
+
+  #modalSelProducto tbody td:nth-child(3)::before {
+    content: "Producto: ";
+    font-weight: 700;
+  }
+
+  #modalSelProducto tbody td:nth-child(4)::before {
+    content: "Costo: ";
+    font-weight: 700;
+  }
+
+  #modalSelProducto tbody td:nth-child(5)::before {
+    content: "Stock: ";
+    font-weight: 700;
+  }
+
+  #modalSelProducto tbody td:nth-child(6)::before {
+    content: "";
+  }
+
+  #modalSelProducto tbody td:nth-child(6) button {
+    width: 100% !important;
+    margin-top: 10px !important;
+  }
+}
+
+
+/* ===== DISEÑO TARJETAS SELECTOR PRODUCTOS ===== */
+
+#modalSelProducto .lista-productos-cards {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+  gap: 14px !important;
+  max-height: 58vh !important;
+  overflow-y: auto !important;
+  padding: 4px !important;
+}
+
+#modalSelProducto .producto-card-pos {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 16px !important;
+  padding: 14px !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
+}
+
+#modalSelProducto .producto-linea {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 4px 0 !important;
+  border-bottom: 1px dashed #e5e7eb !important;
+  font-size: 14px !important;
+}
+
+#modalSelProducto .producto-linea:last-of-type {
+  border-bottom: none !important;
+}
+
+#modalSelProducto .producto-label {
+  font-weight: 700 !important;
+  color: #334155 !important;
+}
+
+#modalSelProducto .btn-producto-pos {
+  width: 100% !important;
+  margin-top: 12px !important;
+  justify-content: center !important;
+}
+
+@media (max-width: 600px) {
+  #modalSelProducto .lista-productos-cards {
+    grid-template-columns: 1fr !important;
+    max-height: calc(100dvh - 170px) !important;
+  }
+}
+
+
+/* ===== FIX FINAL VISIBLE TARJETAS PRODUCTOS ===== */
+
+#modalSelProducto .lista-productos-cards {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+  gap: 14px !important;
+  max-height: 60vh !important;
+  overflow-y: auto !important;
+  padding: 6px !important;
+}
+
+#modalSelProducto .producto-card-pos {
+  display: block !important;
+  width: 100% !important;
+  min-height: auto !important;
+  height: auto !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 16px !important;
+  padding: 14px !important;
+  color: #0f172a !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
+}
+
+#modalSelProducto .producto-linea {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 26px !important;
+  height: auto !important;
+  padding: 4px 0 !important;
+  border-bottom: 1px dashed #e5e7eb !important;
+  color: #0f172a !important;
+  font-size: 14px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+#modalSelProducto .producto-linea span {
+  display: inline !important;
+  color: #0f172a !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  white-space: normal !important;
+}
+
+#modalSelProducto .producto-label {
+  font-weight: 800 !important;
+  color: #334155 !important;
+}
+
+#modalSelProducto .btn-producto-pos {
+  width: 100% !important;
+  margin-top: 12px !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+
+/* FIX DEFINITIVO MODAL SELECTOR PRODUCTO */
+@media (max-width: 1200px) {
+  #modalSelProducto,
+  #modalSelProducto.modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    padding: 8px !important;
+  }
+
+  #modalSelProducto .modal-productos-pos,
+  #modalSelProducto .sheet {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    overflow: hidden !important;
+  }
+
+  #modalSelProducto .modal-body-pos {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  #modalSelProducto .lista-productos-cards {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  #modalSelProducto .producto-card-pos {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  #modalSelProducto .producto-linea {
+    display: grid !important;
+    grid-template-columns: 95px 1fr !important;
+    gap: 8px !important;
+  }
+
+  #modalSelProducto .producto-linea span {
+    min-width: 0 !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    text-align: left !important;
+  }
+
+  #modalSelProducto .btn-producto-pos {
+    width: 100% !important;
+  }
+}
+
+
+
+/* =========================================
+   MODAL SELECCIONAR PRODUCTO — RESPONSIVE
+========================================= */
+
+#modalSelProducto {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  background: rgba(15,23,42,.55) !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 14px !important;
+}
+
+#modalSelProducto .modal-productos-pos {
+  width: min(1100px, 100%) !important;
+  max-width: 1100px !important;
+  height: min(92vh, 900px) !important;
+  background: #fff !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#modalSelProducto .modal-header-pos {
+  padding: 18px 22px !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+#modalSelProducto .modal-body-pos {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 18px !important;
+}
+
+#modalSelProducto .lista-productos-cards {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill,minmax(280px,1fr)) !important;
+  gap: 14px !important;
+  margin-top: 14px !important;
+}
+
+#modalSelProducto .producto-card-pos {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 18px !important;
+  padding: 14px !important;
+  background: #fff !important;
+}
+
+#modalSelProducto .producto-linea {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 6px 0 !important;
+  border-bottom: 1px dashed #e5e7eb !important;
+}
+
+#modalSelProducto .producto-label {
+  font-weight: 700 !important;
+}
+
+#modalSelProducto .btn-producto-pos {
+  width: 100% !important;
+  margin-top: 12px !important;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+
+  #modalSelProducto {
+    padding: 8px !important;
+  }
+
+  #modalSelProducto .modal-productos-pos {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: calc(100dvh - 16px) !important;
+    border-radius: 18px !important;
+  }
+
+  #modalSelProducto .lista-productos-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  #modalSelProducto .producto-linea {
+    flex-direction: column !important;
+    gap: 2px !important;
+  }
 }

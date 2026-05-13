@@ -458,6 +458,71 @@
         font-size:22px;
       }
     }
+
+    .card.card-tipo-cambio {
+  max-width: 420px !important;
+  width: 100% !important;
+  margin: 24px auto !important;
+  padding: 20px !important;
+}
+
+.card.card-tipo-cambio input {
+  width: 100% !important;
+  margin-bottom: 10px !important;
+}
+
+.card.card-tipo-cambio button {
+  width: 100% !important;
+  margin-top: 10px !important;
+}
+
+.card.card-tipo-cambio .btn {
+  width: auto !important;
+  min-width: 180px;
+  padding: 10px 18px !important;
+  border-radius: 10px !important;
+  font-weight: 700;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.card.card-tipo-cambio {
+  text-align: left;
+}
+
+.card.card-tipo-cambio .btn-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.tipo-cambio-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.btn-wrap {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .panel-grid {
+    grid-template-columns: 1fr;
+  }
+}
   </style>
 </head>
 <body>
@@ -591,36 +656,62 @@
 
       </div>
 
-      <div class="card pretty-access">
-        <div class="title-row">
-          <i class="fa-solid fa-bolt"></i>
-          <b>Accesos Rápidos</b>
-        </div>
+     <section class="panel-grid">
 
-        <div class="access-buttons">
-          <button class="acc-btn blue" onclick="location.href='index.html#ventas'">
-            <i class="fa fa-shopping-cart"></i>
-            Nueva Venta
-          </button>
+  <!-- ACCESOS RÁPIDOS -->
+  <div class="card pretty-access">
+    <div class="title-row">
+      <i class="fa-solid fa-bolt"></i>
+      <b>Accesos Rápidos</b>
+    </div>
 
-          <button class="acc-btn green" onclick="location.href='index.html#compras'">
-            <i class="fa fa-receipt"></i>
-            Nueva Compra
-          </button>
+    <div class="access-buttons">
+      <button class="acc-btn blue" onclick="location.href='index.html#ventas'">
+        <i class="fa fa-shopping-cart"></i>
+        Nueva Venta
+      </button>
 
-          <button class="acc-btn orange" onclick="location.href='index.html#productos'">
-            <i class="fa fa-box"></i>
-            Gestionar Productos
-          </button>
+      <button class="acc-btn green" onclick="location.href='index.html#compras'">
+        <i class="fa fa-receipt"></i>
+        Nueva Compra
+      </button>
 
-          <button class="acc-btn blue" onclick="location.href='admin_usuarios.html'">
-            <i class="fa fa-users"></i>
-            Gestionar Usuarios
-          </button>
-        </div>
+      <button class="acc-btn orange" onclick="location.href='index.html#productos'">
+        <i class="fa fa-box"></i>
+        Gestionar Productos
+      </button>
+
+      <button class="acc-btn blue" onclick="location.href='admin_usuarios.html'">
+        <i class="fa fa-users"></i>
+        Gestionar Usuarios
+      </button>
+    </div>
+  </div>
+
+  <!-- TIPO DE CAMBIO -->
+  <div class="card card-tipo-cambio">
+    <h3>Tipo de cambio</h3>
+
+    <div class="tipo-cambio-grid">
+      <div>
+        <label class="label">Dólar USD</label>
+        <input id="admin_usd" class="input" type="number" value="6350">
       </div>
 
-    </section>
+      <div>
+        <label class="label">Real BRL</label>
+        <input id="admin_brl" class="input" type="number" value="1250">
+      </div>
+    </div>
+
+    <div class="btn-wrap">
+      <button class="btn primary" onclick="guardarTipoCambioAdmin()">
+        Guardar
+      </button>
+    </div>
+  </div>
+
+</section>
   </div>
 
   <div id="modalCerrarSesionAdmin" class="modal-overlay">
@@ -647,6 +738,7 @@
       </div>
     </div>
   </div>
+
 
   <script>
     window.irA = function(seccion) {
@@ -755,6 +847,81 @@
       }
     });
   </script>
+
+  <script>
+async function cargarTipoCambioAdmin() {
+  try {
+    const res = await fetch("/config/monedas", { credentials: "include" });
+    const data = await res.json();
+
+    const usd = data.monedas?.find(m => m.moneda === "USD");
+    const brl = data.monedas?.find(m => m.moneda === "BRL");
+
+    document.getElementById("admin_usd").value = usd?.tipo_cambio || 6350;
+    document.getElementById("admin_brl").value = brl?.tipo_cambio || 1250;
+  } catch (err) {
+    console.error("Error cargando tipo de cambio:", err);
+  }
+}
+
+async function guardarTipoCambioAdmin() {
+  const body = {
+    USD: Number(document.getElementById("admin_usd").value || 0),
+    BRL: Number(document.getElementById("admin_brl").value || 0)
+  };
+
+  const res = await fetch("/config/monedas", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body)
+  });
+
+  const data = await res.json();
+  alert(data.msg || "Guardado");
+}
+
+document.addEventListener("DOMContentLoaded", cargarTipoCambioAdmin);
+</script>
+
+<script>
+async function guardarTipoCambioAdmin() {
+  try {
+    const usd = Number(document.getElementById("admin_usd").value || 0);
+    const brl = Number(document.getElementById("admin_brl").value || 0);
+
+    if (usd <= 0 || brl <= 0) {
+      alert("Ingresá valores válidos");
+      return;
+    }
+
+    const res = await fetch("/config/monedas", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        USD: usd,
+        BRL: brl
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.msg || "Error al guardar");
+      return;
+    }
+
+    alert("Tipo de cambio actualizado correctamente ✅");
+
+  } catch (err) {
+    console.error(err);
+    alert("Error de conexión con el servidor");
+  }
+}
+</script>
 
   <script src="js/app.js?v=2"></script>
   <script src="js/compras.js?v=2"></script>

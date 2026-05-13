@@ -53,38 +53,38 @@ function getTipoCambioVenta() {
   return valor > 0 ? valor : 0;
 }
 
-function toggleTipoCambioVenta() {
-  const moneda = (document.getElementById("v_moneda")?.value || "PYG").toUpperCase();
+async function toggleTipoCambioVenta() {
+  const moneda = document.getElementById("v_moneda").value;
   const wrap = document.getElementById("wrapTipoCambio");
   const input = document.getElementById("v_tipo_cambio");
 
-  if (!wrap || !input) return;
+  // 👇 IMPORTANTE: cargar desde backend
+  const res = await fetch("/config/monedas", { credentials: "include" });
+  const data = await res.json();
 
-  if (moneda === "PYG") {
-    wrap.style.display = "none";
-    input.value = "1";
-  } else {
-    wrap.style.display = "block";
+  let usd = 6350;
+  let brl = 1250;
 
-    // Solo completar automático si está vacío o si venía en 1
-    const actual = Number(input.value || 0);
-
-    if (moneda === "USD" && (!actual || actual === 1 || actual === 1450)) {
-      input.value = "7900";
-    } else if (moneda === "BRL" && (!actual || actual === 1 || actual === 7900)) {
-      input.value = "1450";
-    }
+  if (Array.isArray(data.monedas)) {
+    data.monedas.forEach(m => {
+      if (m.moneda === "USD") usd = Number(m.tipo_cambio);
+      if (m.moneda === "BRL") brl = Number(m.tipo_cambio);
+    });
   }
-  const labelMonto = document.getElementById("labelMontoRecibido");
-if (labelMonto) {
-  if (moneda === "USD") labelMonto.textContent = "Monto recibido (US$)";
-  else if (moneda === "BRL") labelMonto.textContent = "Monto recibido (R$)";
-  else labelMonto.textContent = "Monto recibido (Gs.)";
-}
+
+  if (moneda === "USD") {
+    wrap.style.display = "block";
+    input.value = usd;
+  } else if (moneda === "BRL") {
+    wrap.style.display = "block";
+    input.value = brl;
+  } else {
+    wrap.style.display = "none";
+    input.value = 1;
+  }
 
   actualizarResumenMonedaVenta();
 }
-
 function calcularTotalesVenta() {
   const totalPyg = ventaItems.reduce((a, i) => a + (Number(i.subtotal) || 0), 0);
   const moneda = getMonedaVenta();
@@ -727,6 +727,13 @@ function calcularVuelto() {
     span.style.color = "#065f46";
   }
 }
+
+
+
+let ventasPaginaActual = 1;
+const ventasPorPagina = 7;
+let ventasCache = [];
+
 /* ===============================
    LISTAR VENTAS
 =============================== */
@@ -735,65 +742,118 @@ async function cargarVentas() {
     const res = await fetch("/ventas", { credentials: "include" });
     const ventas = await res.json();
 
-    const tbody = document.getElementById("tablaVentas");
-    if (!tbody) return;
-
-    tbody.innerHTML = "";
-
     if (!Array.isArray(ventas)) {
       console.error("Ventas no es un array:", ventas);
       return;
     }
 
-    ventas.forEach(v => {
-      const tr = document.createElement("tr");
+    ventasCache = ventas;
+    ventasPaginaActual = 1;
 
-      const fecha = (typeof fmtDate === "function")
-        ? fmtDate(v.fecha)
-        : String(v.fecha || "").slice(0, 10);
-
-      const moneda = (v.moneda || "PYG").toUpperCase();
-
-      let totalMostrar = "";
-      if (moneda === "USD") {
-        totalMostrar = `US$ ${nfDecimal(v.total_moneda ?? 0)}`;
-      } else if (moneda === "BRL") {
-        totalMostrar = `R$ ${nfDecimal(v.total_moneda ?? 0)}`;
-      } else {
-        totalMostrar = `Gs. ${nf(v.total_pyg ?? v.total ?? 0)}`;
-      }
-
-      tr.innerHTML = `
-        <td>${v.id ?? "-"}</td>
-        <td>${fecha}</td>
-        <td>${v.cliente_nombre || "Consumidor Final"}</td>
-        <td>${v.productos || "-"}</td>
-        <td>${v.forma_pago_nombre || "-"}</td>
-        <td>
-          ${totalMostrar}
-          <br>
-          <small style="color:#666;">Gs. ${nf(v.total_pyg ?? v.total ?? 0)}</small>
-        </td>
-        <td>
-          <span class="estado-badge ${v.estado_pago || ""}">
-            ${v.estado_pago || "-"}
-          </span>
-        </td>
-        <td style="text-align:center;">
-          <button class="btn-icon print-ticket" onclick="imprimirTicket(${v.id})" title="Ticket">🧾</button>
-          <button class="btn-icon print-pagare" onclick="imprimirPagare(${v.id})" title="Pagaré">📄</button>
-          <button class="btn-icon edit" onclick="editarVenta(${v.id})" title="Editar">✏️</button>
-          <button class="btn-icon delete" onclick="confirmarEliminarVenta(${v.id})" title="Eliminar">🗑</button>
-        </td>
-      `;
-
-      tbody.appendChild(tr);
-    });
+    renderVentasPaginadas();
 
   } catch (err) {
     console.error("❌ Error cargando ventas:", err);
   }
 }
+
+function renderVentasPaginadas() {
+  const tbody = document.getElementById("tablaVentas");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  const inicio = (ventasPaginaActual - 1) * ventasPorPagina;
+  const fin = inicio + ventasPorPagina;
+  const ventasPagina = ventasCache.slice(inicio, fin);
+
+  ventasPagina.forEach(v => {
+    const tr = document.createElement("tr");
+
+    const fecha = (typeof fmtDate === "function")
+      ? fmtDate(v.fecha)
+      : String(v.fecha || "").slice(0, 10);
+
+    const moneda = (v.moneda || "PYG").toUpperCase();
+
+    let totalMostrar = "";
+    if (moneda === "USD") {
+      totalMostrar = `US$ ${nfDecimal(v.total_moneda ?? 0)}`;
+    } else if (moneda === "BRL") {
+      totalMostrar = `R$ ${nfDecimal(v.total_moneda ?? 0)}`;
+    } else {
+      totalMostrar = `Gs. ${nf(v.total_pyg ?? v.total ?? 0)}`;
+    }
+
+    tr.innerHTML = `
+      <td>${v.id ?? "-"}</td>
+      <td>${fecha}</td>
+      <td>${v.cliente_nombre || "Consumidor Final"}</td>
+      <td>${v.productos || "-"}</td>
+      <td>${v.forma_pago_nombre || "-"}</td>
+      <td>
+        ${totalMostrar}
+        <br>
+        <small style="color:#666;">Gs. ${nf(v.total_pyg ?? v.total ?? 0)}</small>
+      </td>
+      <td>
+        <span class="estado-badge ${v.estado_pago || ""}">
+          ${v.estado_pago || "-"}
+        </span>
+      </td>
+      <td style="text-align:center;">
+        <button class="btn-icon print-ticket" onclick="imprimirTicket(${v.id})" title="Ticket">🧾</button>
+        <button class="btn-icon print-pagare" onclick="imprimirPagare(${v.id})" title="Pagaré">📄</button>
+        <button class="btn-icon edit" onclick="editarVenta(${v.id})" title="Editar">✏️</button>
+        <button class="btn-icon delete" onclick="confirmarEliminarVenta(${v.id})" title="Eliminar">🗑</button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  renderPaginacionVentas();
+}
+
+function renderPaginacionVentas() {
+  const div = document.getElementById("ventas-paginacion");
+  if (!div) return;
+
+  const totalPaginas = Math.ceil(ventasCache.length / ventasPorPagina);
+
+  if (totalPaginas <= 1) {
+    div.innerHTML = "";
+    return;
+  }
+
+  let html = `
+    <button class="pag-btn" onclick="cambiarPaginaVentas(${ventasPaginaActual - 1})"
+      ${ventasPaginaActual === 1 ? "disabled" : ""}>‹</button>
+  `;
+
+  for (let i = 1; i <= totalPaginas; i++) {
+    html += `
+      <button class="pag-btn ${i === ventasPaginaActual ? "active" : ""}"
+        onclick="cambiarPaginaVentas(${i})">${i}</button>
+    `;
+  }
+
+  html += `
+    <button class="pag-btn" onclick="cambiarPaginaVentas(${ventasPaginaActual + 1})"
+      ${ventasPaginaActual === totalPaginas ? "disabled" : ""}>›</button>
+  `;
+
+  div.innerHTML = html;
+}
+
+function cambiarPaginaVentas(pagina) {
+  const totalPaginas = Math.ceil(ventasCache.length / ventasPorPagina);
+  if (pagina < 1 || pagina > totalPaginas) return;
+
+  ventasPaginaActual = pagina;
+  renderVentasPaginadas();
+}
+
 
 function confirmarEliminarVenta(id) {
   ventaEliminarId = id;

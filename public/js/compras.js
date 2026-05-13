@@ -49,10 +49,11 @@ function openModal(id) {
 function closeModal(id) {
   const modal = document.getElementById(id);
   if (!modal) return;
-  modal.style.display = "none";
   modal.classList.remove("show");
+  modal.style.display = "none";
   document.body.style.overflow = "";
 }
+
 
 function attachMoneyFormatterById(id) {
   const el = document.getElementById(id);

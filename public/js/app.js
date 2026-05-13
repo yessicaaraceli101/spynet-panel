@@ -8,10 +8,13 @@ let cajaActual = null;
 let chartVentasComprasInstance = null;
 let cuentaPagarAEliminar = null;
 
-let cuentasPagar = JSON.parse(localStorage.getItem("cuentasPagar") || "[]");
-let cuentasPagarFiltradas = [...cuentasPagar];
-let egresosCuentasPagar = JSON.parse(localStorage.getItem("egresosCuentasPagar") || "[]");
+let fpMovPaginaActual = 1;
+const fpMovPorPagina = 5;
+let FP_MOV_CACHE = [];
 
+let cuentasPagar = [];
+let cuentasPagarFiltradas = [];
+let egresosCuentasPagar = [];
 function guardarCuentasPagarStorage() {
   localStorage.setItem("cuentasPagar", JSON.stringify(cuentasPagar));
 }
@@ -105,7 +108,6 @@ async function listarPedidos() {
     pedidos.forEach(p => {
       const items = Array.isArray(p.items) ? p.items : [];
 
-      // Productos (máx 2 visibles, resto "+N")
       const prodArr = items.map(i => i.producto_nombre || "¿?").filter(Boolean);
       const prodVis = prodArr.slice(0, 2);
       const prodExtra = prodArr.length - prodVis.length;
@@ -118,7 +120,6 @@ async function listarPedidos() {
         `
         : `<span class="text-muted">—</span>`;
 
-      // Categorías únicas
       const catArr = [...new Set(items.map(i => i.categoria_nombre || "Sin categoría"))];
       const categoriasHtml = catArr.length
         ? `<div class="text-truncate" style="max-width:220px" title="${catArr.join(", ")}">${catArr.join(", ")}</div>`
@@ -130,6 +131,8 @@ async function listarPedidos() {
       const estadoHtml = recibido
         ? `<span class="badge bg-success">Recibido</span>`
         : `<span class="badge bg-warning text-dark">Pendiente</span>`;
+
+      const nombreProveedorSeguro = JSON.stringify(p.proveedor_nombre || "");
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
@@ -157,9 +160,38 @@ async function listarPedidos() {
         <td class="text-end fw-semibold">Gs. ${money(p.total)}</td>
 
         <td class="text-center">
-          <button class="btn btn-danger btn-sm" onclick="eliminarPedido(${p.id})" title="Eliminar pedido">
-            <i class="fa-solid fa-trash"></i>
-          </button>
+          <div style="display:flex; gap:6px; justify-content:center;">
+            <button
+              class="btn btn-sm"
+              onclick='exportarPDF_Proveedor(${nombreProveedorSeguro})'
+              title="Generar PDF del proveedor"
+              style="background:#6b7280;color:#fff;border:none;"
+            >
+              <i class="fa-solid fa-file-pdf"></i>
+            </button>
+
+            ${
+              !recibido
+                ? `
+                  <button
+                    class="btn btn-success btn-sm"
+                    onclick="recibirPedido(${p.id})"
+                    title="Marcar como recibido"
+                  >
+                    <i class="fa-solid fa-check"></i>
+                  </button>
+                `
+                : ""
+            }
+
+            <button
+              class="btn btn-danger btn-sm"
+              onclick="eliminarPedido(${p.id})"
+              title="Eliminar pedido"
+            >
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
         </td>
       `;
 
@@ -176,6 +208,163 @@ async function listarPedidos() {
       </tr>
     `;
   }
+}
+function limpiarNombreArchivo(nombre) {
+  return String(nombre || "Proveedor")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "_");
+}
+
+function imgType(base64) {
+  if (!base64 || typeof base64 !== "string") return "PNG";
+  if (base64.startsWith("data:image/jpeg")) return "JPEG";
+  if (base64.startsWith("data:image/jpg")) return "JPEG";
+  if (base64.startsWith("data:image/webp")) return "WEBP";
+  return "PNG";
+}
+
+async function exportarPDF_Proveedor(proveedorNombre) {
+  try {
+    if (!logoConsorcio || !logoSpynet) await initPDF();
+  } catch (e) {
+    console.warn("No se pudieron cargar los logos:", e);
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ compression: "FAST", unit: "mm", format: "a4" });
+
+  let pedidos = [];
+  try {
+    pedidos = await jget("/api/pedidos");
+  } catch (e) {
+    console.error("Error cargando pedidos:", e);
+    alert("No se pudieron cargar los pedidos.");
+    return;
+  }
+
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  const pedidosProveedor = pedidos.filter(p =>
+    String(p.proveedor_nombre || "").trim().toLowerCase() ===
+    String(proveedorNombre || "").trim().toLowerCase()
+    &&
+    String(p.fecha_pedido || "").slice(0, 10) === hoy
+  );
+
+  if (!pedidosProveedor.length) {
+    alert("No hay pedidos de hoy para este proveedor.");
+    return;
+  }
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const cx = pageW / 2;
+
+  try {
+    if (logoConsorcio) doc.addImage(logoConsorcio, imgType(logoConsorcio), 10, 8, 32, 18);
+    if (logoSpynet) doc.addImage(logoSpynet, imgType(logoSpynet), pageW - 10 - 28, 8, 28, 18);
+  } catch (e) {
+    console.warn("Error addImage logos:", e);
+  }
+
+  doc.setFont("times", "bold");
+  doc.setFontSize(22);
+  doc.text("Consorcio Spy E.A.S.", cx, 14, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10.5);
+  doc.text("Servicio de Internet (Telecomunicaciones)", cx, 20, { align: "center" });
+
+  doc.setFontSize(8.5);
+  doc.text("Comercio al por menor de equipos de telecomunicaciones", cx, 24.5, { align: "center" });
+  doc.text("Instalaciones eléctricas, electromecánicas y electrónicas", cx, 28.5, { align: "center" });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11.5);
+  doc.text("Calle, Tte Eligio Montania - Valenzuela", cx, 35, { align: "center" });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.text("Cordillera - Paraguay", cx, 40, { align: "center" });
+
+  doc.setLineWidth(0.4);
+  doc.line(10, 45, pageW - 10, 45);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Listado de Pedidos a Proveedor", 10, 54);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(`Proveedor: ${proveedorNombre || "—"}`, 10, 61);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Fecha: ${hoy}`, 10, 67);
+
+  const rows = [];
+
+  pedidosProveedor.forEach(p => {
+    const items = Array.isArray(p.items) ? p.items : [];
+
+    items.forEach(i => {
+      const subtotalTexto = (() => {
+        const subtotalItem = Number(i.subtotal || 0);
+        if (subtotalItem > 0) return "Gs. " + money(subtotalItem);
+
+        const totalCantPedido = items.reduce((a, x) => a + Number(x.cantidad || 0), 0) || 0;
+        const subtotalPedido = Number(p.subtotal || 0);
+
+        if (subtotalPedido > 0 && totalCantPedido > 0) {
+          const proporcional = subtotalPedido * (Number(i.cantidad || 0) / totalCantPedido);
+          return "Gs. " + money(Math.round(proporcional));
+        }
+
+        return "Gs. 0";
+      })();
+
+      rows.push([
+        p.id || "—",
+        i.producto_nombre || "—",
+        i.categoria_nombre || "—",
+        p.fecha_pedido ? String(p.fecha_pedido).slice(0, 10) : "—",
+        p.fecha_recepcion ? String(p.fecha_recepcion).slice(0, 10) : "Sin recibir",
+        Number(i.cantidad || 0),
+        subtotalTexto
+      ]);
+    });
+  });
+
+  doc.autoTable({
+    startY: 72,
+    head: [[
+      "ID",
+      "Código",
+      "Producto",
+      "Fecha Pedido",
+      "Recepción",
+      "Cant.",
+      "Subtotal"
+    ]],
+    body: rows,
+    theme: "grid",
+    styles: {
+      fontSize: 9,
+      cellPadding: 2.5,
+      valign: "middle"
+    },
+    headStyles: {
+      fillColor: [52, 152, 219],
+      textColor: 255,
+      fontStyle: "bold"
+    },
+    margin: { left: 10, right: 10 }
+  });
+
+  const nombreArchivo = `Pedido_${limpiarNombreArchivo(proveedorNombre)}_${hoy}.pdf`;
+  doc.save(nombreArchivo);
 }
 function confirmarEliminarPedido(id) {
     if (!confirm("¿Está seguro de eliminar este pedido?")) return;
@@ -229,8 +418,7 @@ if (hash === '#pedidos') {
 }
 
 if (hash === '#cuentas-pagar') {
-  cuentasPagarFiltradas = [...cuentasPagar];
-  renderCuentasPagar(cuentasPagarFiltradas);
+  cargarCuentasPagar();
 }
 
   if (hash === '#caja') {
@@ -240,7 +428,7 @@ if (hash === '#cuentas-pagar') {
 }
 
   if (hash === '#formas-pago') {
-    listarFP(); // 👈 único responsable
+    listarFP(); 
   }
 }
 
@@ -284,10 +472,10 @@ window.closeModal = closeModal;
 async function abrirModalSelProducto(){
   openModal('modalSelProducto');
 
-  // ✅ Cargar productos y llenar PROD_CACHE (importante)
+  // Cargar productos y llenar PROD_CACHE
   await listarProductos(); // esto debe llenar PROD_CACHE
 
-  // ✅ Render del modal
+  // Render del modal
   renderProductosPedidoModal(PROD_CACHE);
 }
 window.seleccionarProductoPP = seleccionarProductoPP;
@@ -303,7 +491,7 @@ function agregarProductoAlPedido() {
 
   if (cantidad <= 0 || costo <= 0) return alert("Cantidad o costo inválido");
 
-  // ✅ Asegurar array global
+  // Asegurar array global
   if (!Array.isArray(window.pp_items)) window.pp_items = [];
 
   const item = {
@@ -335,13 +523,11 @@ async function cargarProductosModalPP(){
   `;
 
   try {
-    // 👇 USÁ el endpoint que realmente funciona en tu backend
-    // si tus productos se cargan con /productos, dejá este:
-    const data = await jget("/productos"); // <-- CAMBIO CLAVE (antes /api/productos)
+    const data = await jget("/productos"); 
 
     if(!Array.isArray(data)) throw new Error("Respuesta inválida /productos");
 
-    // ✅ LLENAR EL CACHE GLOBAL QUE USA seleccionarProductoPP()
+    // LLENAR EL CACHE GLOBAL QUE USA seleccionarProductoPP()
     PROD_CACHE = (data || []).map(p => ({
       ...p,
       id: Number(p.id),
@@ -602,7 +788,7 @@ async function cargarKpis() {
     const totalComprasMes = sumTotal(comprasMes);
     const totalComprasAnho = sumTotal(comprasAnho);
 
-    // ✅ EGRESOS = COMPRAS + CUENTAS A PAGAR
+    // EGRESOS = COMPRAS + CUENTAS A PAGAR
     const totalEgresosDia = totalComprasDia + sumMonto(egresosDia);
     const totalEgresosMes = totalComprasMes + sumMonto(egresosMes);
     const totalEgresosAnho = totalComprasAnho + sumMonto(egresosAnho);
@@ -616,7 +802,7 @@ async function cargarKpis() {
       return stockMin > 0 ? stock <= stockMin : stock <= 3;
     });
 
-    // ✅ Ya no restar compras dos veces
+    // Ya no restar compras dos veces
     const margenMes = totalVentasMes - totalEgresosMes;
 
     setText("#kpi-ventas-mes-title", `${MES} ${ANHO}`);
@@ -1339,6 +1525,8 @@ function filtrarProductos(q) {
     (p.marca || '').toLowerCase().includes(q) ||
     (p.categoria || '').toLowerCase().includes(q)
   );
+
+  productosPaginaActual = 1;
   renderProductos(PROD_CACHE_FILTER);
 }
 function pct(costo, precio) {
@@ -1347,10 +1535,16 @@ function pct(costo, precio) {
   return Math.round(((p - c) / p) * 100);
 }
 function renderProductos(list) {
-  const per = Number(qs('#prodEntries')?.value || 10);
-  const pg = paginateRows(list, 1, per);
+  const per = Number(qs('#prodEntries')?.value || productosPorPagina);
+  const totalPaginas = Math.ceil(list.length / per) || 1;
 
-  const rows = pg.slice.map(p => {
+  if (productosPaginaActual > totalPaginas) productosPaginaActual = totalPaginas;
+
+  const inicio = (productosPaginaActual - 1) * per;
+  const fin = inicio + per;
+  const productosPagina = list.slice(inicio, fin);
+
+  const rows = productosPagina.map(p => {
     const catName = (CAT_CACHE.find(c => c.id === p.categoria_id) || {}).nombre || p.categoria || '-';
     const img = p.imagen_base64 || p.imagen || 'img/no-image.png';
     const costo = (p.costo ?? p.cost ?? null);
@@ -1360,23 +1554,18 @@ function renderProductos(list) {
     return `
 <tr data-id="${p.id}">
   <td><input type="checkbox" aria-label="Seleccionar fila"></td>
-
   <td style="text-align:center;">${p.id}</td>
-
   <td style="text-align:center;">
     <img src="${img}" alt="Imagen del producto" onerror="this.src='img/no-image.png'"
          style="width:45px;height:45px;border-radius:6px;object-fit:cover;">
   </td>
-
   <td>${p.nombre || '-'}</td>
-
   <td>${p.codigo || '-'}</td>
   <td>${catName}</td>
   <td>Gs. ${money(p.precio)}</td>
   <td>${p.marca || '-'}</td>
   <td>${costo != null ? 'Gs. ' + money(costo) : '—'}</td>
   <td>${Number(p.stock || 0)}${isLow ? '<span class="badge low">Bajo</span>' : ''}</td>
-
   <td style="display:flex; gap:.4rem;">
     <button class="btn-circle btn-edit" title="Editar" onclick="abrirEditar(${p.id})"><i class="fa fa-pen"></i></button>
     <button class="btn-circle btn-del" title="Eliminar" onclick="eliminarProducto(${p.id})"><i class="fa fa-trash"></i></button>
@@ -1385,25 +1574,65 @@ function renderProductos(list) {
   }).join('');
 
   qs('#tabla-productos').innerHTML = `
-  <table class="table posdash">
-    <thead>
-      <tr>
-        <th style="width:34px;"></th>
-        <th>ID</th>
-        <th>Imagen</th>
-        <th>Producto</th>
-        <th>Código</th>
-        <th>Categoría</th>
-        <th>Precio</th>
-        <th>Marca</th>
-        <th>Costo</th>
-        <th>Cantidad</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
+    <table class="table posdash">
+      <thead>
+        <tr>
+          <th style="width:34px;"></th>
+          <th>ID</th>
+          <th>Imagen</th>
+          <th>Producto</th>
+          <th>Código</th>
+          <th>Categoría</th>
+          <th>Precio</th>
+          <th>Marca</th>
+          <th>Costo</th>
+          <th>Cantidad</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
       <tbody>${rows}</tbody>
     </table>`;
+
+  renderPaginacionProductos(list, per);
 }
+
+function renderPaginacionProductos(list, per) {
+  const contenedor = document.getElementById("productos-paginacion");
+  if (!contenedor) return;
+
+  const totalPaginas = Math.ceil(list.length / per) || 1;
+  contenedor.innerHTML = "";
+
+  if (totalPaginas <= 1) return;
+
+  contenedor.innerHTML += `
+    <button class="pag-btn" onclick="cambiarPaginaProductos(${productosPaginaActual - 1})"
+      ${productosPaginaActual === 1 ? "disabled" : ""}>‹</button>
+  `;
+
+  for (let i = 1; i <= totalPaginas; i++) {
+    contenedor.innerHTML += `
+      <button class="pag-btn ${i === productosPaginaActual ? "active" : ""}"
+        onclick="cambiarPaginaProductos(${i})">${i}</button>
+    `;
+  }
+
+  contenedor.innerHTML += `
+    <button class="pag-btn" onclick="cambiarPaginaProductos(${productosPaginaActual + 1})"
+      ${productosPaginaActual === totalPaginas ? "disabled" : ""}>›</button>
+  `;
+}
+
+function cambiarPaginaProductos(nueva) {
+  const per = Number(qs('#prodEntries')?.value || productosPorPagina);
+  const totalPaginas = Math.ceil(PROD_CACHE_FILTER.length / per) || 1;
+
+  if (nueva < 1 || nueva > totalPaginas) return;
+
+  productosPaginaActual = nueva;
+  renderProductos(PROD_CACHE_FILTER);
+}
+
 async function eliminarProducto(id) {
   if (!confirm("¿Seguro que querés eliminar este producto?")) return;
   try {
@@ -1439,7 +1668,7 @@ async function guardarProducto(e) {
     const nombre = gv('#pr_nombre');
     const nombreFinal = (nombre || '').trim() || (codigo || '').trim() || '';
 
-    // ✅ soporta "40.000" / "40 000" / "40,000" / "40000" -> 40000
+    // soporta "40.000" / "40 000" / "40,000" / "40000" -> 40000
     const costoTxt  = (gv('#pr_costo') || '');
     const precioTxt = (gv('#pr_precio') || '');
 
@@ -1518,28 +1747,52 @@ async function actualizarProducto() {
 
 // ================== CATEGORÍAS ==================
 let CAT_CACHE = [], CAT_FILTER = [];
+let categoriasPaginaActual = 1;
+const categoriasPorPagina = 8;
+
 async function listarCategorias() {
   const data = await jget('/categorias');
+
   CAT_CACHE = (data || []).map(c => ({
-    ...c, id: Number(c.id), codigo: c.codigo || '', nombre: c.nombre || '',
+    ...c,
+    id: Number(c.id),
+    codigo: c.codigo || '',
+    nombre: c.nombre || '',
     imagen_base64: c.imagen_base64 || c.imagen || ''
   }));
-  CAT_FILTER = CAT_CACHE; renderCategorias(CAT_FILTER);
+
+  CAT_FILTER = CAT_CACHE;
+  categoriasPaginaActual = 1;
+  renderCategorias(CAT_FILTER);
 
   const opts = CAT_CACHE.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-  const prCat = qs('#pr_cat'); if (prCat) prCat.innerHTML = `<option value="">(sin categoría)</option>` + opts;
-  const edCat = qs('#ed_cat_select'); if (edCat) edCat.innerHTML = `<option value="">(sin categoría)</option>` + opts;
+
+  const prCat = qs('#pr_cat');
+  if (prCat) prCat.innerHTML = `<option value="">(sin categoría)</option>` + opts;
+
+  const edCat = qs('#ed_cat_select');
+  if (edCat) edCat.innerHTML = `<option value="">(sin categoría)</option>` + opts;
 }
+
 function filtrarCategorias(q) {
   q = (q || '').toLowerCase();
+
   CAT_FILTER = CAT_CACHE.filter(c =>
     (c.nombre || '').toLowerCase().includes(q) ||
-    (c.codigo || '').toLowerCase().includes(q)
+    (c.codigo || '').toLowerCase().includes(q) ||
+    (c.descripcion || '').toLowerCase().includes(q)
   );
+
+  categoriasPaginaActual = 1;
   renderCategorias(CAT_FILTER);
 }
+
 function renderCategorias(list) {
-  const rows = (list || []).map(c => {
+  const inicio = (categoriasPaginaActual - 1) * categoriasPorPagina;
+  const fin = inicio + categoriasPorPagina;
+  const categoriasPagina = (list || []).slice(inicio, fin);
+
+  const rows = categoriasPagina.map(c => {
     const imgSrc = c.imagen_base64 || '';
     const imgHtml = imgSrc
       ? `<img src="${imgSrc}" alt="${c.nombre || 'Categoría'}" onerror="this.src='img/no-image.png'"
@@ -1549,16 +1802,10 @@ function renderCategorias(list) {
     return `
       <tr data-id="${c.id}">
         <td class="text-center align-middle">${c.id}</td>
-
         <td class="text-center align-middle">${imgHtml}</td>
-
         <td class="align-middle">${(c.codigo ?? '').toString().trim() || '—'}</td>
-
         <td class="align-middle">${c.nombre || '—'}</td>
-
-        <!-- ✅ NUEVO -->
         <td class="align-middle">${c.descripcion || '—'}</td>
-
         <td class="text-center align-middle">
           <div class="btn-group">
             <button class="btn btn-sm btn-light-primary me-1" title="Editar"
@@ -1585,16 +1832,53 @@ function renderCategorias(list) {
           <th class="text-center" style="width:90px;">Imagen</th>
           <th>Código</th>
           <th>Categoría</th>
-          <th>Descripción</th> <!-- ✅ YA LO TENÉS -->
+          <th>Descripción</th>
           <th class="text-center">Acción</th>
         </tr>
       </thead>
-
       <tbody>
         ${rows || '<tr><td colspan="6" class="text-center text-muted py-3">Sin categorías</td></tr>'}
       </tbody>
     </table>`;
+
+  renderPaginacionCategorias(list || []);
 }
+
+function renderPaginacionCategorias(list) {
+  const div = document.getElementById("categorias-paginacion");
+  if (!div) return;
+
+  div.innerHTML = "";
+
+  const total = Math.ceil((list || []).length / categoriasPorPagina);
+  if (total <= 1) return;
+
+  div.innerHTML += `
+    <button class="pag-btn" onclick="cambiarPaginaCategorias(${categoriasPaginaActual - 1})"
+      ${categoriasPaginaActual === 1 ? "disabled" : ""}>‹</button>
+  `;
+
+  for (let i = 1; i <= total; i++) {
+    div.innerHTML += `
+      <button class="pag-btn ${i === categoriasPaginaActual ? "active" : ""}"
+        onclick="cambiarPaginaCategorias(${i})">${i}</button>
+    `;
+  }
+
+  div.innerHTML += `
+    <button class="pag-btn" onclick="cambiarPaginaCategorias(${categoriasPaginaActual + 1})"
+      ${categoriasPaginaActual === total ? "disabled" : ""}>›</button>
+  `;
+}
+
+function cambiarPaginaCategorias(nueva) {
+  const total = Math.ceil(CAT_FILTER.length / categoriasPorPagina);
+  if (nueva < 1 || nueva > total) return;
+
+  categoriasPaginaActual = nueva;
+  renderCategorias(CAT_FILTER);
+}
+
 function readFileAsDataUrl(file) {
   return new Promise((res, rej) => {
     const r = new FileReader();
@@ -1782,10 +2066,37 @@ function eliminarPedido(id) {
     document.getElementById("delete_pedido_id").value = id;
     openModal("modalEliminarPedido");
 }
+
+async function recibirPedido(id) {
+  if (!confirm("¿Marcar pedido como recibido?")) return;
+
+  try {
+    await jput(`/api/pedidos/${id}/recibir`, {});
+    listarPedidos();
+  } catch (e) {
+    console.error("Error al marcar como recibido:", e);
+    alert("No se pudo marcar como recibido.");
+  }
+}
+
+async function marcarComoRecibido(id) {
+  if (!confirm("¿Marcar pedido como recibido?")) return;
+
+  try {
+    await jfetch(`/api/pedidos/${id}/recibir`, {
+      method: "PUT"
+    });
+
+    listarPedidos(); // recarga la tabla
+  } catch (err) {
+    console.error(err);
+    alert("Error al actualizar pedido");
+  }
+}
 // =============================================================
 
 async function exportarPDF_Listado() {
-  // ✅ asegurar que los logos estén cargados antes del PDF
+  // asegurar que los logos estén cargados antes del PDF
   try {
     if (!logoConsorcio || !logoSpynet) await initPDF();
   } catch (e) {
@@ -1879,10 +2190,10 @@ async function exportarPDF_Listado() {
   //   TABLA
   // =============================
   doc.autoTable({
-    startY: 60,                 // 👈 arranca debajo del encabezado
+    startY: 60,                
     theme: "striped",
     head: [[
-      "ID", "Proveedor", "Producto", "Categoría", "Fecha Pedido",
+      "ID", "Proveedor", "Código", "Producto", "Fecha Pedido",
       "Recepción", "Cant.", "Subtotal", "IVA", "Total"
     ]],
     body: rows,
@@ -2076,7 +2387,6 @@ async function listarFP() {
     return;
   }
 
-  // acumuladores
   let diaE = 0, diaT = 0, mesE = 0, mesT = 0;
   const diaPorForma = {};
   const mesPorForma = {};
@@ -2088,7 +2398,6 @@ async function listarFP() {
     const fp = normalizarFormaPago(v);
     const tipo = detectarTipoGeneral(fp);
 
-    // por día
     if (sameDay(f, fecha)) {
       if (tipo === "efectivo") diaE += total;
       else diaT += total;
@@ -2096,7 +2405,6 @@ async function listarFP() {
       diaPorForma[fp] = (diaPorForma[fp] || 0) + total;
     }
 
-    // por mes
     if (sameMonth(f, yyyy_mm)) {
       if (tipo === "efectivo") mesE += total;
       else mesT += total;
@@ -2105,7 +2413,6 @@ async function listarFP() {
     }
   }
 
-  // ✅ pintar los 3 cards fijos (tus IDs)
   const setTxt = (id, val) => {
     const el = document.getElementById(id);
     if (el) el.textContent = "Gs. " + money(val);
@@ -2119,7 +2426,6 @@ async function listarFP() {
   setTxt("fp-mes-transferencia", mesT);
   setTxt("fp-mes-total", mesE + mesT);
 
-  // ✅ detalle por banco/forma abajo
   const cont = document.getElementById("fp-detalle");
   if (!cont) return;
 
@@ -2158,41 +2464,88 @@ async function listarFP() {
     `;
   }
 
-  // ===============================
-  // ✅ NUEVO: movimientos con comprobante
-  // ===============================
   const tbodyMov = document.getElementById("fp-tbody-mov");
   if (tbodyMov) {
-    const conComp = (ventas || [])
+    FP_MOV_CACHE = (ventas || [])
       .filter(v => (v.nro_comprobante || "").toString().trim() !== "")
-      .sort((a, b) => new Date(b.fecha || b.created_at) - new Date(a.fecha || a.created_at))
-      .slice(0, 20);
+      .sort((a, b) => new Date(b.fecha || b.created_at) - new Date(a.fecha || a.created_at));
 
-    if (!conComp.length) {
-      tbodyMov.innerHTML = `
-        <tr>
-          <td colspan="6" style="padding:10px; text-align:center; color:#6b7280;">
-            No hay movimientos con comprobante.
-          </td>
-        </tr>
-      `;
-    } else {
-      tbodyMov.innerHTML = conComp.map(v => `
-        <tr style="border-top:1px solid #e5e7eb;">
-          <td style="padding:10px;">${v.id ?? "—"}</td>
-          <td style="padding:10px;">
-            ${(typeof fmtDate === "function")
-              ? fmtDate(v.fecha)
-              : (String(v.fecha || v.created_at || "").slice(0, 10) || "—")}
-          </td>
-          <td style="padding:10px;">${escapeHtml(v.cliente_nombre || "Consumidor Final")}</td>
-          <td style="padding:10px;">${escapeHtml(normalizarFormaPago(v))}</td>
-          <td style="padding:10px;"><b>${escapeHtml(v.nro_comprobante || "—")}</b></td>
-          <td style="padding:10px; text-align:right;">Gs. ${money(v.total || 0)}</td>
-        </tr>
-      `).join("");
-    }
+    fpMovPaginaActual = 1;
+    renderMovimientosComprobante();
   }
+}
+
+function renderMovimientosComprobante() {
+  const tbodyMov = document.getElementById("fp-tbody-mov");
+  if (!tbodyMov) return;
+
+  const inicio = (fpMovPaginaActual - 1) * fpMovPorPagina;
+  const fin = inicio + fpMovPorPagina;
+  const pagina = FP_MOV_CACHE.slice(inicio, fin);
+
+  if (!pagina.length) {
+    tbodyMov.innerHTML = `
+      <tr>
+        <td colspan="6" style="padding:10px; text-align:center; color:#6b7280;">
+          No hay movimientos con comprobante.
+        </td>
+      </tr>
+    `;
+    renderPaginacionMovimientosComprobante();
+    return;
+  }
+
+  tbodyMov.innerHTML = pagina.map(v => `
+    <tr style="border-top:1px solid #e5e7eb;">
+      <td style="padding:10px;">${v.id ?? "—"}</td>
+      <td style="padding:10px;">
+        ${(typeof fmtDate === "function")
+          ? fmtDate(v.fecha)
+          : (String(v.fecha || v.created_at || "").slice(0, 10) || "—")}
+      </td>
+      <td style="padding:10px;">${escapeHtml(v.cliente_nombre || "Consumidor Final")}</td>
+      <td style="padding:10px;">${escapeHtml(normalizarFormaPago(v))}</td>
+      <td style="padding:10px;"><b>${escapeHtml(v.nro_comprobante || "—")}</b></td>
+      <td style="padding:10px; text-align:right;">Gs. ${money(v.total || 0)}</td>
+    </tr>
+  `).join("");
+
+  renderPaginacionMovimientosComprobante();
+}
+
+function renderPaginacionMovimientosComprobante() {
+  const div = document.getElementById("fp-mov-paginacion");
+  if (!div) return;
+
+  const total = Math.ceil(FP_MOV_CACHE.length / fpMovPorPagina);
+  div.innerHTML = "";
+
+  if (total <= 1) return;
+
+  div.innerHTML += `
+    <button class="pag-btn" onclick="cambiarPaginaMovComprobante(${fpMovPaginaActual - 1})"
+      ${fpMovPaginaActual === 1 ? "disabled" : ""}>‹</button>
+  `;
+
+  for (let i = 1; i <= total; i++) {
+    div.innerHTML += `
+      <button class="pag-btn ${i === fpMovPaginaActual ? "active" : ""}"
+        onclick="cambiarPaginaMovComprobante(${i})">${i}</button>
+    `;
+  }
+
+  div.innerHTML += `
+    <button class="pag-btn" onclick="cambiarPaginaMovComprobante(${fpMovPaginaActual + 1})"
+      ${fpMovPaginaActual === total ? "disabled" : ""}>›</button>
+  `;
+}
+
+function cambiarPaginaMovComprobante(nueva) {
+  const total = Math.ceil(FP_MOV_CACHE.length / fpMovPorPagina);
+  if (nueva < 1 || nueva > total) return;
+
+  fpMovPaginaActual = nueva;
+  renderMovimientosComprobante();
 }
 
 async function crearFP() {
@@ -2518,7 +2871,7 @@ function seleccionarProductoPP() {
 }
 
 function editarPP_Campo(i, campo, valor) {
-  // ✅ única fuente: window.pp_items
+  // única fuente: window.pp_items
   const items = Array.isArray(window.pp_items) ? window.pp_items : (window.pp_items = []);
   if (!items[i]) return;
 
@@ -2527,7 +2880,7 @@ function editarPP_Campo(i, campo, valor) {
   }
 
   if (campo === "costo") {
-    // ✅ soporta 40.000 / 40 000 / 40,000 / 40000
+    //soporta 40.000 / 40 000 / 40,000 / 40000
     valor = Number(String(valor).replace(/\D/g, "")) || 0;
   }
 
@@ -2573,7 +2926,7 @@ function calcularTotalesPP() {
   const iva = Math.round(subtotal * 0.10);
   const total = subtotal + iva;
 
-  // ✅ si tenés IDs duplicados en el HTML, esto actualiza todos
+  
   document.querySelectorAll("#pp_subtotal").forEach(el => el.textContent = money(subtotal));
   document.querySelectorAll("#pp_iva").forEach(el => el.textContent = money(iva));
   document.querySelectorAll("#pp_total").forEach(el => el.textContent = money(total));
@@ -2650,7 +3003,7 @@ function seleccionarProductoPP(id) {
   // Guardar producto actual global
   window.PP_PRODUCTO_ACTUAL = p;
 
-  // 🟢 Soporta distintos IDs de inputs (según tu modal real)
+ 
   const setVal = (ids, val) => {
     for (const _id of ids) {
       const el = document.getElementById(_id);
@@ -2743,24 +3096,68 @@ function actualizarTotalesPedido() {
     document.getElementById("pp_total").innerText = money(total);
 }
 function renderProductosPedidoModal(lista) {
-    const tbody = document.getElementById("tablaSelProductos");
-    tbody.innerHTML = "";
+  const cont = document.getElementById("tablaSelProductos");
+  if (!cont) return;
 
-    lista.forEach(p => {
-        tbody.innerHTML += `
-        <tr>
-            <td>${p.nombre}</td>
-            <td>${p.marca || '-'}</td>
-            <td>${p.categoria || '-'}</td>
-            <td>Gs. ${money(p.costo)}</td>
-            <td>${p.stock}</td>
-            <td style="text-align:center;">
-                <button class="btn primary" onclick="seleccionarProductoPP(${p.id})">
-                Seleccionar
-                </button>
-            </td>
-        </tr>`;
-    });
+  cont.innerHTML = "";
+
+  if (!lista || lista.length === 0) {
+    cont.innerHTML = `
+      <div class="producto-card-pos">
+        <p style="margin:0;color:#64748b;text-align:center;">
+          No hay productos disponibles.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+ lista.forEach(p => {
+  const nombreProducto =
+    p.nombre_producto ||
+    p.producto_nombre ||
+    p.producto ||
+    p.descripcion ||
+    p.nombre ||
+    '-';
+
+  cont.innerHTML += `
+    <div class="producto-card-pos">
+
+      <div class="producto-linea">
+        <span class="producto-label">Código:</span>
+        <span>${p.codigo || p.id || '-'}</span>
+      </div>
+
+      <div class="producto-linea">
+        <span class="producto-label">Marca:</span>
+        <span>${p.marca || '-'}</span>
+      </div>
+
+      <div class="producto-linea">
+        <span class="producto-label">Producto:</span>
+        <span>${nombreProducto}</span>
+      </div>
+
+      <div class="producto-linea">
+        <span class="producto-label">Costo:</span>
+        <span>Gs. ${money(p.costo || 0)}</span>
+      </div>
+
+      <div class="producto-linea">
+        <span class="producto-label">Stock:</span>
+        <span>${p.stock ?? 0}</span>
+      </div>
+
+      <button
+        class="btn primary btn-producto-pos"
+        onclick="seleccionarProductoPP(${p.id})">
+        Seleccionar
+      </button>
+
+    </div>
+  `;
+});
 }
 function renderPP_Items() {
   const tbody = document.getElementById("pp_items");
@@ -2842,17 +3239,17 @@ function cancelarEditProductoPP() {
     document.getElementById("modalPP_lista").style.display = "block";
 }
 function guardarProductoAListaPP() {
-  // ✅ SIEMPRE leer del global window
+  // SIEMPRE leer del global window
   const p = window.PP_PRODUCTO_ACTUAL;
   if (!p) return alert("No hay producto seleccionado");
 
-  // ✅ asegurar array global
+  //asegurar array global
   if (!Array.isArray(window.pp_items)) window.pp_items = [];
 
   const cantidad = Number(document.getElementById("pp_edit_cantidad")?.value || 0);
   const unidad   = (document.getElementById("pp_edit_unidad")?.value || "").trim();
 
-  // ✅ admite "40.000" / "40000" / "40 000" / "40,000" y lo convierte a 40000
+  //admite "40.000" / "40000" / "40 000" / "40,000" y lo convierte a 40000
   const costoTxt = (document.getElementById("pp_edit_costo")?.value || "").trim();
   const costo    = Number(costoTxt.replace(/\D/g, "")) || 0;
 
@@ -2868,7 +3265,7 @@ function guardarProductoAListaPP() {
     subtotal: cantidad * costo
   };
 
-  // ✅ si ya existe el producto, actualiza en vez de duplicar
+  // Si ya existe el producto, actualiza en vez de duplicar
   const idx = window.pp_items.findIndex(x => Number(x.id) === Number(item.id));
   if (idx >= 0) window.pp_items[idx] = item;
   else window.pp_items.push(item);
@@ -3056,18 +3453,38 @@ window.addEventListener("load", async () => {
 });
 
 function toggleSidebar() {
-    document.querySelector(".sidebar").classList.toggle("open");
+  const sidebar = document.querySelector(".sidebar");
+
+  if (!sidebar) {
+    alert("No se encontró .sidebar");
+    return;
+  }
+
+  sidebar.classList.toggle("open");
+
+  if (sidebar.classList.contains("open")) {
+    sidebar.style.transform = "translateX(0)";
+  } else {
+    sidebar.style.transform = "translateX(-110%)";
+  }
+}
+
+
+function toggleMenu() {
+  const sidebar = document.querySelector(".sidebar");
+  sidebar.classList.toggle("open");
 }
 
 document.querySelectorAll(".sidebar a[data-link]").forEach(a => {
     a.addEventListener("click", () => {
         if (window.innerWidth <= 950) {
             document.querySelector(".sidebar").classList.remove("open");
+            document.body.classList.remove("sidebar-open");
         }
     });
 });
 
-// 🟢 ABRIR CAJA (por tipo: "efectivo" | "transferencia")
+//ABRIR CAJA (por tipo: "efectivo" | "transferencia")
 async function abrirCaja(tipoParam) {
   try {
     const tipo = (tipoParam || "efectivo").toLowerCase().trim();
@@ -3076,31 +3493,58 @@ async function abrirCaja(tipoParam) {
       tipo === "efectivo" ? "fechaCajaEfectivo" : "fechaCajaTransferencia"
     );
 
-    const saldoEl = document.getElementById(
-      tipo === "efectivo" ? "saldoInicialCajaEfectivo" : "saldoInicialCajaTransferencia"
-    );
-
     const fecha = (fechaEl?.value || "").trim();
-    const saldoInicial = Number((saldoEl?.value || "0").replace(/\D/g, "")) || 0;
 
+    const saldoGs = Number(
+  (
+    document.getElementById(
+      tipo === "efectivo" ? "saldoGs" : "saldoGsTransferencia"
+    )?.value || "0"
+  ).replace(/\D/g, "")
+) || 0;
+
+const saldoUs = parseFloat(
+  (
+    document.getElementById(
+      tipo === "efectivo" ? "saldoUs" : "saldoUsTransferencia"
+    )?.value || "0"
+  ).replace(",", ".")
+) || 0;
+
+const saldoRs = parseFloat(
+  (
+    document.getElementById(
+      tipo === "efectivo" ? "saldoRs" : "saldoRsTransferencia"
+    )?.value || "0"
+  ).replace(",", ".")
+) || 0;
     if (!fecha) {
       alert("Seleccione una fecha");
       return;
     }
 
-    // ✅ IMPORTANTE: mandar el tipo en minúscula (para que coincida con /caja/abierta?tipo=...)
     const tipoDB = tipo; // "efectivo" | "transferencia"
 
     const res = await fetch(`${API}/caja/abrir`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ tipo: tipoDB, fecha, saldo_inicial: saldoInicial })
+      body: JSON.stringify({
+        tipo: tipoDB,
+        fecha,
+        saldo_gs: saldoGs,
+        saldo_us: saldoUs,
+        saldo_rs: saldoRs
+      })
     });
 
     const text = await res.text();
     let data = {};
-    try { data = text ? JSON.parse(text) : {}; } catch { data = { msg: text }; }
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { msg: text };
+    }
 
     console.log("✅ RESPUESTA /caja/abrir:", res.status, data);
 
@@ -3117,11 +3561,21 @@ async function abrirCaja(tipoParam) {
       data?.cajaId ??
       null;
 
-    window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
+    window.cajasActuales = window.cajasActuales || {
+      efectivo: null,
+      transferencia: null
+    };
 
     if (id) {
       window.cajasActuales[tipo] =
-        data.caja || { id, tipo: tipoDB, fecha, saldo_inicial: saldoInicial };
+        data.caja || {
+          id,
+          tipo: tipoDB,
+          fecha,
+          saldo_gs: saldoGs,
+          saldo_us: saldoUs,
+          saldo_rs: saldoRs
+        };
     } else {
       if (typeof verificarCaja === "function") {
         await verificarCaja();
@@ -3138,7 +3592,6 @@ async function abrirCaja(tipoParam) {
       }
     }
 
-    // ✅ IMPORTANTE: actualizar cajaActual para ambos (así Ventas no rompe)
     window.cajaActual = window.cajasActuales[tipo];
 
     const estadoEl = document.getElementById(
@@ -3146,20 +3599,70 @@ async function abrirCaja(tipoParam) {
     );
 
     if (estadoEl) {
-      const label = (tipo === "efectivo") ? "Efectivo" : "Transferencia";
-      estadoEl.innerHTML = `🟢 Caja ABIERTA (${label}) — ${saldoInicial.toLocaleString("es-PY")} Gs.`;
+      const label = tipo === "efectivo" ? "Efectivo" : "Transferencia";
+      estadoEl.innerHTML = `
+        🟢 Caja ABIERTA (${label})<br>
+        Saldo GS: ${saldoGs.toLocaleString("es-PY")}<br>
+        Saldo US: ${saldoUs.toLocaleString("es-PY", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}<br>
+        Saldo RS: ${saldoRs.toLocaleString("es-PY", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}
+      `;
     }
 
     alert(`Caja ${tipo === "efectivo" ? "Efectivo" : "Transferencia"} abierta ✅`);
+
     if (typeof cargarRecaudacionFecha === "function") cargarRecaudacionFecha();
+    if (typeof verificarCaja === "function") await verificarCaja();
 
   } catch (err) {
     console.error("❌ abrirCaja:", err);
     alert("Error al abrir caja (mirá consola F12).");
   }
 }
+function formatearNumeroMoneda(valor, decimales = 2) {
+  return Number(valor || 0).toLocaleString("es-PY", {
+    minimumFractionDigits: decimales,
+    maximumFractionDigits: decimales
+  });
+}
+function obtenerSaldoCaja(caja, campoNuevo, campoViejo = null) {
+  if (!caja) return 0;
+  if (caja[campoNuevo] != null) return Number(caja[campoNuevo] || 0);
+  if (campoViejo && caja[campoViejo] != null) return Number(caja[campoViejo] || 0);
+  return 0;
+}
+function pintarEstadoCaja(idElemento, label, caja) {
+  const el = document.getElementById(idElemento);
+  if (!el) return;
 
-// 🔴 CERRAR CAJA (por tipo: "efectivo" | "transferencia")
+  if (!caja?.id) {
+    el.innerHTML = "🔴 Caja CERRADA";
+    return;
+  }
+
+   const saldoGs = Number(caja.saldo_actual_gs ?? caja.saldo_gs ?? caja.saldo_inicial ?? 0);
+
+const CAMBIO_USD = 6350;
+const CAMBIO_BRL = 1255;
+
+const saldoUs = saldoGs / CAMBIO_USD;
+const saldoRs = saldoGs / CAMBIO_BRL;
+
+  el.innerHTML = `
+    🟢 Caja ABIERTA (${label})<br>
+    Saldo GS: ${Number(saldoGs).toLocaleString("es-PY")}<br>
+    Saldo US: ${formatearNumeroMoneda(saldoUs)}<br>
+    Saldo RS: ${formatearNumeroMoneda(saldoRs)}
+  `;
+}
+
+
+//CERRAR CAJA (por tipo: "efectivo" | "transferencia")
 async function cerrarCaja(tipoParam) {
   try {
     const tipo = (tipoParam || "efectivo").toLowerCase().trim();
@@ -3251,7 +3754,7 @@ function detectarFormaPago(v) {
   if (fp.includes("efect")) return "efectivo";
   if (fp.includes("transf")) return "transferencia";
 
-  // ✅ IDs reales de tu tabla formas_pago:
+  //IDs reales de tu tabla formas_pago:
   if (Number(v.forma_pago_id) === 2) return "efectivo";
   if (Number(v.forma_pago_id) === 3) return "transferencia";
 
@@ -3261,14 +3764,14 @@ function detectarFormaPago(v) {
 function toYMD(x) {
   if (!x) return "";
 
-  // ✅ Si ya es Date, construir local
+  
   if (x instanceof Date) {
     return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
   }
 
   const s = String(x).trim();
 
-  // ✅ CASO CLAVE: si viene "YYYY-MM-DD" o "YYYY-MM-DDTHH..."
+  // CASO CLAVE: si viene "YYYY-MM-DD" o "YYYY-MM-DDTHH..."
   // NO usar new Date(s) porque interpreta UTC y cambia el día
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
 
@@ -3447,85 +3950,65 @@ function _getVal(id) {
 
 async function verificarCaja() {
   try {
-    // ✅ leer fecha desde cualquiera de los inputs
     const fecha =
-      _getVal("fechaCajaEfectivo") ||
-      _getVal("fechaCajaTransferencia") ||
-      _getVal("fechaCaja") ||
-      toYMD(new Date());
+      document.getElementById("fechaCajaEfectivo")?.value ||
+      document.getElementById("fechaCajaTransferencia")?.value ||
+      new Date().toISOString().slice(0, 10);
 
-    // 1) Traer cajas abiertas por tipo
-    const [eData, tData] = await Promise.all([
-      fetch(`${API}/caja/abierta?tipo=efectivo`, { credentials: "include" }).then(r => r.json()),
-      fetch(`${API}/caja/abierta?tipo=transferencia`, { credentials: "include" }).then(r => r.json()),
+    const [eResp, tResp] = await Promise.all([
+      fetch(`${API}/caja/abierta?tipo=efectivo&fecha=${encodeURIComponent(fecha)}`, {
+        credentials: "include"
+      }),
+      fetch(`${API}/caja/abierta?tipo=transferencia&fecha=${encodeURIComponent(fecha)}`, {
+        credentials: "include"
+      })
     ]);
+
+    const eData = await eResp.json().catch(() => ({}));
+    const tData = await tResp.json().catch(() => ({}));
 
     const cajaE = eData?.caja || null;
     const cajaT = tData?.caja || null;
 
-    // Guardar global
-    window.cajasActuales = { efectivo: cajaE, transferencia: cajaT };
+    window.cajasActuales = {
+      efectivo: cajaE,
+      transferencia: cajaT
+    };
 
-    // 2) Traer resumen del día (ingresos)
-    let dia = { efectivo: 0, transferencia: 0, total: 0 };
-    try {
-      const r2 = await fetch(`${API}/caja/resumen?fecha=${encodeURIComponent(fecha)}`, {
-        credentials: "include"
-      });
-      const d2 = await r2.json();
-      if (r2.ok && d2?.dia) dia = d2.dia;
-    } catch (e) {
-      console.warn("No se pudo leer /caja/resumen:", e);
+    if (cajaE?.id) window.cajaActual = cajaE;
+    else if (cajaT?.id) window.cajaActual = cajaT;
+    else window.cajaActual = null;
+
+    pintarEstadoCaja("estadoCajaEfectivo", "Efectivo", cajaE);
+    pintarEstadoCaja("estadoCajaTransferencia", "Transferencia", cajaT);
+
+    const estadoCajaViejo = document.getElementById("estadoCaja");
+    if (estadoCajaViejo) {
+      const totalGs =
+        obtenerSaldoCaja(cajaE, "saldo_gs", "saldo_inicial") +
+        obtenerSaldoCaja(cajaT, "saldo_gs", "saldo_inicial");
+
+      const totalUs =
+        obtenerSaldoCaja(cajaE, "saldo_us") +
+        obtenerSaldoCaja(cajaT, "saldo_us");
+
+      const totalRs =
+        obtenerSaldoCaja(cajaE, "saldo_rs") +
+        obtenerSaldoCaja(cajaT, "saldo_rs");
+
+      estadoCajaViejo.innerHTML = `
+        Saldo total del día<br>
+        GS: ${Number(totalGs).toLocaleString("es-PY")}<br>
+        US: ${formatearNumeroMoneda(totalUs)}<br>
+        RS: ${formatearNumeroMoneda(totalRs)}
+      `;
     }
-
-    // 3) Calcular egresos del día desde cuentas a pagar pagadas
-    const egresoDiaEfectivo = (egresosCuentasPagar || [])
-      .filter(e => e.fecha === fecha && e.tipo_caja === "efectivo")
-      .reduce((acc, e) => acc + Number(e.monto || 0), 0);
-
-    const egresoDiaTransferencia = (egresosCuentasPagar || [])
-      .filter(e => e.fecha === fecha && e.tipo_caja === "transferencia")
-      .reduce((acc, e) => acc + Number(e.monto || 0), 0);
-
-    // 4) Pintar estado caja EFECTIVO
-    if (cajaE?.id) {
-  const ingresoDiaE = Number(dia.ingreso_efectivo || dia.efectivo || 0);
-  const saldoRealE = ingresoDiaE - egresoDiaEfectivo;
-
-  _setHTML(
-    "estadoCajaEfectivo",
-    `🟢 Caja ABIERTA (Efectivo) — Saldo actual del día: Gs. ${money(saldoRealE)}`
-  );
-} else {
-  _setHTML("estadoCajaEfectivo", "🔴 Caja CERRADA");
-}
-    // 5) Pintar estado caja TRANSFERENCIA
-    if (cajaT?.id) {
-  const ingresoDiaT = Number(dia.ingreso_transferencia || dia.transferencia || 0);
-  const saldoRealT = ingresoDiaT - egresoDiaTransferencia;
-
-  _setHTML(
-    "estadoCajaTransferencia",
-    `🟢 Caja ABIERTA (Transferencia) — Saldo actual del día: Gs. ${money(saldoRealT)}`
-  );
-} else {
-  _setHTML("estadoCajaTransferencia", "🔴 Caja CERRADA");
-}
-    // 6) Compatibilidad con #estadoCaja viejo
-    if (document.getElementById("estadoCaja")) {
-      const saldoTotalDia =
-        (Number(dia.efectivo || 0) - egresoDiaEfectivo) +
-        (Number(dia.transferencia || 0) - egresoDiaTransferencia);
-
-      _setHTML("estadoCaja", `Saldo día total: Gs. ${money(saldoTotalDia)}`);
-    }
-
   } catch (e) {
     console.error("Error verificando caja:", e);
   }
 }
 
-// ✅ listeners para refrescar cuando cambian fechas
+//listeners para refrescar cuando cambian fechas
 (function bindCajaEventos() {
   const fE = document.getElementById("fechaCajaEfectivo");
   const fT = document.getElementById("fechaCajaTransferencia");
@@ -3584,6 +4067,17 @@ function closeLogoutModal() {
   }
 }
 
+async function cargarCuentasPagar() {
+  try {
+    cuentasPagar = await jget("/cuentas-pagar");
+    cuentasPagarFiltradas = [...cuentasPagar];
+    renderCuentasPagar(cuentasPagarFiltradas);
+  } catch (err) {
+    console.error("Error cargando cuentas a pagar:", err);
+    alert("No se pudieron cargar las cuentas a pagar.");
+  }
+}
+
 function renderCuentasPagar(lista = cuentasPagar) {
   const tbody = document.getElementById("tabla-cuentas-pagar");
   if (!tbody) return;
@@ -3598,13 +4092,12 @@ function renderCuentasPagar(lista = cuentasPagar) {
   }
 
   tbody.innerHTML = lista.map(item => {
-    const estado = (item.estado || "").toLowerCase();
-    const fechaPago = item.fecha_pago || "-";
-    const tipoCaja = item.tipo_caja || "-";
-
+    const estado = String(item.estado || "pendiente").toLowerCase();
+    const fechaPago = item.fecha_pago ? String(item.fecha_pago).slice(0, 10) : "-";
+    const tipoCaja = item.caja_tipo || item.tipo_caja || item.caja || "-";
     const moneda = item.moneda || "PYG";
-    const montoMoneda = Number(item.monto_moneda || item.monto || 0);
     const montoPyg = Number(item.monto_pyg || item.monto || 0);
+    const montoMoneda = Number(item.monto_moneda || montoPyg);
 
     return `
       <tr>
@@ -3613,7 +4106,7 @@ function renderCuentasPagar(lista = cuentasPagar) {
         <td>${item.concepto || ""}</td>
         <td>
           <div style="font-weight:700;">
-            ${fmtMonedaCuenta(moneda, montoMoneda)}
+            ${typeof fmtMonedaCuenta === "function" ? fmtMonedaCuenta(moneda, montoMoneda) : "Gs. " + money(montoPyg)}
           </div>
           ${
             moneda !== "PYG"
@@ -3621,7 +4114,7 @@ function renderCuentasPagar(lista = cuentasPagar) {
               : ""
           }
         </td>
-        <td>${item.vencimiento || "-"}</td>
+        <td>${item.vencimiento ? String(item.vencimiento).slice(0, 10) : "-"}</td>
         <td>
           ${
             estado === "pagado"
@@ -3658,14 +4151,12 @@ function renderCuentasPagar(lista = cuentasPagar) {
     `;
   }).join("");
 }
-function pagarCuentaPagar(id) {
-  const item = cuentasPagar.find(x => Number(x.id) === Number(id));
-  if (!item) {
-    alert("Cuenta no encontrada.");
-    return;
-  }
 
-  if ((item.estado || "").toLowerCase() === "pagado") {
+async function pagarCuentaPagar(id) {
+  const item = cuentasPagar.find(x => Number(x.id) === Number(id));
+  if (!item) return alert("Cuenta no encontrada.");
+
+  if (String(item.estado || "").toLowerCase() === "pagado") {
     alert("Esta cuenta ya fue pagada.");
     return;
   }
@@ -3684,106 +4175,89 @@ function pagarCuentaPagar(id) {
     return;
   }
 
-  const fechaPago = hoyISO();
-  const monto = Number(item.monto || 0);
-
-  item.estado = "pagado";
-  item.fecha_pago = fechaPago;
-  item.tipo_caja = tipo;
-
-  egresosCuentasPagar.push({
-    id: egresosCuentasPagar.length
-      ? egresosCuentasPagar[egresosCuentasPagar.length - 1].id + 1
-      : 1,
-    cuenta_id: item.id,
-    fecha: fechaPago,
-    monto: monto,
-    tipo_caja: tipo,
+  const body = {
     proveedor: item.proveedor || "",
-    descripcion: item.concepto || ""
-  });
+    factura: item.factura || "",
+    concepto: item.concepto || "",
+    moneda: item.moneda || "PYG",
+    tipo_cambio: Number(item.tipo_cambio || 1),
+    monto_moneda: Number(item.monto_moneda || item.monto || 0),
+    monto_pyg: Number(item.monto_pyg || item.monto || 0),
+    monto: Number(item.monto_pyg || item.monto || 0),
+    vencimiento: item.vencimiento ? String(item.vencimiento).slice(0, 10) : null,
+    estado: "pagado",
+    fecha_pago: hoyISO(),
+    caja_tipo: tipo
+  };
 
-  guardarCuentasPagarStorage();
-  guardarEgresosStorage();
+  try {
+    await jput("/cuentas-pagar/" + id, body);
+    await cargarCuentasPagar();
 
-  cuentasPagarFiltradas = [...cuentasPagar];
-  renderCuentasPagar(cuentasPagarFiltradas);
+    if (typeof cargarRecaudacionFecha === "function") cargarRecaudacionFecha();
+    if (typeof verificarCaja === "function") verificarCaja();
 
-  if (typeof cargarRecaudacionFecha === "function") {
-    cargarRecaudacionFecha();
+    alert(`Cuenta pagada desde caja ${tipo} correctamente.`);
+  } catch (err) {
+    console.error("Error pagando cuenta:", err);
+    alert("No se pudo marcar la cuenta como pagada.");
   }
-
-  if (typeof verificarCaja === "function") {
-    verificarCaja();
-  }
-
-  alert(`Cuenta pagada desde caja ${tipo} correctamente.`);
 }
-function guardarCuentaPagar() {
+
+async function guardarCuentaPagar() {
   const id = Number(document.getElementById("cp_id")?.value || 0);
   const proveedor = document.getElementById("cp_proveedor")?.value.trim();
-  const factura = document.getElementById("cp_factura")?.value.trim() || "";
   const concepto = document.getElementById("cp_concepto")?.value.trim();
-  const moneda = document.getElementById("cp_moneda")?.value || "PYG";
-  const tipoCambio = Number(document.getElementById("cp_tipo_cambio")?.value || 1);
   const montoGsTexto = document.getElementById("cp_monto_gs")?.value.trim() || "0";
-  const vencimiento = document.getElementById("cp_vencimiento")?.value;
+  const vencimiento = document.getElementById("cp_vencimiento")?.value || null;
   const estado = document.getElementById("cp_estado")?.value || "pendiente";
 
-  const montoPyg = Number(
-    String(montoGsTexto).replace(/\./g, "").replace(/,/g, "")
-  ) || 0;
+  const monto = Number(String(montoGsTexto).replace(/\./g, "").replace(/,/g, "")) || 0;
 
-  let montoMoneda = montoPyg;
-
-  if (moneda === "USD" || moneda === "BRL") {
-    montoMoneda = tipoCambio > 0 ? (montoPyg / tipoCambio) : 0;
-  }
-
-  if (!proveedor || !concepto || !montoPyg) {
+  if (!proveedor || !concepto || !monto) {
     alert("Complete proveedor, concepto y monto.");
     return;
   }
 
-  const data = {
-    id: id || (cuentasPagar.length ? cuentasPagar[cuentasPagar.length - 1].id + 1 : 1),
+  const body = {
     proveedor,
-    factura,
     concepto,
-    moneda,
-    tipo_cambio: tipoCambio,
-    monto_moneda: montoMoneda,
-    monto_pyg: Math.round(montoPyg),
-    monto: Math.round(montoPyg),
+    monto,
     vencimiento,
-    estado
+    estado,
+    fecha_pago: estado === "pagado" ? hoyISO() : null,
+    caja_tipo: estado === "pagado" ? "efectivo" : null
   };
 
-  if (id) {
-    const idx = cuentasPagar.findIndex(x => Number(x.id) === id);
-    if (idx >= 0) {
-      cuentasPagar[idx] = data;
+  try {
+    if (id) {
+      await jput("/cuentas-pagar/" + id, body);
+    } else {
+      await jpost("/cuentas-pagar", body);
     }
-  } else {
-    cuentasPagar.push(data);
+
+    closeModal("modalCuentaPagar");
+
+    document.getElementById("cp_id").value = "";
+    document.getElementById("cp_proveedor").value = "";
+    document.getElementById("cp_factura").value = "";
+    document.getElementById("cp_concepto").value = "";
+    document.getElementById("cp_moneda").value = "PYG";
+    document.getElementById("cp_tipo_cambio").value = 1;
+    document.getElementById("cp_monto_gs").value = "";
+    document.getElementById("cp_vencimiento").value = "";
+    document.getElementById("cp_estado").value = "pendiente";
+
+    if (typeof toggleMonedaCuentaPagar === "function") {
+      toggleMonedaCuentaPagar();
+    }
+
+    await cargarCuentasPagar();
+
+  } catch (err) {
+    console.error("Error guardando cuenta:", err);
+    alert("No se pudo guardar la cuenta a pagar:\n" + err.message);
   }
-
-  cuentasPagarFiltradas = [...cuentasPagar];
-  guardarCuentasPagarStorage();
-  renderCuentasPagar(cuentasPagarFiltradas);
-  closeModal("modalCuentaPagar");
-
-  document.getElementById("cp_id").value = "";
-  document.getElementById("cp_proveedor").value = "";
-  document.getElementById("cp_factura").value = "";
-  document.getElementById("cp_concepto").value = "";
-  document.getElementById("cp_moneda").value = "PYG";
-  document.getElementById("cp_tipo_cambio").value = 1;
-  document.getElementById("cp_monto_gs").value = "";
-  document.getElementById("cp_vencimiento").value = "";
-  document.getElementById("cp_estado").value = "pendiente";
-
-  toggleMonedaCuentaPagar();
 }
 function filtrarCuentasPagar(texto) {
   const t = (texto || "").toLowerCase().trim();
@@ -3797,17 +4271,18 @@ function filtrarCuentasPagar(texto) {
   renderCuentasPagar(cuentasPagarFiltradas);
 }
 
-function confirmarEliminarCuentaPagar() {
+async function confirmarEliminarCuentaPagar() {
   if (cuentaPagarAEliminar == null) return;
 
-  cuentasPagar = cuentasPagar.filter(x => Number(x.id) !== cuentaPagarAEliminar);
-  cuentasPagarFiltradas = [...cuentasPagar];
-
-  guardarCuentasPagarStorage();
-  renderCuentasPagar(cuentasPagarFiltradas);
-
-  cuentaPagarAEliminar = null;
-  closeModal("modalEliminarCuentaPagar");
+  try {
+    await jdel("/cuentas-pagar/" + cuentaPagarAEliminar);
+    cuentaPagarAEliminar = null;
+    closeModal("modalEliminarCuentaPagar");
+    await cargarCuentasPagar();
+  } catch (err) {
+    console.error("Error eliminando cuenta:", err);
+    alert("No se pudo eliminar la cuenta.");
+  }
 }
 
 async function descargarInformeCajaPDF() {
@@ -3860,22 +4335,99 @@ async function descargarInformeCajaPDF() {
   const hoy = fechaISO;
 
   let compras = [];
-  let cuentas = [];
-  let ventas = [];
+let cuentas = [];
+let ventas = [];
 
-  try {
-    const [rCompras, rCuentas, rVentas] = await Promise.all([
-      fetch("/compras", { credentials: "include" }),
-      fetch("/cuentas-pagar", { credentials: "include" }),
-      fetch("/ventas", { credentials: "include" }),
-    ]);
+try {
+  const [rCompras, rCuentas, rVentas] = await Promise.all([
+    fetch("/compras", { credentials: "include" }),
+    fetch("/cuentas-pagar", { credentials: "include" }),
+    fetch("/ventas", { credentials: "include" }),
+  ]);
 
-    compras = rCompras.ok ? await rCompras.json() : [];
-    cuentas = rCuentas.ok ? await rCuentas.json() : [];
-    ventas = rVentas.ok ? await rVentas.json() : [];
-  } catch (e) {
-    console.error("Error cargando datos del PDF:", e);
-  }
+  compras = rCompras.ok ? await rCompras.json() : [];
+  const cuentasBackend = rCuentas.ok ? await rCuentas.json() : [];
+  ventas = rVentas.ok ? await rVentas.json() : [];
+
+  const cuentasStorage = JSON.parse(localStorage.getItem("cuentasPagar") || "[]");
+  const egresosStorage = JSON.parse(localStorage.getItem("egresosCuentasPagar") || "[]");
+
+  const mapBackend = new Map(
+    (cuentasBackend || []).map(c => [Number(c.id), { ...c }])
+  );
+
+  const cuentasMezcladas = [...mapBackend.values()];
+
+  (cuentasStorage || []).forEach(c => {
+    const id = Number(c.id || 0);
+
+    if (id && mapBackend.has(id)) {
+      const base = mapBackend.get(id);
+      Object.assign(base, {
+        estado: c.estado ?? base.estado,
+        fecha_pago: c.fecha_pago ?? base.fecha_pago,
+        pagado_en: c.fecha_pago ?? base.pagado_en,
+        caja_tipo: c.tipo_caja ?? base.caja_tipo,
+        caja: c.tipo_caja ?? base.caja,
+        proveedor: c.proveedor ?? base.proveedor,
+        concepto: c.concepto ?? base.concepto,
+        monto: Number(c.monto ?? c.monto_pyg ?? base.monto ?? 0),
+        vencimiento: c.vencimiento ?? base.vencimiento,
+        factura: c.factura ?? base.factura
+      });
+    } else {
+      cuentasMezcladas.push({
+        id: id || Date.now(),
+        proveedor: c.proveedor || "",
+        concepto: c.concepto || "",
+        monto: Number(c.monto ?? c.monto_pyg ?? 0),
+        vencimiento: c.vencimiento || "",
+        factura: c.factura || "",
+        estado: c.estado || "pendiente",
+        fecha_pago: c.fecha_pago || "",
+        pagado_en: c.fecha_pago || "",
+        caja_tipo: c.tipo_caja || "",
+        caja: c.tipo_caja || ""
+      });
+    }
+  });
+
+  (egresosStorage || []).forEach(e => {
+    const cuentaId = Number(e.cuenta_id || 0);
+    if (!cuentaId) return;
+
+    const encontrada = cuentasMezcladas.find(x => Number(x.id) === cuentaId);
+
+    if (encontrada) {
+      encontrada.estado = "pagado";
+      encontrada.fecha_pago = e.fecha || encontrada.fecha_pago || "";
+      encontrada.pagado_en = e.fecha || encontrada.pagado_en || "";
+      encontrada.caja_tipo = e.tipo_caja || encontrada.caja_tipo || "";
+      encontrada.caja = e.tipo_caja || encontrada.caja || "";
+      if (!encontrada.monto) encontrada.monto = Number(e.monto || 0);
+      if (!encontrada.proveedor) encontrada.proveedor = e.proveedor || "";
+      if (!encontrada.concepto) encontrada.concepto = e.descripcion || "";
+    } else {
+      cuentasMezcladas.push({
+        id: cuentaId,
+        proveedor: e.proveedor || "",
+        concepto: e.descripcion || "",
+        monto: Number(e.monto || 0),
+        vencimiento: "",
+        factura: "",
+        estado: "pagado",
+        fecha_pago: e.fecha || "",
+        pagado_en: e.fecha || "",
+        caja_tipo: e.tipo_caja || "",
+        caja: e.tipo_caja || ""
+      });
+    }
+  });
+
+  cuentas = cuentasMezcladas;
+} catch (e) {
+  console.error("Error cargando datos del PDF:", e);
+}
 
   const ventasDia = ventas.filter(v => onlyDate(v.fecha) === hoy);
   const ventasMes = ventas.filter(v => sameMonth(onlyDate(v.fecha), hoy));
@@ -4326,6 +4878,64 @@ function actualizarGraficoDashboard(ayer, hoy) {
   if (barHoy) barHoy.style.width = pctHoy + "%";
 }
 
+
+let productosPaginaActual = 1;
+const productosPorPagina = 8;
+let productosFiltrados = [];
+
+function renderPaginacionProductos(lista) {
+  const contenedor = document.getElementById("productos-paginacion");
+  if (!contenedor) return;
+
+  const totalPaginas = Math.ceil(lista.length / productosPorPagina) || 1;
+  contenedor.innerHTML = "";
+
+  if (totalPaginas <= 1) return;
+
+  for (let i = 1; i <= totalPaginas; i++) {
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    btn.className = "pag-btn";
+
+    if (i === productosPaginaActual) {
+      btn.classList.add("active");
+    }
+
+    btn.onclick = () => {
+      productosPaginaActual = i;
+      renderProductos(lista);
+    };
+
+    contenedor.appendChild(btn);
+  }
+}
+
+
+function cancelarPedido() {
+  pp_items = [];
+  PP_PRODUCTO_ACTUAL = null;
+
+  const proveedor = document.getElementById("pp_proveedor");
+  const fecha = document.getElementById("pp_fecha");
+  const fechaRecepcion = document.getElementById("pp_fecha_recepcion");
+
+  if (proveedor) proveedor.value = "";
+  if (fecha) fecha.value = "";
+  if (fechaRecepcion) fechaRecepcion.value = "";
+
+  const tbody = document.getElementById("pp_items");
+  if (tbody) tbody.innerHTML = "";
+
+  const subtotal = document.getElementById("pp_subtotal");
+  const total = document.getElementById("pp_total");
+  const iva = document.getElementById("pp_iva");
+
+  if (subtotal) subtotal.textContent = "0";
+  if (total) total.textContent = "0";
+  if (iva) iva.textContent = "0";
+}
+
+window.cancelarPedido = cancelarPedido;
 
 window.addEventListener("load", async () => {
   try { await initPDF(); } catch (e) { console.warn("No cargó logos:", e); }
