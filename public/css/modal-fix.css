@@ -2045,3 +2045,23 @@ body:has(#modalVenta[style*="display: flex"]) {
     gap: 2px !important;
   }
 }
+
+
+
+
+/* ===== FIX PC GRANDE ===== */
+
+#modalProducto .sheet,
+#modalProductoEdit .sheet {
+  width: min(850px, 95vw) !important;
+  max-width: 95vw !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  margin: auto !important;
+}
+
+#modalProducto,
+#modalProductoEdit {
+  padding: 20px !important;
+  overflow-y: auto !important;
+}
