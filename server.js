@@ -2022,13 +2022,8 @@ app.post("/ventas", async (req, res) => {
   const client = await pool.connect();
 
   try {
-    if (!forma_pago_id) {
-      return res.status(400).json({ ok: false, msg: "Falta forma_pago_id" });
-    }
-
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ ok: false, msg: "No hay items" });
-    }
+    if (!forma_pago_id) return res.status(400).json({ ok: false, msg: "Falta forma_pago_id" });
+    if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ ok: false, msg: "No hay items" });
 
     const EFECTIVO_ID = 2;
     const fpId = Number(forma_pago_id);
@@ -2039,17 +2034,9 @@ app.post("/ventas", async (req, res) => {
     const totalMonedaFinal = Number(total_moneda || totalPygFinal || 0);
     const totalFinal = totalPygFinal;
 
-    if (!["PYG", "USD", "BRL"].includes(monedaFinal)) {
-      return res.status(400).json({ ok: false, msg: "Moneda inválida" });
-    }
-
-    if (!Number.isFinite(fpId) || fpId <= 0) {
-      return res.status(400).json({ ok: false, msg: "forma_pago_id inválido" });
-    }
-
-    if (!Number.isFinite(totalPygFinal) || totalPygFinal <= 0) {
-      return res.status(400).json({ ok: false, msg: "Total inválido" });
-    }
+    if (!["PYG", "USD", "BRL"].includes(monedaFinal)) return res.status(400).json({ ok: false, msg: "Moneda inválida" });
+    if (!Number.isFinite(fpId) || fpId <= 0) return res.status(400).json({ ok: false, msg: "forma_pago_id inválido" });
+    if (!Number.isFinite(totalPygFinal) || totalPygFinal <= 0) return res.status(400).json({ ok: false, msg: "Total inválido" });
 
     if (monedaFinal !== "PYG" && (!Number.isFinite(tipoCambioFinal) || tipoCambioFinal <= 0)) {
       return res.status(400).json({ ok: false, msg: "tipo_cambio inválido" });
@@ -2066,22 +2053,22 @@ app.post("/ventas", async (req, res) => {
 
     await client.query("BEGIN");
 
-const fechaFinal = fecha || new Date().toLocaleDateString("en-CA", {
-  timeZone: "America/Asuncion"
-});
+    const fechaFinal = fecha || new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/Asuncion"
+    });
 
-const cajaQ = await client.query(
-  `
-  SELECT id, tipo
-  FROM caja
-  WHERE estado = 'abierta'
-    AND lower(tipo) = lower($1)
-    AND fecha::date = $2::date
-  ORDER BY id DESC
-  LIMIT 1
-  `,
-  [tipoCajaNecesaria, fechaFinal]
-);
+    const cajaQ = await client.query(
+      `
+      SELECT id, tipo
+      FROM caja
+      WHERE estado = 'abierta'
+        AND lower(tipo) = lower($1)
+        AND fecha::date = $2::date
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+      [tipoCajaNecesaria, fechaFinal]
+    );
 
     if (cajaQ.rows.length === 0) {
       await client.query("ROLLBACK");
@@ -2096,6 +2083,12 @@ const cajaQ = await client.query(
     const clienteIdFinal =
       cliente_id && String(cliente_id) !== "0" ? Number(cliente_id) : null;
 
+    const usuarioId = req.session?.user?.id || null;
+    const cajeroNombre =
+      req.session?.user?.nombre ||
+      req.session?.user?.usuario ||
+      "Sin usuario";
+
     const compFinal = FORMAS_CON_COMPROBANTE.has(fpId) ? compStr : null;
 
     const v = await client.query(
@@ -2104,6 +2097,8 @@ const cajaQ = await client.query(
         fecha,
         cliente_id,
         caja_id,
+        usuario_id,
+        cajero_nombre,
         total,
         total_pyg,
         total_moneda,
@@ -2113,13 +2108,15 @@ const cajaQ = await client.query(
         estado_pago,
         nro_comprobante
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
       RETURNING id
       `,
       [
         fechaFinal,
         clienteIdFinal,
         caja_id_final,
+        usuarioId,
+        cajeroNombre,
         totalFinal,
         totalPygFinal,
         totalMonedaFinal,
@@ -2182,13 +2179,7 @@ const cajaQ = await client.query(
       }
     }
 
-    // IMPORTANTE:
-// No actualizamos saldo_gs / saldo_us / saldo_rs acá.
-// La caja se calcula desde:
-// saldo inicial + ventas registradas en la tabla ventas.
-// Si sumamos acá y también en /caja/abierta, el saldo se duplica.
-
-console.log("Venta registrada en caja:", caja_id_final);
+    console.log("Venta registrada en caja:", caja_id_final, "Cajero:", cajeroNombre);
 
     await client.query("COMMIT");
 
@@ -2196,6 +2187,7 @@ console.log("Venta registrada en caja:", caja_id_final);
       ok: true,
       id: ventaId,
       caja_id: caja_id_final,
+      cajero: cajeroNombre,
       tipo_caja: tipoCajaNecesaria,
       caja_tipo_real: cajaQ.rows[0].tipo,
       moneda: monedaFinal,
@@ -2416,6 +2408,7 @@ app.get("/ventas/:id/ticket", async (req, res) => {
       `
       SELECT
         v.*,
+        COALESCE(v.cajero_nombre, 'Sin usuario') AS cajero_nombre,
         c.nombre,
         c.apellido,
         c.ci,
@@ -2447,7 +2440,7 @@ app.get("/ventas/:id/ticket", async (req, res) => {
     );
 
     const ticketWidth = 226;
-    const ticketHeight = 330 + items.rows.length * 32;
+    const ticketHeight = 350 + items.rows.length * 32;
 
     const doc = new PDFDocument({
       size: [ticketWidth, ticketHeight],
@@ -2498,41 +2491,47 @@ app.get("/ventas/:id/ticket", async (req, res) => {
     const cliente = `${venta.nombre || "Consumidor Final"} ${venta.apellido || ""}`.trim();
     const ruc = venta.ci || "—";
     const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
+    const cajero = venta.cajero_nombre || "Sin usuario";
 
     const yBox = doc.y;
-    doc.rect(10, yBox, ticketWidth - 20, 92).stroke();
+    doc.rect(10, yBox, ticketWidth - 20, 105).stroke();
 
     const productosTexto = items.rows
-  .map(it => {
-    const cantidad = Number(it.cantidad || 0);
-    const nombre = it.producto_nombre || "-";
-    return `${nombre} x${cantidad}`;
-  })
-  .join(", ");
+      .map(it => {
+        const cantidad = Number(it.cantidad || 0);
+        const nombre = it.producto_nombre || "-";
+        return `${nombre} x${cantidad}`;
+      })
+      .join(", ");
 
-doc
-  .font("Helvetica")
-  .fontSize(8)
-  .text(
-    `Recibí (mos) de ${cliente}, RUC ${ruc}, la cantidad de Gs ${fmtGs(totalPyg)} en concepto de COMPRA de: ${productosTexto}.`,
-    14,
-    yBox + 8,
-    { width: ticketWidth - 28, align: "left" }
-  );
     doc
-      .text(`Fecha: ${fechaTexto}`, 14, yBox + 58, {
-        width: ticketWidth - 28,
-        align: "left"
-      });
+      .font("Helvetica")
+      .fontSize(8)
+      .text(
+        `Recibí (mos) de ${cliente}, RUC ${ruc}, la cantidad de Gs ${fmtGs(totalPyg)} en concepto de COMPRA de: ${productosTexto}.`,
+        14,
+        yBox + 8,
+        { width: ticketWidth - 28, align: "left" }
+      );
+
+    doc.text(`Fecha: ${fechaTexto}`, 14, yBox + 58, {
+      width: ticketWidth - 28,
+      align: "left"
+    });
+
+    doc.text(`Cajero: ${cajero}`, 14, yBox + 70, {
+      width: ticketWidth - 28,
+      align: "left"
+    });
 
     if (venta.nro_comprobante) {
-      doc.text(`Comprobante: ${venta.nro_comprobante}`, 14, yBox + 70, {
+      doc.text(`Comprobante: ${venta.nro_comprobante}`, 14, yBox + 82, {
         width: ticketWidth - 28,
         align: "left"
       });
     }
 
-    doc.y = yBox + 105;
+    doc.y = yBox + 118;
 
     doc
       .font("Helvetica")
@@ -3280,6 +3279,7 @@ app.get("/ventas/:id/pagare", async (req, res) => {
         v.tipo_cambio,
         v.estado_pago,
         v.nro_comprobante,
+        COALESCE(v.cajero_nombre, 'Sin usuario') AS cajero_nombre,
         fp.nombre AS forma_pago_nombre,
         COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente_nombre,
         COALESCE(c.ci, '') AS cliente_ruc
@@ -3321,6 +3321,7 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     const fmtGs = (n) => Number(n || 0).toLocaleString("es-PY");
     const fechaStr = venta.fecha ? new Date(venta.fecha).toISOString().slice(0, 10) : "";
     const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
+    const cajero = venta.cajero_nombre || "Sin usuario";
 
     const logoLeft = path.join(process.cwd(), "public", "img", "logo2.png");
     const logoRight = path.join(process.cwd(), "public", "img", "logo1.jpg");
@@ -3337,7 +3338,7 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     const boxX = 35;
     const boxY = 35;
     const boxW = pageW - 70;
-    const boxH = 145;
+    const boxH = 150;
 
     doc.lineWidth(1);
     doc.rect(boxX, boxY, boxW, boxH).stroke();
@@ -3385,6 +3386,10 @@ app.get("/ventas/:id/pagare", async (req, res) => {
 
     doc
       .fontSize(7.5)
+      .text(`Cajero: ${cajero}`, boxX + 10, boxY + 107, { width: 220, align: "left" });
+
+    doc
+      .fontSize(7.5)
       .text(hoy.toLocaleDateString("es-PY", {
         day: "2-digit",
         month: "long",
@@ -3398,7 +3403,7 @@ app.get("/ventas/:id/pagare", async (req, res) => {
 
     doc
       .fontSize(7)
-      .text(`Ref.: VENTA N° ${String(venta.id).padStart(5, "0")}`, boxX + 10, boxY + 128, {
+      .text(`Ref.: VENTA N° ${String(venta.id).padStart(5, "0")}`, boxX + 10, boxY + 132, {
         width: 190,
         align: "left"
       });
