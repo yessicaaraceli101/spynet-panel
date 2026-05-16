@@ -119,24 +119,12 @@ function autocompletarCostoCompraDesdeMoneda() {
   const inputCosto = document.getElementById("c_costo");
   if (!inputCosto || !productoSeleccionado) return;
 
-  const moneda = getMonedaCompra();
-  const tipoCambio = getTipoCambioCompra();
   const costoGs = Number(productoSeleccionado.costo || 0);
 
-  if (moneda === "PYG") {
-    inputCosto.value = numberFormat(costoGs);
-    return;
-  }
-
-  if (!tipoCambio || tipoCambio <= 0) {
-    inputCosto.value = "0,00";
-    return;
-  }
-
-  inputCosto.value = numberFormatDecimal(costoGs / tipoCambio);
+  inputCosto.value = numberFormat(costoGs);
 }
 
-function toggleMonedaCompra() {
+async function toggleMonedaCompra() {
   const moneda = getMonedaCompra();
   const wrap = document.getElementById("wrap_c_tipo_cambio");
   const input = document.getElementById("c_tipo_cambio_moneda");
@@ -144,38 +132,43 @@ function toggleMonedaCompra() {
   const costoInput = document.getElementById("c_costo");
 
   if (labelCosto) {
-    if (moneda === "USD") labelCosto.textContent = "Costo (US$)";
-    else if (moneda === "BRL") labelCosto.textContent = "Costo (R$)";
-    else labelCosto.textContent = "Costo (Gs.)";
+    labelCosto.textContent = "Costo (Gs.)";
+  }
+
+  let usd = 6350;
+  let brl = 1250;
+
+  try {
+    const res = await fetch("/config/monedas", { credentials: "include" });
+    const data = await res.json();
+
+    if (Array.isArray(data.monedas)) {
+      data.monedas.forEach(m => {
+        if (m.moneda === "USD") usd = Number(m.tipo_cambio);
+        if (m.moneda === "BRL") brl = Number(m.tipo_cambio);
+      });
+    }
+  } catch (e) {
+    console.error("No se pudo cargar tipo de cambio:", e);
   }
 
   if (wrap && input) {
     if (moneda === "PYG") {
       wrap.style.display = "none";
       input.value = "1";
+      input.disabled = false;
+      input.readOnly = false;
     } else {
       wrap.style.display = "block";
-
-      const actual = Number(input.value || 0);
-
-      if (moneda === "USD" && (!actual || actual === 1 || actual === 1450)) {
-        input.value = "7900";
-      } else if (moneda === "BRL" && (!actual || actual === 1 || actual === 7900)) {
-        input.value = "1450";
-      }
+      input.value = moneda === "USD" ? usd : brl;
+      input.disabled = true;
+      input.readOnly = true;
     }
   }
 
-  if (costoInput && !productoSeleccionado) {
-    if (moneda === "PYG") {
-      const n = parsePYMoney(costoInput.value);
-      costoInput.value = numberFormat(n);
-    } else {
-      let valor = String(costoInput.value || "")
-        .replace(/[^0-9.,]/g, "")
-        .replace(",", ".");
-      costoInput.value = valor;
-    }
+  if (costoInput) {
+    const n = parsePYMoney(costoInput.value);
+    costoInput.value = numberFormat(n);
   }
 
   if (productoSeleccionado) {
@@ -184,7 +177,6 @@ function toggleMonedaCompra() {
 
   renderItemsCompra();
 }
-
 /*************************************************
  * MONEDA - EDITAR COMPRA
  *************************************************/
@@ -221,7 +213,7 @@ function parseCostoEditarCompraInput() {
   return Number(String(valor).replace(",", ".") || 0);
 }
 
-function toggleMonedaEditarCompra() {
+async function toggleMonedaEditarCompra() {
   const moneda = getMonedaEditarCompra();
   const wrap = document.getElementById("wrap_edit_c_tipo_cambio");
   const input = document.getElementById("edit_c_tipo_cambio_moneda");
@@ -229,44 +221,48 @@ function toggleMonedaEditarCompra() {
   const costoInput = document.getElementById("edit_c_costo");
 
   if (labelCosto) {
-    if (moneda === "USD") labelCosto.textContent = "Costo (US$)";
-    else if (moneda === "BRL") labelCosto.textContent = "Costo (R$)";
-    else labelCosto.textContent = "Costo (Gs.)";
+    labelCosto.textContent = "Costo (Gs.)";
+  }
+
+  let usd = 6350;
+  let brl = 1250;
+
+  try {
+    const res = await fetch("/config/monedas", { credentials: "include" });
+    const data = await res.json();
+
+    if (Array.isArray(data.monedas)) {
+      data.monedas.forEach(m => {
+        if (m.moneda === "USD") usd = Number(m.tipo_cambio);
+        if (m.moneda === "BRL") brl = Number(m.tipo_cambio);
+      });
+    }
+  } catch (e) {
+    console.error("No se pudo cargar tipo de cambio:", e);
   }
 
   if (wrap && input) {
     if (moneda === "PYG") {
       wrap.style.display = "none";
       input.value = "1";
+      input.disabled = false;
+      input.readOnly = false;
     } else {
       wrap.style.display = "block";
-
-      const actual = Number(input.value || 0);
-
-      if (moneda === "USD" && (!actual || actual === 1 || actual === 1450)) {
-        input.value = "7900";
-      } else if (moneda === "BRL" && (!actual || actual === 1 || actual === 7900)) {
-        input.value = "1450";
-      }
+      input.value = moneda === "USD" ? usd : brl;
+      input.disabled = true;
+      input.readOnly = true;
     }
   }
 
   if (costoInput) {
-    if (moneda === "PYG") {
-      const n = parsePYMoney(costoInput.value);
-      costoInput.value = numberFormat(n);
-    } else {
-      let valor = String(costoInput.value || "")
-        .replace(/[^0-9.,]/g, "")
-        .replace(",", ".");
-      costoInput.value = valor;
-    }
+    const n = parsePYMoney(costoInput.value);
+    costoInput.value = numberFormat(n);
   }
 
   onChangeProductoEditarCompra();
   renderItemsEditarCompra();
 }
-
 /*************************************************
  * TOTALES NUEVA COMPRA
  *************************************************/
@@ -866,7 +862,7 @@ function agregarItemCompra() {
   }
 
   const cantidad = Number(document.getElementById("c_cantidad")?.value || 0);
-  const costoMoneda = parseCostoCompraInput();
+  const costoMoneda = parseCostoCompraInput(); // ahora este valor siempre es Gs.
   const moneda = getMonedaCompra();
   const tipoCambio = getTipoCambioCompra();
 
@@ -876,18 +872,17 @@ function agregarItemCompra() {
     return alert("Ingrese un tipo de cambio válido.");
   }
 
-  const costoPyg = moneda === "PYG"
-    ? costoMoneda
-    : Math.round(costoMoneda * tipoCambio);
+  const costoPyg = costoMoneda;
+  const subtotalPyg = cantidad * costoPyg;
 
   compraItems.push({
     producto_id: productoSeleccionado.id,
     producto_nombre: productoSeleccionado.nombre,
     cantidad,
     costo: costoPyg,
-    costo_moneda: costoMoneda,
-    subtotal: cantidad * costoPyg,
-    subtotal_moneda: cantidad * costoMoneda
+    costo_moneda: moneda === "PYG" ? costoPyg : costoPyg / tipoCambio,
+    subtotal: subtotalPyg,
+    subtotal_moneda: moneda === "PYG" ? subtotalPyg : subtotalPyg / tipoCambio
   });
 
   const sel = document.getElementById("c_producto");
@@ -896,7 +891,7 @@ function agregarItemCompra() {
 
   if (sel) sel.value = "";
   if (cant) cant.value = 1;
-  if (costo) costo.value = moneda === "PYG" ? "0" : "0.00";
+  if (costo) costo.value = "0";
 
   productoSeleccionado = null;
   renderItemsCompra();
