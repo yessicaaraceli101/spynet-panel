@@ -4047,8 +4047,13 @@ app.get("/cuentas-pagar", requireAuth, async (req, res) => {
       SELECT
         id,
         proveedor,
+        factura,
         concepto,
+        moneda,
+        tipo_cambio,
         monto,
+        monto_pyg,
+        monto_moneda,
         vencimiento,
         estado,
         fecha_pago,
@@ -4065,7 +4070,6 @@ app.get("/cuentas-pagar", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Error al listar cuentas a pagar" });
   }
 });
-
 app.put("/api/pedidos/:id/recibir", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   const client = await pool.connect();
@@ -4200,20 +4204,37 @@ app.post("/cuentas-pagar", async (req, res) => {
   try {
     const {
       proveedor,
+      factura,
       concepto,
+      moneda = "PYG",
+      tipo_cambio = 1,
       monto,
+      monto_pyg,
+      monto_moneda,
       vencimiento,
       estado,
       fecha_pago,
       caja_tipo
     } = req.body;
 
+    const monedaFinal = String(moneda || "PYG").toUpperCase();
+    const tipoCambioFinal = Number(tipo_cambio || 1);
+    const montoPygFinal = Number(monto_pyg || monto || 0);
+    const montoMonedaFinal = Number(
+      monto_moneda || (monedaFinal === "PYG" ? montoPygFinal : montoPygFinal / tipoCambioFinal)
+    );
+
     const { data, error } = await supabase
       .from("cuentas_pagar")
       .insert([{
         proveedor,
+        factura,
         concepto,
-        monto,
+        moneda: monedaFinal,
+        tipo_cambio: tipoCambioFinal,
+        monto: montoPygFinal,
+        monto_pyg: montoPygFinal,
+        monto_moneda: montoMonedaFinal,
         vencimiento,
         estado,
         fecha_pago,
@@ -4237,20 +4258,37 @@ app.put("/cuentas-pagar/:id", async (req, res) => {
 
     const {
       proveedor,
+      factura,
       concepto,
+      moneda = "PYG",
+      tipo_cambio = 1,
       monto,
+      monto_pyg,
+      monto_moneda,
       vencimiento,
       estado,
       fecha_pago,
       caja_tipo
     } = req.body;
 
+    const monedaFinal = String(moneda || "PYG").toUpperCase();
+    const tipoCambioFinal = Number(tipo_cambio || 1);
+    const montoPygFinal = Number(monto_pyg || monto || 0);
+    const montoMonedaFinal = Number(
+      monto_moneda || (monedaFinal === "PYG" ? montoPygFinal : montoPygFinal / tipoCambioFinal)
+    );
+
     const { data, error } = await supabase
       .from("cuentas_pagar")
       .update({
         proveedor,
+        factura,
         concepto,
-        monto,
+        moneda: monedaFinal,
+        tipo_cambio: tipoCambioFinal,
+        monto: montoPygFinal,
+        monto_pyg: montoPygFinal,
+        monto_moneda: montoMonedaFinal,
         vencimiento,
         estado,
         fecha_pago,
@@ -4268,7 +4306,6 @@ app.put("/cuentas-pagar/:id", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 app.delete("/api/usuarios/:id", requireAuth, async (req, res) => {
   try {

@@ -4091,29 +4091,45 @@ function renderCuentasPagar(lista = cuentasPagar) {
     return;
   }
 
+  const nfDecimal = (n) =>
+    Number(n || 0).toLocaleString("es-PY", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+  const renderMontoCuenta = (item) => {
+    const moneda = String(item.moneda || "PYG").toUpperCase();
+    const montoPyg = Number(item.monto_pyg || item.monto || 0);
+    const montoMoneda = Number(item.monto_moneda || 0);
+
+    if (moneda === "USD") {
+      return `
+        <div style="font-weight:700;">US$ ${nfDecimal(montoMoneda)}</div>
+        <div style="font-size:.82rem; color:#6b7280;">Gs. ${money(montoPyg)}</div>
+      `;
+    }
+
+    if (moneda === "BRL") {
+      return `
+        <div style="font-weight:700;">R$ ${nfDecimal(montoMoneda)}</div>
+        <div style="font-size:.82rem; color:#6b7280;">Gs. ${money(montoPyg)}</div>
+      `;
+    }
+
+    return `<div style="font-weight:700;">Gs. ${money(montoPyg)}</div>`;
+  };
+
   tbody.innerHTML = lista.map(item => {
     const estado = String(item.estado || "pendiente").toLowerCase();
     const fechaPago = item.fecha_pago ? String(item.fecha_pago).slice(0, 10) : "-";
     const tipoCaja = item.caja_tipo || item.tipo_caja || item.caja || "-";
-    const moneda = item.moneda || "PYG";
-    const montoPyg = Number(item.monto_pyg || item.monto || 0);
-    const montoMoneda = Number(item.monto_moneda || montoPyg);
 
     return `
       <tr>
         <td>${item.id}</td>
         <td>${item.proveedor || ""}</td>
         <td>${item.concepto || ""}</td>
-        <td>
-          <div style="font-weight:700;">
-            ${typeof fmtMonedaCuenta === "function" ? fmtMonedaCuenta(moneda, montoMoneda) : "Gs. " + money(montoPyg)}
-          </div>
-          ${
-            moneda !== "PYG"
-              ? `<div style="font-size:.82rem; color:#6b7280;">Gs. ${montoPyg.toLocaleString("es-PY")}</div>`
-              : ""
-          }
-        </td>
+        <td>${renderMontoCuenta(item)}</td>
         <td>${item.vencimiento ? String(item.vencimiento).slice(0, 10) : "-"}</td>
         <td>
           ${
@@ -4151,7 +4167,6 @@ function renderCuentasPagar(lista = cuentasPagar) {
     `;
   }).join("");
 }
-
 async function pagarCuentaPagar(id) {
   const item = cuentasPagar.find(x => Number(x.id) === Number(id));
   if (!item) return alert("Cuenta no encontrada.");
@@ -4207,22 +4222,39 @@ async function pagarCuentaPagar(id) {
 async function guardarCuentaPagar() {
   const id = Number(document.getElementById("cp_id")?.value || 0);
   const proveedor = document.getElementById("cp_proveedor")?.value.trim();
+  const factura = document.getElementById("cp_factura")?.value.trim() || "";
   const concepto = document.getElementById("cp_concepto")?.value.trim();
+
+  const moneda = String(document.getElementById("cp_moneda")?.value || "PYG").toUpperCase();
+  const tipoCambio = Number(document.getElementById("cp_tipo_cambio")?.value || 1);
+
   const montoGsTexto = document.getElementById("cp_monto_gs")?.value.trim() || "0";
   const vencimiento = document.getElementById("cp_vencimiento")?.value || null;
   const estado = document.getElementById("cp_estado")?.value || "pendiente";
 
-  const monto = Number(String(montoGsTexto).replace(/\./g, "").replace(/,/g, "")) || 0;
+  const montoPyg = Number(String(montoGsTexto).replace(/\./g, "").replace(/,/g, "")) || 0;
 
-  if (!proveedor || !concepto || !monto) {
+  if (!proveedor || !concepto || !montoPyg) {
     alert("Complete proveedor, concepto y monto.");
     return;
   }
 
+  if (moneda !== "PYG" && (!tipoCambio || tipoCambio <= 0)) {
+    alert("Ingrese un tipo de cambio válido.");
+    return;
+  }
+
+  const montoMoneda = moneda === "PYG" ? montoPyg : montoPyg / tipoCambio;
+
   const body = {
     proveedor,
+    factura,
     concepto,
-    monto,
+    moneda,
+    tipo_cambio: tipoCambio,
+    monto: montoPyg,
+    monto_pyg: montoPyg,
+    monto_moneda: montoMoneda,
     vencimiento,
     estado,
     fecha_pago: estado === "pagado" ? hoyISO() : null,
@@ -4259,18 +4291,19 @@ async function guardarCuentaPagar() {
     alert("No se pudo guardar la cuenta a pagar:\n" + err.message);
   }
 }
+
 function filtrarCuentasPagar(texto) {
   const t = (texto || "").toLowerCase().trim();
 
   cuentasPagarFiltradas = cuentasPagar.filter(item =>
     (item.proveedor || "").toLowerCase().includes(t) ||
     (item.concepto || "").toLowerCase().includes(t) ||
-    (item.estado || "").toLowerCase().includes(t)
+    (item.estado || "").toLowerCase().includes(t) ||
+    (item.factura || "").toLowerCase().includes(t)
   );
 
   renderCuentasPagar(cuentasPagarFiltradas);
 }
-
 async function confirmarEliminarCuentaPagar() {
   if (cuentaPagarAEliminar == null) return;
 
