@@ -2066,22 +2066,22 @@ app.post("/ventas", async (req, res) => {
 
     await client.query("BEGIN");
 
-    const tipoPattern =
-      tipoCajaNecesaria === "efectivo"
-        ? "%efectiv%"
-        : "%transf%";
+const fechaFinal = fecha || new Date().toLocaleDateString("en-CA", {
+  timeZone: "America/Asuncion"
+});
 
-    const cajaQ = await client.query(
-      `
-      SELECT id, tipo
-      FROM caja
-      WHERE estado = 'abierta'
-        AND lower(tipo) LIKE lower($1)
-      ORDER BY id DESC
-      LIMIT 1
-      `,
-      [tipoPattern]
-    );
+const cajaQ = await client.query(
+  `
+  SELECT id, tipo
+  FROM caja
+  WHERE estado = 'abierta'
+    AND lower(tipo) = lower($1)
+    AND fecha::date = $2::date
+  ORDER BY id DESC
+  LIMIT 1
+  `,
+  [tipoCajaNecesaria, fechaFinal]
+);
 
     if (cajaQ.rows.length === 0) {
       await client.query("ROLLBACK");
@@ -2097,7 +2097,6 @@ app.post("/ventas", async (req, res) => {
       cliente_id && String(cliente_id) !== "0" ? Number(cliente_id) : null;
 
     const compFinal = FORMAS_CON_COMPROBANTE.has(fpId) ? compStr : null;
-    const fechaFinal = fecha || new Date().toISOString().slice(0, 10);
 
     const v = await client.query(
       `
@@ -2183,35 +2182,13 @@ app.post("/ventas", async (req, res) => {
       }
     }
 
-    if (monedaFinal === "USD") {
-      await client.query(
-        `
-        UPDATE caja
-        SET saldo_us = COALESCE(saldo_us, 0) + $1
-        WHERE id = $2
-        `,
-        [totalMonedaFinal, caja_id_final]
-      );
-    } else if (monedaFinal === "BRL") {
-      await client.query(
-        `
-        UPDATE caja
-        SET saldo_rs = COALESCE(saldo_rs, 0) + $1
-        WHERE id = $2
-        `,
-        [totalMonedaFinal, caja_id_final]
-      );
-    } else {
-      await client.query(
-        `
-        UPDATE caja
-        SET saldo_gs = COALESCE(saldo_gs, saldo_inicial, 0) + $1,
-            saldo_actual = COALESCE(saldo_actual, 0) + $1
-        WHERE id = $2
-        `,
-        [totalPygFinal, caja_id_final]
-      );
-    }
+    // IMPORTANTE:
+// No actualizamos saldo_gs / saldo_us / saldo_rs acá.
+// La caja se calcula desde:
+// saldo inicial + ventas registradas en la tabla ventas.
+// Si sumamos acá y también en /caja/abierta, el saldo se duplica.
+
+console.log("Venta registrada en caja:", caja_id_final);
 
     await client.query("COMMIT");
 
@@ -2751,13 +2728,23 @@ app.post("/caja/abrir", async (req, res) => {
     const tipoNorm = normTipoCaja(tipo);
     const fechaISO = toISODate(fecha);
 
-    const cajaAbierta = await pool.query(
-      "SELECT id FROM caja WHERE estado='abierta' AND tipo=$1 LIMIT 1",
-      [tipoNorm]
-    );
+   const existeQ = await pool.query(
+  `
+  SELECT id
+  FROM caja
+  WHERE estado = 'abierta'
+    AND tipo = $1
+    AND fecha::date = $2::date
+  LIMIT 1
+  `,
+  [tipoNorm, fechaISO]
+);
 
-    if (cajaAbierta.rows.length > 0) {
-      return res.status(400).json({ ok: false, msg: "Ya existe una caja abierta" });
+    if (existeQ.rowCount > 0) {
+      return res.status(400).json({
+        ok: false,
+        msg: `Ya existe una caja ${tipoNorm} abierta`
+      });
     }
 
     const saldoGsFinal = Number(saldo_gs || saldo_inicial || 0);
@@ -2765,7 +2752,8 @@ app.post("/caja/abrir", async (req, res) => {
     const saldoRsFinal = Number(saldo_rs || 0);
 
     const q = await pool.query(
-      `INSERT INTO caja (
+      `
+      INSERT INTO caja (
         tipo,
         fecha,
         saldo_inicial,
@@ -2774,8 +2762,9 @@ app.post("/caja/abrir", async (req, res) => {
         saldo_rs,
         estado
       )
-       VALUES ($1, $2, $3, $4, $5, $6, 'abierta')
-       RETURNING *`,
+      VALUES ($1, $2, $3, $4, $5, $6, 'abierta')
+      RETURNING *
+      `,
       [
         tipoNorm,
         fechaISO,
@@ -2798,61 +2787,91 @@ app.get("/caja/abierta", async (req, res) => {
     const fecha = req.query.fecha ? toISODate(req.query.fecha) : null;
 
     let q = `
-      SELECT
-        c.*,
-
-        COALESCE(c.saldo_gs, c.saldo_inicial, 0)::numeric AS saldo_gs,
-        COALESCE(c.saldo_us, 0)::numeric AS saldo_us,
-        COALESCE(c.saldo_rs, 0)::numeric AS saldo_rs,
-
-        (
-          COALESCE(c.saldo_gs, c.saldo_inicial, 0)
-          + COALESCE(SUM(CASE WHEN COALESCE(v.moneda, 'PYG') = 'PYG' THEN COALESCE(v.total_pyg, v.total, 0) ELSE 0 END), 0)
-        )::numeric AS saldo_actual_gs,
-
-        (
-          COALESCE(c.saldo_us, 0)
-          + COALESCE(SUM(CASE WHEN v.moneda = 'USD' THEN COALESCE(v.total_moneda, 0) ELSE 0 END), 0)
-        )::numeric AS saldo_actual_us,
-
-        (
-          COALESCE(c.saldo_rs, 0)
-          + COALESCE(SUM(CASE WHEN v.moneda = 'BRL' THEN COALESCE(v.total_moneda, 0) ELSE 0 END), 0)
-        )::numeric AS saldo_actual_rs
-
-      FROM caja c
-      LEFT JOIN ventas v ON v.caja_id = c.id
-      WHERE c.estado = 'abierta'
+      SELECT *
+      FROM caja
+      WHERE estado = 'abierta'
     `;
 
     const params = [];
 
     if (tipo) {
       params.push(tipo);
-      q += ` AND c.tipo = $${params.length}`;
+      q += ` AND lower(tipo) = lower($${params.length})`;
     }
 
     if (fecha) {
       params.push(fecha);
-      q += ` AND c.fecha = $${params.length}`;
+      q += ` AND fecha::date = $${params.length}::date`;
     }
 
     q += `
-      GROUP BY c.id
-      ORDER BY c.id DESC
+      ORDER BY id DESC
       LIMIT 1
     `;
 
     const r = await pool.query(q, params);
 
-    res.json({
-      abierta: r.rows.length > 0,
-      caja: r.rows[0] || null
+    if (!r.rowCount) {
+      return res.json({ abierta: false, caja: null });
+    }
+
+    const caja = r.rows[0];
+
+    const ventasQ = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(COALESCE(total_pyg, total, 0)), 0)::numeric AS total_ventas_gs,
+
+        COALESCE(SUM(CASE 
+          WHEN COALESCE(moneda, 'PYG') = 'USD'
+          THEN COALESCE(total_moneda, 0) 
+          ELSE 0 
+        END), 0)::numeric AS total_ventas_us,
+
+        COALESCE(SUM(CASE 
+          WHEN COALESCE(moneda, 'PYG') = 'BRL'
+          THEN COALESCE(total_moneda, 0) 
+          ELSE 0 
+        END), 0)::numeric AS total_ventas_rs
+      FROM ventas
+      WHERE caja_id = $1
+        AND (estado_pago IS NULL OR estado_pago <> 'anulado')
+      `,
+      [caja.id]
+    );
+
+    const total_ventas_gs = Number(ventasQ.rows[0].total_ventas_gs || 0);
+    const total_ventas_us = Number(ventasQ.rows[0].total_ventas_us || 0);
+    const total_ventas_rs = Number(ventasQ.rows[0].total_ventas_rs || 0);
+
+    const saldo_inicial_gs = Number(caja.saldo_gs ?? caja.saldo_inicial ?? 0);
+    const saldo_inicial_us = Number(caja.saldo_us || 0);
+    const saldo_inicial_rs = Number(caja.saldo_rs || 0);
+
+    const saldo_actual_gs = saldo_inicial_gs + total_ventas_gs;
+    const saldo_actual_us = saldo_inicial_us + total_ventas_us;
+    const saldo_actual_rs = saldo_inicial_rs + total_ventas_rs;
+
+    return res.json({
+      abierta: true,
+      caja: {
+        ...caja,
+
+        total_ventas_gs,
+        total_ventas_us,
+        total_ventas_rs,
+
+        saldo_actual_gs,
+        saldo_actual_us,
+        saldo_actual_rs,
+
+        saldo_actual: saldo_actual_gs
+      }
     });
 
   } catch (err) {
     console.error("GET /caja/abierta", err);
-    res.status(500).json({
+    return res.status(500).json({
       abierta: false,
       msg: "Error consultando caja"
     });
@@ -2912,7 +2931,7 @@ app.get("/caja/estado", async (req, res) => {
   }
 });
 
-// ✅ Alias para compatibilidad con el front (que llama /formas_pago)
+//  Alias para compatibilidad con el front (que llama /formas_pago)
 app.get("/formas_pago", requireAuth, async (req, res) => {
   const result = await pool.query("SELECT * FROM formas_pago WHERE activo = true ORDER BY nombre");
   res.json(result.rows);

@@ -2065,3 +2065,23 @@ body:has(#modalVenta[style*="display: flex"]) {
   padding: 20px !important;
   overflow-y: auto !important;
 }
+
+/* ===== FIX BOTONES MODAL COMPRA PC ===== */
+
+#modalNuevaCompra .ec-actions,
+#modalEditarCompra .ec-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: nowrap !important;
+}
+
+#modalNuevaCompra .ec-actions .btn,
+#modalEditarCompra .ec-actions .btn {
+  width: auto !important;
+  min-width: 150px !important;
+  max-width: 220px !important;
+  flex: 0 0 auto !important;
+}
