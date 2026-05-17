@@ -4331,6 +4331,348 @@ app.delete("/api/usuarios/:id", requireAuth, async (req, res) => {
   }
 });
 
+
+
+
+
+
+
+app.get("/api/notificaciones", requireAuth, async (req, res) => {
+  try {
+    const alertas = [];
+
+    const stockBajo = await pool.query(`
+      SELECT 
+        p.nombre,
+        COALESCE(c.nombre, 'Sin categoría') AS categoria,
+        COALESCE(p.stock, 0) AS stock
+      FROM productos p
+      LEFT JOIN categorias c ON c.id = p.categoria_id
+      WHERE COALESCE(p.activo, true) = true
+        AND COALESCE(p.stock, 0) <= 2
+      ORDER BY COALESCE(p.stock, 0) ASC, p.nombre ASC
+      LIMIT 10
+    `);
+
+    stockBajo.rows.forEach(p => {
+      alertas.push({
+        tipo: "stock",
+        titulo: "Stock crítico",
+        mensaje: `${p.nombre} tiene solo ${p.stock} unidades`
+      });
+    });
+
+    const cajaAbierta = await pool.query(`
+      SELECT tipo, fecha
+      FROM caja
+      WHERE estado = 'abierta'
+      ORDER BY id DESC
+      LIMIT 1
+    `);
+
+    if (cajaAbierta.rowCount) {
+      const c = cajaAbierta.rows[0];
+      alertas.push({
+        tipo: "caja",
+        titulo: "Caja abierta",
+        mensaje: `Hay una caja ${c.tipo || ''} abierta`
+      });
+    }
+
+    res.json({ ok: true, alertas });
+  } catch (err) {
+    console.error("GET /api/notificaciones", err);
+    res.status(500).json({ ok: false, alertas: [] });
+  }
+});
+
+
+
+
+app.post("/api/asistente-admin", requireAuth, async (req, res) => {
+  try {
+    const pregunta = String(req.body.pregunta || "").toLowerCase().trim();
+
+    if (!pregunta) {
+      return res.json({ ok: true, respuesta: "Escribí una consulta para ayudarte." });
+    }
+
+    let respuesta =
+      "No entendí la consulta. Podés preguntarme sobre ventas, compras, productos, stock, caja, clientes, proveedores, pedidos, cuentas a pagar o margen.";
+
+    const money = (n) =>
+      "Gs. " + new Intl.NumberFormat("es-PY").format(Number(n || 0));
+
+    const fechaPY = (f) =>
+      f ? new Date(f).toLocaleDateString("es-PY") : "Pendiente";
+
+    if (
+      (pregunta.includes("venta") || pregunta.includes("ventas") || pregunta.includes("vendí") || pregunta.includes("vendi")) &&
+      (pregunta.includes("hoy") || pregunta.includes("dia") || pregunta.includes("día"))
+    ) {
+      const q = await pool.query(`
+        SELECT COUNT(*) AS cantidad, COALESCE(SUM(COALESCE(total_pyg,total,0)),0) AS total
+        FROM ventas
+        WHERE fecha::date = CURRENT_DATE
+      `);
+
+      respuesta = `Hoy se registraron ${q.rows[0].cantidad} ventas por un total de ${money(q.rows[0].total)}.`;
+    }
+
+    else if (
+      (
+  pregunta.includes("venta") ||
+  pregunta.includes("ventas") ||
+  pregunta.includes("vendí") ||
+  pregunta.includes("vendi") ||
+  pregunta.includes("vendido") ||
+  pregunta.includes("se vendió") ||
+  pregunta.includes("se vendio")
+) &&
+      (pregunta.includes("mes") || pregunta.includes("mensual"))
+    ) {
+      const q = await pool.query(`
+        SELECT COUNT(*) AS cantidad, COALESCE(SUM(COALESCE(total_pyg,total,0)),0) AS total
+        FROM ventas
+        WHERE date_trunc('month', fecha::date) = date_trunc('month', CURRENT_DATE)
+      `);
+
+      respuesta = `Este mes se registraron ${q.rows[0].cantidad} ventas por ${money(q.rows[0].total)}.`;
+    }
+
+    else if (
+      pregunta.includes("pedido") ||
+      pregunta.includes("pedidos") ||
+      pregunta.includes("pedido a proveedor") ||
+      pregunta.includes("se hizo") ||
+      pregunta.includes("se hicieron") ||
+      pregunta.includes("cuantos pedidos") ||
+      pregunta.includes("cuántos pedidos")
+    ) {
+      const resumen = await pool.query(`
+        SELECT COUNT(*) AS cantidad, COALESCE(SUM(total),0) AS total
+        FROM pedidos_prov
+      `);
+
+      const q = await pool.query(`
+        SELECT 
+          p.id,
+          p.fecha_pedido,
+          p.fecha_recepcion,
+          p.estado,
+          p.total,
+          pr.nombre AS proveedor,
+          COALESCE(SUM(i.cantidad),0) AS cantidad_total,
+          COUNT(i.id) AS items,
+          STRING_AGG(
+            COALESCE(prod.nombre, 'Producto sin nombre') || ' x' || COALESCE(i.cantidad,0),
+            ', '
+            ORDER BY prod.nombre
+          ) AS productos
+        FROM pedidos_prov p
+        LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
+        LEFT JOIN pedidos_prov_items i ON i.pedido_id = p.id
+        LEFT JOIN productos prod ON prod.id = i.producto_id
+        GROUP BY p.id, pr.nombre
+        ORDER BY p.id DESC
+        LIMIT 5
+      `);
+
+      if (!q.rowCount) {
+        respuesta = "No hay pedidos a proveedor registrados.";
+      } else {
+        respuesta =
+          `Pedidos registrados: ${resumen.rows[0].cantidad}<br>` +
+          `Total acumulado: ${money(resumen.rows[0].total)}<br><br>` +
+          `Últimos pedidos:<br><br>` +
+          q.rows.map(p => `
+            <strong>Pedido #${p.id}</strong><br>
+            Proveedor: ${p.proveedor || "Sin proveedor"}<br>
+            Fecha pedido: ${fechaPY(p.fecha_pedido)}<br>
+            Fecha recepción: ${fechaPY(p.fecha_recepcion)}<br>
+            Estado: ${p.estado || "pendiente"}<br>
+            Productos: ${p.productos || "Sin productos"}<br>
+            Cantidad total: ${p.cantidad_total}<br>
+            Ítems: ${p.items}<br>
+            Total: ${money(p.total)}
+          `).join("<br><br>");
+      }
+    }
+
+    else if (
+      pregunta.includes("que cosas se compró") ||
+      pregunta.includes("qué cosas se compró") ||
+      pregunta.includes("que se compro") ||
+      pregunta.includes("qué se compró") ||
+      pregunta.includes("productos comprados") ||
+      pregunta.includes("cosas compro") ||
+      pregunta.includes("cosas compró")
+    ) {
+      const q = await pool.query(`
+        SELECT 
+          c.id,
+          c.fecha,
+          p.nombre AS proveedor,
+          STRING_AGG(pr.nombre || ' x' || ci.cantidad, ', ') AS productos,
+          c.total
+        FROM compras c
+        LEFT JOIN proveedores p ON p.id = c.proveedor_id
+        LEFT JOIN compras_items ci ON ci.compra_id = c.id
+        LEFT JOIN productos pr ON pr.id = ci.producto_id
+        WHERE c.fecha::date = CURRENT_DATE
+        GROUP BY c.id, p.nombre
+        ORDER BY c.id DESC
+        LIMIT 5
+      `);
+
+      respuesta = q.rowCount
+        ? "Compras registradas hoy:<br><br>" + q.rows.map(c => `
+            <strong>Compra #${c.id}</strong><br>
+            Fecha: ${fechaPY(c.fecha)}<br>
+            Proveedor: ${c.proveedor || "Sin proveedor"}<br>
+            Productos: ${c.productos || "Sin productos"}<br>
+            Total: ${money(c.total)}
+          `).join("<br><br>")
+        : "Hoy no hay compras registradas.";
+    }
+
+    else if (
+      pregunta.includes("compra") ||
+      pregunta.includes("compras") ||
+      pregunta.includes("gasto") ||
+      pregunta.includes("gastos")
+    ) {
+      const q = await pool.query(`
+        SELECT COUNT(*) AS cantidad, COALESCE(SUM(total),0) AS total
+        FROM compras
+        WHERE date_trunc('month', fecha::date) = date_trunc('month', CURRENT_DATE)
+      `);
+
+      respuesta = `Este mes se registraron ${q.rows[0].cantidad} compras por ${money(q.rows[0].total)}.`;
+    }
+
+    else if (
+      pregunta.includes("egreso") ||
+      pregunta.includes("egresos")
+    ) {
+      const q = await pool.query(`
+        SELECT COUNT(*) AS cantidad, COALESCE(SUM(total),0) AS total
+        FROM compras
+        WHERE fecha::date = CURRENT_DATE
+      `);
+
+      respuesta = `Hoy se registraron ${q.rows[0].cantidad} egresos/compras por ${money(q.rows[0].total)}.`;
+    }
+
+    else if (
+      pregunta.includes("stock bajo") ||
+      pregunta.includes("stock crítico") ||
+      pregunta.includes("stock critico") ||
+      pregunta.includes("poco stock") ||
+      pregunta.includes("sin stock") ||
+      pregunta.includes("productos bajos") ||
+      pregunta.includes("productos criticos") ||
+      pregunta.includes("productos críticos")
+    ) {
+      const q = await pool.query(`
+        SELECT p.nombre, COALESCE(p.stock,0) AS stock
+        FROM productos p
+        WHERE COALESCE(p.activo,true)=true
+          AND COALESCE(p.stock,0) <= 2
+        ORDER BY COALESCE(p.stock,0) ASC, p.nombre ASC
+        LIMIT 8
+      `);
+
+      respuesta = q.rowCount
+        ? "Productos con stock bajo:<br>" + q.rows.map(p => `• ${p.nombre}: ${p.stock} unidades`).join("<br>")
+        : "No hay productos con stock bajo actualmente.";
+    }
+
+    else if (
+      pregunta.includes("producto") ||
+      pregunta.includes("productos") ||
+      pregunta.includes("inventario") ||
+      pregunta.includes("stock total")
+    ) {
+      const q = await pool.query(`
+        SELECT COUNT(*) AS productos, COALESCE(SUM(stock),0) AS unidades
+        FROM productos
+        WHERE COALESCE(activo,true)=true
+      `);
+
+      respuesta = `Tenés ${q.rows[0].productos} productos activos y ${q.rows[0].unidades} unidades en stock.`;
+    }
+
+    else if (pregunta.includes("cliente") || pregunta.includes("clientes")) {
+      const q = await pool.query(`SELECT COUNT(*) AS total FROM clientes`);
+      respuesta = `Actualmente tenés ${q.rows[0].total} clientes registrados.`;
+    }
+
+    else if (pregunta.includes("proveedor") || pregunta.includes("proveedores")) {
+      const q = await pool.query(`SELECT COUNT(*) AS total FROM proveedores`);
+      respuesta = `Actualmente tenés ${q.rows[0].total} proveedores registrados.`;
+    }
+
+    else if (pregunta.includes("caja") || pregunta.includes("cajas")) {
+      const q = await pool.query(`
+        SELECT tipo, fecha
+        FROM caja
+        WHERE estado='abierta'
+        ORDER BY id DESC
+        LIMIT 5
+      `);
+
+      respuesta = q.rowCount
+        ? "Cajas abiertas:<br>" + q.rows.map(c => `• ${c.tipo} desde ${fechaPY(c.fecha)}`).join("<br>")
+        : "No hay cajas abiertas actualmente.";
+    }
+
+    else if (
+      pregunta.includes("cuenta") ||
+      pregunta.includes("cuentas") ||
+      pregunta.includes("pagar") ||
+      pregunta.includes("vencimiento") ||
+      pregunta.includes("deuda") ||
+      pregunta.includes("deudas")
+    ) {
+      const q = await pool.query(`
+        SELECT COUNT(*) AS cantidad, COALESCE(SUM(monto),0) AS total
+        FROM cuentas_pagar
+        WHERE LOWER(COALESCE(estado,'')) = 'pendiente'
+      `);
+
+      respuesta = `Tenés ${q.rows[0].cantidad} cuentas pendientes por ${money(q.rows[0].total)}.`;
+    }
+
+    else if (
+      pregunta.includes("margen") ||
+      pregunta.includes("ganancia") ||
+      pregunta.includes("ganancias") ||
+      pregunta.includes("rentabilidad")
+    ) {
+      const q = await pool.query(`
+        SELECT
+          (SELECT COALESCE(SUM(COALESCE(total_pyg,total,0)),0) FROM ventas WHERE date_trunc('month', fecha::date)=date_trunc('month', CURRENT_DATE)) AS ventas,
+          (SELECT COALESCE(SUM(total),0) FROM compras WHERE date_trunc('month', fecha::date)=date_trunc('month', CURRENT_DATE)) AS compras,
+          (SELECT COALESCE(SUM(total),0) FROM compras WHERE date_trunc('month', fecha::date)=date_trunc('month', CURRENT_DATE)) AS egresos
+      `);
+
+      const r = q.rows[0];
+      const margen = Number(r.ventas) - Number(r.compras) - Number(r.egresos);
+
+      respuesta = `Margen estimado del mes: ${money(margen)}.<br>Ventas: ${money(r.ventas)}<br>Compras: ${money(r.compras)}<br>Egresos temporales: ${money(r.egresos)}`;
+    }
+
+    res.json({ ok: true, respuesta });
+
+  } catch (err) {
+    console.error("POST /api/asistente-admin", err);
+    res.status(500).json({
+      ok: false,
+      respuesta: "Error consultando el sistema."
+    });
+  }
+});
 app.get("/", (_req, res) => {
   res.send("SPYnet OK ✅");
 });

@@ -523,6 +523,138 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+
+
+#assistantFloatBtn{
+  position:fixed;
+  right:24px;
+  bottom:24px;
+  width:64px;
+  height:64px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#2563eb,#1d4ed8);
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:26px;
+  cursor:pointer;
+  z-index:999999;
+  box-shadow:0 20px 40px rgba(37,99,235,.35);
+  transition:.2s;
+}
+
+#assistantFloatBtn:hover{
+  transform:translateY(-2px) scale(1.03);
+}
+
+#assistantBox{
+  position:fixed;
+  right:24px;
+  bottom:100px;
+  width:380px;
+  height:560px;
+  background:white;
+  border-radius:24px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  z-index:999999;
+  box-shadow:0 30px 70px rgba(0,0,0,.18);
+  border:1px solid #e5e7eb;
+}
+
+.assistant-hidden{
+  display:none !important;
+}
+
+.assistant-header{
+  padding:18px;
+  background:#2563eb;
+  color:white;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.assistant-header strong{
+  display:block;
+  font-size:16px;
+}
+
+.assistant-header small{
+  opacity:.85;
+}
+
+#assistantClose{
+  background:none;
+  border:none;
+  color:white;
+  font-size:20px;
+  cursor:pointer;
+}
+
+.assistant-messages{
+  flex:1;
+  padding:16px;
+  overflow:auto;
+  background:#f8fafc;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.assistant-msg{
+  max-width:85%;
+  padding:12px 14px;
+  border-radius:16px;
+  font-size:14px;
+  line-height:1.5;
+}
+
+.assistant-msg.bot{
+  background:white;
+  color:#111827;
+  border:1px solid #e5e7eb;
+  align-self:flex-start;
+}
+
+.assistant-msg.user{
+  background:#2563eb;
+  color:white;
+  align-self:flex-end;
+}
+
+.assistant-input-area{
+  padding:14px;
+  border-top:1px solid #e5e7eb;
+  display:flex;
+  gap:10px;
+  background:white;
+}
+
+#assistantInput{
+  flex:1;
+  border:1px solid #d1d5db;
+  border-radius:14px;
+  padding:12px 14px;
+  outline:none;
+  font-size:14px;
+}
+
+#assistantSend{
+  width:48px;
+  border:none;
+  border-radius:14px;
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+  font-size:16px;
+}
+
+
   </style>
 </head>
 <body>
@@ -740,6 +872,85 @@
   </div>
 
 
+
+
+<div id="assistantFloatBtn">
+  <i class="fa-solid fa-robot"></i>
+</div>
+
+<div id="assistantBox" class="assistant-hidden">
+
+  <div class="assistant-header">
+    <div>
+      <strong>SPY Asistente</strong>
+      <small>Consultas administrativas</small>
+    </div>
+
+    <button id="assistantClose" type="button">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <div id="assistantMessages" class="assistant-messages">
+
+    <div class="assistant-msg bot">
+
+      👋 Hola, soy tu asistente del sistema.
+
+      <br><br>
+
+      Podés consultarme información sobre:
+
+      <br><br>
+
+      • Ventas del día o del mes<br>
+      • Compras realizadas<br>
+      • Productos e inventario<br>
+      • Stock bajo o crítico<br>
+      • Caja abierta<br>
+      • Clientes y proveedores<br>
+      • Pedidos a proveedor<br>
+      • Cuentas pendientes<br>
+      • Margen o ganancia mensual
+
+      <br><br>
+
+      <strong>Ejemplos:</strong>
+
+      <br><br>
+
+      • ¿Cuánto vendí hoy?<br>
+      • ¿Qué productos tienen stock bajo?<br>
+      • ¿Qué compras se hicieron hoy?<br>
+      • ¿Cuántos pedidos se hicieron?<br>
+      • ¿Hay caja abierta?<br>
+      • ¿Cuál es el margen del mes?
+
+      <br><br>
+
+      Escribí tu consulta abajo 👇
+
+    </div>
+
+  </div>
+
+  <div class="assistant-input-area">
+
+    <input
+      type="text"
+      id="assistantInput"
+      placeholder="Ej: cuánto vendí hoy..."
+    >
+
+    <button id="assistantSend" type="button">
+      <i class="fa-solid fa-paper-plane"></i>
+    </button>
+
+  </div>
+
+</div>
+
+
   <script>
     window.irA = function(seccion) {
       window.location.href = `index.html#${seccion}`;
@@ -936,6 +1147,82 @@ async function guardarTipoCambioAdmin() {
       }
     });
   </script>
+
+  <script>
+const assistantFloatBtn = document.getElementById("assistantFloatBtn");
+const assistantBox = document.getElementById("assistantBox");
+const assistantClose = document.getElementById("assistantClose");
+const assistantSend = document.getElementById("assistantSend");
+const assistantInput = document.getElementById("assistantInput");
+const assistantMessages = document.getElementById("assistantMessages");
+
+assistantFloatBtn.addEventListener("click", () => {
+  assistantBox.classList.remove("assistant-hidden");
+});
+
+assistantClose.addEventListener("click", () => {
+  assistantBox.classList.add("assistant-hidden");
+});
+
+assistantSend.addEventListener("click", responderAsistente);
+
+assistantInput.addEventListener("keypress", (e) => {
+  if(e.key === "Enter"){
+    responderAsistente();
+  }
+});
+
+function agregarMensaje(tipo, texto){
+  assistantMessages.innerHTML += `
+    <div class="assistant-msg ${tipo}">
+      ${texto}
+    </div>
+  `;
+
+  assistantMessages.scrollTop = assistantMessages.scrollHeight;
+}
+
+async function responderAsistente(){
+
+  const texto = assistantInput.value.trim();
+
+  if(!texto) return;
+
+  agregarMensaje("user", texto);
+
+  assistantInput.value = "";
+
+  agregarMensaje("bot", "Consultando el sistema...");
+
+  try {
+    const res = await fetch("/api/asistente-admin", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        pregunta: texto
+      })
+    });
+
+    const data = await res.json();
+
+    const mensajesBot = assistantMessages.querySelectorAll(".assistant-msg.bot");
+    const ultimoBot = mensajesBot[mensajesBot.length - 1];
+
+    if (ultimoBot) {
+      ultimoBot.innerHTML = data.respuesta || "No pude obtener una respuesta.";
+    }
+
+    assistantMessages.scrollTop = assistantMessages.scrollHeight;
+
+  } catch (err) {
+    console.error("Error asistente:", err);
+    agregarMensaje("bot", "Error de conexión con el servidor.");
+  }
+}
+</script>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>

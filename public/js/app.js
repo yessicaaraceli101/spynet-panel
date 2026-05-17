@@ -4967,6 +4967,47 @@ function cancelarPedido() {
   if (total) total.textContent = "0";
   if (iva) iva.textContent = "0";
 }
+async function cargarNotificaciones() {
+  const notifCount = document.getElementById("notifCount");
+  const notifDropdown = document.getElementById("notifDropdown");
+
+  try {
+    const res = await fetch("/api/notificaciones");
+    const data = await res.json();
+
+    const alertas = data.alertas || [];
+
+    notifCount.textContent = alertas.length;
+
+    notifDropdown.innerHTML = `
+      <h4>Notificaciones</h4>
+      ${
+        alertas.length
+          ? alertas.map(a => `
+              <div class="notif-item">
+                <strong>${a.titulo}</strong>
+                <p>${a.mensaje}</p>
+              </div>
+            `).join("")
+          : `<p class="notif-empty">No hay notificaciones nuevas</p>`
+      }
+    `;
+  } catch (err) {
+    console.error("Error cargando notificaciones:", err);
+  }
+}
+
+cargarNotificaciones();
+setInterval(cargarNotificaciones, 30000);
+
+const btnNotificaciones = document.getElementById("btnNotificaciones");
+const notifDropdown = document.getElementById("notifDropdown");
+
+btnNotificaciones.addEventListener("click", () => {
+  notifDropdown.classList.toggle("hidden");
+});
+
+
 
 window.cancelarPedido = cancelarPedido;
 
