@@ -4318,6 +4318,72 @@ async function confirmarEliminarCuentaPagar() {
   }
 }
 
+
+async function toggleMonedaCuentaPagar() {
+  const moneda = String(document.getElementById("cp_moneda")?.value || "PYG").toUpperCase();
+  const input = document.getElementById("cp_tipo_cambio");
+  const wrap = document.getElementById("wrap_cp_tipo_cambio");
+
+  if (!input || !wrap) return;
+
+  let tipoCambio = 1;
+
+  if (moneda === "PYG") {
+    wrap.style.display = "none";
+    tipoCambio = 1;
+  } else {
+    wrap.style.display = "block";
+
+    try {
+      const res = await fetch("/config/monedas?ts=" + Date.now(), {
+        credentials: "include",
+        cache: "no-store"
+      });
+
+      const data = await res.json();
+
+      const monedas = Array.isArray(data)
+        ? data
+        : Array.isArray(data.monedas)
+          ? data.monedas
+          : [];
+
+      const encontrada = monedas.find(m =>
+        String(m.moneda || m.codigo || "").toUpperCase() === moneda
+      );
+
+      tipoCambio = Number(
+        encontrada?.tipo_cambio ||
+        encontrada?.valor ||
+        encontrada?.cambio ||
+        1
+      );
+
+    } catch (e) {
+      console.error("Error cargando tipo de cambio:", e);
+    }
+  }
+
+  input.value = tipoCambio;
+  input.disabled = false;
+  input.readOnly = true;
+  input.tabIndex = -1;
+  input.style.background = "#f1f5f9";
+  input.style.cursor = "not-allowed";
+  input.style.color = "#475569";
+  input.style.opacity = "1";
+
+  if (typeof actualizarResumenCuentaPagar === "function") {
+    actualizarResumenCuentaPagar();
+  }
+}
+
+document.addEventListener("change", (e) => {
+  if (e.target.id === "cp_moneda") {
+    toggleMonedaCuentaPagar();
+  }
+});
+
 async function descargarInformeCajaPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("p", "mm", "a4");
@@ -4770,23 +4836,44 @@ function fmtMonedaCuenta(moneda, valor) {
 
   return "Gs. " + n.toLocaleString("es-PY");
 }
-function toggleMonedaCuentaPagar() {
-  const moneda = document.getElementById("cp_moneda")?.value || "PYG";
+async function toggleMonedaCuentaPagar() {
+  const moneda = String(document.getElementById("cp_moneda")?.value || "PYG").toUpperCase();
+  const input = document.getElementById("cp_tipo_cambio");
   const wrap = document.getElementById("wrap_cp_tipo_cambio");
 
-  if (wrap) {
-    if (moneda === "PYG") {
-      wrap.style.display = "none";
-      const tc = document.getElementById("cp_tipo_cambio");
-      if (tc) tc.value = 1;
-    } else {
-      wrap.style.display = "block";
-    }
+  if (!input || !wrap) return;
+
+  let tipoCambio = 1;
+
+  if (moneda === "PYG") {
+    wrap.style.display = "none";
+  } else {
+    wrap.style.display = "block";
+
+    const res = await fetch("/config/monedas?ts=" + Date.now(), {
+      credentials: "include",
+      cache: "no-store"
+    });
+
+    const data = await res.json();
+
+    const encontrada = data.monedas.find(m =>
+      String(m.moneda).toUpperCase() === moneda
+    );
+
+    tipoCambio = Number(encontrada?.tipo_cambio || 1);
   }
+
+  input.value = tipoCambio;
+
+  input.disabled = false;
+  input.readOnly = true;
+  input.style.background = "#f1f5f9";
+  input.style.cursor = "not-allowed";
+  input.style.color = "#475569";
 
   actualizarResumenCuentaPagar();
 }
-
 function actualizarResumenCuentaPagar() {
   const moneda = document.getElementById("cp_moneda")?.value || "PYG";
   const tipoCambio = Number(document.getElementById("cp_tipo_cambio")?.value || 1);

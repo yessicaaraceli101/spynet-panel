@@ -688,13 +688,15 @@
         <input
           id="cp_tipo_cambio"
           class="input"
-          type="number"
-          min="0"
-          step="0.01"
+          type="text"
           value="1"
-          placeholder="Ej: 6350"
-          oninput="actualizarResumenCuentaPagar()"
+          readonly
+          tabindex="-1"
+          style="background:#f1f5f9; cursor:not-allowed; color:#475569; opacity:1;"
         >
+        <small style="display:block; margin-top:4px; color:#64748b;">
+          Se toma automáticamente desde Configuración de monedas del Panel Administrativo.
+        </small>
       </div>
 
       <div>
@@ -750,7 +752,7 @@
 
 <div id="modalEliminarCuentaPagar" class="modal-overlay" style="display:none;">
   <div class="modal-box danger">
-    <h3>🗑️ Eliminar cuenta a pagar</h3>
+    <h3>Eliminar cuenta a pagar</h3>
     <p>¿Está seguro de eliminar esta cuenta a pagar?</p>
 
     <div class="modal-actions">
@@ -763,7 +765,6 @@
     </div>
   </div>
 </div>
-
     
 
       <!-- CATEGORÍAS -->
@@ -2319,7 +2320,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <!-- Tu app -->
-<script src="js/app.js?v=2"></script>
+<script src="js/app.js?v=3"></script>
 <script src="js/compras.js?v=1001"></script>
 <script src="js/ventas.js?v=999"></script>
 

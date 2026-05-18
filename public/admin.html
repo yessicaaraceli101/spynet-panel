@@ -903,15 +903,15 @@
 
       <br><br>
 
-      • Ventas del día o del mes<br>
-      • Compras realizadas<br>
-      • Productos e inventario<br>
-      • Stock bajo o crítico<br>
-      • Caja abierta<br>
-      • Clientes y proveedores<br>
-      • Pedidos a proveedor<br>
-      • Cuentas pendientes<br>
-      • Margen o ganancia mensual
+      Ventas del día o del mes<br>
+      Compras realizadas<br>
+      Productos e inventario<br>
+      Stock bajo o crítico<br>
+      Caja abierta<br>
+      Clientes y proveedores<br>
+      Pedidos a proveedor<br>
+      Cuentas pendientes<br>
+      Margen o ganancia mensual
 
       <br><br>
 
@@ -927,8 +927,6 @@
       ¿Cuál es el margen del mes?
 
       <br><br>
-
-      Escribí tu consulta abajo:
 
     </div>
 
@@ -1060,6 +1058,7 @@
   </script>
 
   <script>
+
 async function cargarTipoCambioAdmin() {
   try {
     const res = await fetch("/config/monedas", { credentials: "include" });
@@ -1076,27 +1075,6 @@ async function cargarTipoCambioAdmin() {
 }
 
 async function guardarTipoCambioAdmin() {
-  const body = {
-    USD: Number(document.getElementById("admin_usd").value || 0),
-    BRL: Number(document.getElementById("admin_brl").value || 0)
-  };
-
-  const res = await fetch("/config/monedas", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(body)
-  });
-
-  const data = await res.json();
-  alert(data.msg || "Guardado");
-}
-
-document.addEventListener("DOMContentLoaded", cargarTipoCambioAdmin);
-</script>
-
-<script>
-async function guardarTipoCambioAdmin() {
   try {
     const usd = Number(document.getElementById("admin_usd").value || 0);
     const brl = Number(document.getElementById("admin_brl").value || 0);
@@ -1108,14 +1086,9 @@ async function guardarTipoCambioAdmin() {
 
     const res = await fetch("/config/monedas", {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({
-        USD: usd,
-        BRL: brl
-      })
+      body: JSON.stringify({ USD: usd, BRL: brl })
     });
 
     const data = await res.json();
@@ -1132,6 +1105,8 @@ async function guardarTipoCambioAdmin() {
     alert("Error de conexión con el servidor");
   }
 }
+
+document.addEventListener("DOMContentLoaded", cargarTipoCambioAdmin);
 </script>
 
   <script src="js/app.js?v=2"></script>
