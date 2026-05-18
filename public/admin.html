@@ -12,6 +12,7 @@
   </script>
 
   <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/modal-fix.css"
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <style>
@@ -653,43 +654,6 @@
   cursor:pointer;
   font-size:16px;
 }
-
-
-@media (max-width: 700px) {
-  #assistantBox {
-    left: 10px !important;
-    right: 10px !important;
-    bottom: 80px !important;
-    width: auto !important;
-    height: 70vh !important;
-    border-radius: 18px !important;
-  }
-
-  .assistant-msg {
-    max-width: 100% !important;
-    font-size: 14px !important;
-  }
-
-  .assistant-input-area {
-    padding: 10px !important;
-  }
-
-  #assistantInput {
-    min-width: 0 !important;
-  }
-}
-
-
-@media (max-width: 700px) {
-  #notificacionesPanel,
-  .notificaciones-panel,
-  .notifications-panel {
-    left: 10px !important;
-    right: 10px !important;
-    width: auto !important;
-    max-width: none !important;
-  }
-}
   </style>
 </head>
 <body>
@@ -1144,7 +1108,7 @@ async function guardarTipoCambioAdmin() {
 document.addEventListener("DOMContentLoaded", cargarTipoCambioAdmin);
 </script>
 
-  <script src="js/app.js?v=2"></script>
+   <script src="js/app.js?v=3"></script>
   <script src="js/compras.js?v=2"></script>
   <script src="js/ventas.js?v=2"></script>
 
