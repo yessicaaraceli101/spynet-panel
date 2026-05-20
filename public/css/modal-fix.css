@@ -2284,3 +2284,54 @@ body {
     overflow-x: hidden !important;
   }
 }
+
+
+.login-shell {
+  width: 100%;
+  max-width: 460px;
+  background: #ffffff;
+  border-radius: 28px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .16);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.form-side {
+  width: 100%;
+  padding: 42px 34px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-box {
+  width: 100%;
+}
+
+body {
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(37,99,235,.10), transparent 30%),
+    linear-gradient(135deg, #f8fbff 0%, #edf4ff 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+@media (max-width: 520px) {
+  .login-shell {
+    max-width: 100%;
+    border-radius: 24px;
+  }
+
+  .form-side {
+    padding: 30px 22px;
+  }
+
+  .form-box h2 {
+    font-size: 28px;
+  }
+}

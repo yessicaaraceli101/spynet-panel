@@ -1,100 +1,360 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ingreso Administrativo</title>
 
+  
+
   <style>
-    body {
-      font-family: Arial;
-      background: #f3f4f6;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
 
-    .login-box {
-      background: white;
-      padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-      width: 320px;
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --danger-bg: #fee2e2;
+      --danger-border: #fecaca;
+      --danger-text: #991b1b;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      color: var(--text);
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 360px;
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(15,23,42,.10);
+      padding: 44px 36px 36px;
       text-align: center;
     }
 
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
+    .avatar-circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #dbeafe;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
     }
 
-    button {
+    .avatar-circle svg {
+      width: 40px;
+      height: 40px;
+      color: var(--primary);
+    }
+
+    .login-card h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 28px;
+      letter-spacing: -.2px;
+    }
+
+    .field {
+      margin-bottom: 14px;
+      text-align: left;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap input {
       width: 100%;
-      padding: 12px;
-      margin-top: 15px;
-      background: #2563eb;
-      color: white;
+      height: 48px;
+      padding: 0 44px 0 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .input-wrap input::placeholder {
+      color: #94a3b8;
+    }
+
+    .input-wrap input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+
+    .input-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .toggle-pass {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
       border: none;
-      border-radius: 6px;
+      background: transparent;
+      color: #94a3b8;
       cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 6px;
+      pointer-events: all;
     }
 
-    button:hover {
-      background: #1e4ecf;
+    .login-btn {
+      width: 100%;
+      height: 48px;
+      margin-top: 8px;
+      border: none;
+      border-radius: 10px;
+      background: var(--primary);
+      color: white;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: .5px;
+      cursor: pointer;
+      transition: background .15s, transform .12s;
+    }
+
+    .login-btn:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+
+    .login-btn:disabled {
+      opacity: .65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .forgot-link {
+      display: inline-block;
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .forgot-link:hover {
+      text-decoration: underline;
+    }
+
+    .volver-btn {
+      display: block;
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .volver-btn:hover {
+      color: var(--text);
+    }
+
+    .error-box {
+      display: none;
+      margin-top: 14px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger-text);
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .login-card {
+        padding: 36px 24px 28px;
+      }
     }
   </style>
 </head>
 
 <body>
 
-  <div class="login-box">
-    <h2>Administrador</h2>
+  <main class="login-card">
 
-    <input type="text" id="adminUser" placeholder="Usuario">
-    <input type="password" id="adminPass" placeholder="Contraseña">
-    
-    <button onclick="validarAdmin()">Ingresar</button>
-    <a href="index.html" class="volver-btn">← Volver</a>
-  <style>
-    .volver-btn {
-  display: block;
-  width: 130px;
-  margin: 15px auto 0;
-  padding: 10px 0;
-  text-align: center;
-  background: #e5e7eb; /* gris suave */
-  color: #374151; /* gris oscuro */
-  text-decoration: none;
-  border-radius: 6px;
-  font-size: 15px;
-  font-weight: 600;
-  transition: 0.2s;
-}
+    <div class="avatar-circle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+    </div>
 
-.volver-btn:hover {
-  background: #d1d5db; /* gris más fuerte */
-}
-    
-  </style>
-  </div>
+    <h2 id="empresaNombreBadge">User Log in</h2>
+
+    <div class="field">
+      <div class="input-wrap">
+        <input type="text" id="adminUser" placeholder="User ID" autocomplete="username">
+        <span class="input-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="input-wrap">
+        <input type="password" id="adminPass" placeholder="Password" autocomplete="current-password">
+        <button type="button" class="toggle-pass" onclick="togglePassword()">
+          <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <button id="loginBtn" class="login-btn" onclick="validarAdmin()">LOGIN</button>
+
+    <a href="#" class="forgot-link">Forgot Password?</a>
+
+    <a href="index.html" class="volver-btn">← Volver al inicio</a>
+
+    <div id="errorBox" class="error-box">Usuario o contraseña incorrectos</div>
+
+  </main>
 
 <script>
-function validarAdmin() {
-  const u = adminUser.value;
-  const p = adminPass.value;
+function aplicarPersonalizacionEmpresa() {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // Ejemplo - CAMBIAR por credenciales reales
-  if (u === "admin" && p === "1234") {
-    localStorage.setItem("adminAuth", "yes");
-    window.location.href = "admin.html";
+  const empresaNombre =
+    localStorage.getItem("empresa_nombre") ||
+    user.empresa_nombre ||
+    "User Log in";
+
+  const colorPrincipal =
+    localStorage.getItem("color_principal") ||
+    user.color_principal ||
+    "#2563eb";
+
+  document.documentElement.style.setProperty("--primary", colorPrincipal);
+  document.documentElement.style.setProperty("--primary-dark", colorPrincipal);
+
+  document.title = empresaNombre + " • Login";
+
+  const badge = document.getElementById("empresaNombreBadge");
+  if (badge) badge.textContent = empresaNombre;
+}
+
+function togglePassword() {
+  const input = document.getElementById("adminPass");
+  const icon  = document.getElementById("eyeIcon");
+  if (!input) return;
+
+  if (input.type === "password") {
+    input.type = "text";
+    icon.innerHTML = `
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>`;
   } else {
-    alert("Acceso denegado");
+    input.type = "password";
+    icon.innerHTML = `
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>`;
   }
 }
+
+async function validarAdmin() {
+  const usuario  = document.getElementById("adminUser").value.trim();
+  const password = document.getElementById("adminPass").value.trim();
+  const errorBox = document.getElementById("errorBox");
+  const loginBtn = document.getElementById("loginBtn");
+
+  errorBox.style.display = "none";
+
+  if (!usuario || !password) {
+    errorBox.textContent = "Complete usuario y contraseña";
+    errorBox.style.display = "block";
+    return;
+  }
+
+  try {
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Ingresando...";
+
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ usuario, password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      errorBox.textContent = data.msg || "Usuario o contraseña incorrectos";
+      errorBox.style.display = "block";
+      loginBtn.disabled = false;
+      loginBtn.textContent = "LOGIN";
+      return;
+    }
+
+    localStorage.setItem("adminAuth", "yes");
+    localStorage.setItem("auth", "ok");
+
+    if (data.user) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.user.empresa_nombre) localStorage.setItem("empresa_nombre", data.user.empresa_nombre);
+      if (data.user.empresa_logo)   localStorage.setItem("empresa_logo",   data.user.empresa_logo);
+      if (data.user.color_principal) localStorage.setItem("color_principal", data.user.color_principal);
+    }
+
+    window.location.href = "admin.html";
+
+  } catch (err) {
+    console.error(err);
+    errorBox.textContent = "Error conectando con el servidor";
+    errorBox.style.display = "block";
+    loginBtn.disabled = false;
+    loginBtn.textContent = "LOGIN";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  document.getElementById("adminPass").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") validarAdmin();
+  });
+  document.getElementById("adminUser").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") validarAdmin();
+  });
+  aplicarPersonalizacionEmpresa();
+});
 </script>
 
 </body>

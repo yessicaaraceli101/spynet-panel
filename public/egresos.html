@@ -5,13 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Detalle de Egresos</title>
 
-  <link rel="stylesheet" href="css/theme.css" />
+ 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
   <style>
-    html{
-      scroll-behavior:smooth;
-    }
+    html{ scroll-behavior:smooth; }
 
     :root{
       --bg:#f4f7fb;
@@ -41,9 +39,7 @@
       --radius:20px;
     }
 
-    *{
-      box-sizing:border-box;
-    }
+    *{ box-sizing:border-box; }
 
     body{
       margin:0;
@@ -241,7 +237,7 @@
       align-items:center;
       gap:8px;
       background:#eef6ff;
-      color:#1d4ed8;
+      color:var(--blue-text);
       border:1px solid #dbeafe;
       border-radius:999px;
       padding:8px 12px;
@@ -276,8 +272,8 @@
     }
 
     th{
-      background:#dbeafe;
-      color:#1e3a8a;
+      background:var(--blue-soft);
+      color:var(--blue-text);
       font-weight:900;
       position:sticky;
       top:0;
@@ -285,13 +281,8 @@
       white-space:nowrap;
     }
 
-    tbody tr:nth-child(even){
-      background:#f8fbff;
-    }
-
-    tbody tr:hover{
-      background:#f1f7ff;
-    }
+    tbody tr:nth-child(even){ background:#f8fbff; }
+    tbody tr:hover{ background:#f1f7ff; }
 
     .tag{
       display:inline-flex;
@@ -307,12 +298,6 @@
       min-width:74px;
     }
 
-    .tag-pending{
-      color:#92400e;
-      background:#fef3c7;
-      border:1px solid #fde68a;
-    }
-
     .empty{
       color:var(--muted);
       font-style:italic;
@@ -325,9 +310,7 @@
       color:#0f172a;
     }
 
-    .cell-muted{
-      color:var(--muted);
-    }
+    .cell-muted{ color:var(--muted); }
 
     .footer-note{
       margin-top:26px;
@@ -348,7 +331,7 @@
     .pagination button{
       border:1px solid #cfe0ff;
       background:#ffffff;
-      color:#1d4ed8;
+      color:var(--blue-text);
       padding:8px 12px;
       border-radius:10px;
       font-size:13px;
@@ -357,9 +340,7 @@
       transition:.2s ease;
     }
 
-    .pagination button:hover{
-      background:#eef6ff;
-    }
+    .pagination button:hover{ background:#eef6ff; }
 
     .pagination button:disabled{
       opacity:.45;
@@ -403,6 +384,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <div class="topbar">
@@ -410,6 +392,7 @@
       <h2>Detalle de Egresos</h2>
       <small>Compras y cuentas pagadas del sistema</small>
     </div>
+
     <a href="admin.html" class="volver-btn">
       <i class="fa-solid fa-arrow-left"></i>
       Volver
@@ -422,6 +405,7 @@
         <h1>Salidas de dinero</h1>
         <p>Vista consolidada de compras registradas y cuentas pagadas.</p>
       </div>
+
       <div class="badge-soft">
         <i class="fa-solid fa-chart-line"></i>
         Resumen automático del día y del mes
@@ -463,6 +447,7 @@
         <h3>Compras del Día</h3>
         <span class="badge-soft"><i class="fa-solid fa-calendar-day"></i> Registro diario</span>
       </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -491,6 +476,7 @@
         <h3>Compras del Mes</h3>
         <span class="badge-soft"><i class="fa-solid fa-calendar-days"></i> Registro mensual</span>
       </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -519,6 +505,7 @@
         <h3>Cuentas Pagadas del Día</h3>
         <span class="badge-soft"><i class="fa-solid fa-check-circle"></i> Pagos del día</span>
       </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -548,6 +535,7 @@
         <h3>Cuentas Pagadas del Mes</h3>
         <span class="badge-soft"><i class="fa-solid fa-money-check-dollar"></i> Pagos del mes</span>
       </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -573,226 +561,273 @@
     </div>
 
     <div class="footer-note">
-      SPYnet • Vista consolidada de egresos del sistema
+      Vista consolidada de egresos
     </div>
   </div>
 
- <script>
-const ITEMS_POR_PAGINA = 5;
+  <script>
+    const ITEMS_POR_PAGINA = 5;
 
-const state = {
-  comprasDiaPage: 1,
-  comprasMesPage: 1,
-  cuentasDiaPage: 1,
-  cuentasMesPage: 1
-};
+    const state = {
+      comprasDiaPage: 1,
+      comprasMesPage: 1,
+      cuentasDiaPage: 1,
+      cuentasMesPage: 1
+    };
 
-const fmtGs = (n) => "Gs. " + Number(n || 0).toLocaleString("es-PY");
+    const fmtGs = (n) => "Gs. " + Number(n || 0).toLocaleString("es-PY");
 
-function hoyLocal(){
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-}
+    function aplicarEmpresaEgresos() {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-function onlyDate(v){
-  if(!v) return "";
-  return String(v).slice(0, 10);
-}
+      const empresaNombre =
+        localStorage.getItem("empresa_nombre") ||
+        user.empresa_nombre ||
+        "Mi Empresa";
 
-function isSameMonth(dateStr, todayStr){
-  if(!dateStr) return false;
-  return String(dateStr).slice(0, 7) === String(todayStr).slice(0, 7);
-}
+      const colorPrincipal =
+        localStorage.getItem("color_principal") ||
+        user.color_principal ||
+        "#2563eb";
 
-function fechaCuenta(c){
-  return onlyDate(
-    c.fecha_pago ||
-    c.pagado_en ||
-    c.fecha_pagado ||
-    c.fecha_pago_real ||
-    c.fecha ||
-    c.vencimiento ||
-    c.creado_en ||
-    c.created_at ||
-    ""
-  );
-}
+      document.documentElement.style.setProperty("--blue", colorPrincipal);
+      document.documentElement.style.setProperty("--blue-text", colorPrincipal);
 
-function montoCuenta(c){
-  return Number(
-    c.monto_pyg ??
-    c.monto_gs ??
-    c.monto ??
-    c.total ??
-    0
-  );
-}
+      document.title = `${empresaNombre} • Detalle de Egresos`;
 
-function irSeccion(id){
-  document.getElementById(id)?.scrollIntoView({ behavior:"smooth", block:"start" });
-}
+      const h2 = document.querySelector(".topbar h2");
+      if (h2) h2.textContent = `Detalle de Egresos - ${empresaNombre}`;
 
-function paginateRows(rows, page){
-  const totalPages = Math.max(1, Math.ceil(rows.length / ITEMS_POR_PAGINA));
-  const currentPage = Math.min(Math.max(1, page), totalPages);
-  const start = (currentPage - 1) * ITEMS_POR_PAGINA;
-  return { pageRows: rows.slice(start, start + ITEMS_POR_PAGINA), totalPages, currentPage };
-}
+      const small = document.querySelector(".topbar small");
+      if (small) small.textContent = "Compras y cuentas pagadas de la empresa";
 
-function renderPagination(prevId, nextId, infoId, currentPage, totalPages, onPrev, onNext){
-  const prevBtn = document.getElementById(prevId);
-  const nextBtn = document.getElementById(nextId);
-  const info = document.getElementById(infoId);
-  if(!prevBtn || !nextBtn || !info) return;
+      const footer = document.querySelector(".footer-note");
+      if (footer) footer.textContent = `${empresaNombre} • Vista consolidada de egresos`;
+    }
 
-  info.textContent = `Página ${currentPage} de ${totalPages}`;
-  prevBtn.disabled = currentPage <= 1;
-  nextBtn.disabled = currentPage >= totalPages;
-  prevBtn.onclick = onPrev;
-  nextBtn.onclick = onNext;
-}
+    function hoyLocal(){
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    }
 
-async function getCompras(){
-  const res = await fetch("/compras", { credentials:"include" });
-  if(!res.ok) throw new Error("No se pudo cargar compras");
-  return res.json();
-}
+    function onlyDate(v){
+      if(!v) return "";
+      return String(v).slice(0, 10);
+    }
 
-async function getCuentas(){
-  const res = await fetch("/cuentas-pagar", { credentials:"include" });
-  if(!res.ok) throw new Error("No se pudo cargar cuentas a pagar");
-  return res.json();
-}
+    function isSameMonth(dateStr, todayStr){
+      if(!dateStr) return false;
+      return String(dateStr).slice(0, 7) === String(todayStr).slice(0, 7);
+    }
 
-function pintarComprasDia(rows, hoy){
-  const tbody = document.getElementById("tbodyComprasDia");
-  const filtradas = rows.filter(r => onlyDate(r.fecha) === hoy);
-  const total = filtradas.reduce((a, c) => a + Number(c.total || 0), 0);
-  const { pageRows, totalPages, currentPage } = paginateRows(filtradas, state.comprasDiaPage);
-  state.comprasDiaPage = currentPage;
+    function fechaCuenta(c){
+      return onlyDate(
+        c.fecha_pago ||
+        c.pagado_en ||
+        c.fecha_pagado ||
+        c.fecha_pago_real ||
+        c.fecha ||
+        c.vencimiento ||
+        c.creado_en ||
+        c.created_at ||
+        ""
+      );
+    }
 
-  tbody.innerHTML = pageRows.length ? pageRows.map(c => `
-    <tr>
-      <td>${onlyDate(c.fecha)}</td>
-      <td>${c.proveedor_nombre || "-"}</td>
-      <td>${c.factura || "-"}</td>
-      <td>${c.detalle_productos || c.nombres_productos || c.productos || "-"}</td>
-      <td class="cell-muted">${c.tipo_pago || "-"}</td>
-      <td class="money">${fmtGs(c.total)}</td>
-    </tr>
-  `).join("") : `<tr><td colspan="6" class="empty">Sin compras registradas en el día</td></tr>`;
+    function montoCuenta(c){
+      return Number(
+        c.monto_pyg ??
+        c.monto_gs ??
+        c.monto ??
+        c.total ??
+        0
+      );
+    }
 
-  document.getElementById("comprasDiaTotal").textContent = fmtGs(total);
+    function irSeccion(id){
+      document.getElementById(id)?.scrollIntoView({ behavior:"smooth", block:"start" });
+    }
 
-  renderPagination("prevComprasDia","nextComprasDia","infoComprasDia",currentPage,totalPages,
-    () => { state.comprasDiaPage--; pintarComprasDia(rows, hoy); },
-    () => { state.comprasDiaPage++; pintarComprasDia(rows, hoy); }
-  );
-}
+    function paginateRows(rows, page){
+      const totalPages = Math.max(1, Math.ceil(rows.length / ITEMS_POR_PAGINA));
+      const currentPage = Math.min(Math.max(1, page), totalPages);
+      const start = (currentPage - 1) * ITEMS_POR_PAGINA;
 
-function pintarComprasMes(rows, hoy){
-  const tbody = document.getElementById("tbodyComprasMes");
-  const filtradas = rows.filter(r => isSameMonth(onlyDate(r.fecha), hoy));
-  const total = filtradas.reduce((a, c) => a + Number(c.total || 0), 0);
-  const { pageRows, totalPages, currentPage } = paginateRows(filtradas, state.comprasMesPage);
-  state.comprasMesPage = currentPage;
+      return {
+        pageRows: rows.slice(start, start + ITEMS_POR_PAGINA),
+        totalPages,
+        currentPage
+      };
+    }
 
-  tbody.innerHTML = pageRows.length ? pageRows.map(c => `
-    <tr>
-      <td>${onlyDate(c.fecha)}</td>
-      <td>${c.proveedor_nombre || "-"}</td>
-      <td>${c.factura || "-"}</td>
-      <td>${c.detalle_productos || c.nombres_productos || c.productos || "-"}</td>
-      <td class="cell-muted">${c.tipo_pago || "-"}</td>
-      <td class="money">${fmtGs(c.total)}</td>
-    </tr>
-  `).join("") : `<tr><td colspan="6" class="empty">Sin compras registradas en el mes</td></tr>`;
+    function renderPagination(prevId, nextId, infoId, currentPage, totalPages, onPrev, onNext){
+      const prevBtn = document.getElementById(prevId);
+      const nextBtn = document.getElementById(nextId);
+      const info = document.getElementById(infoId);
 
-  document.getElementById("comprasMesTotal").textContent = fmtGs(total);
+      if(!prevBtn || !nextBtn || !info) return;
 
-  renderPagination("prevComprasMes","nextComprasMes","infoComprasMes",currentPage,totalPages,
-    () => { state.comprasMesPage--; pintarComprasMes(rows, hoy); },
-    () => { state.comprasMesPage++; pintarComprasMes(rows, hoy); }
-  );
-}
+      info.textContent = `Página ${currentPage} de ${totalPages}`;
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = currentPage >= totalPages;
+      prevBtn.onclick = onPrev;
+      nextBtn.onclick = onNext;
+    }
 
-function pintarCuentasDia(rows, hoy){
-  const tbody = document.getElementById("tbodyCuentasDia");
+    async function getCompras(){
+      const res = await fetch("/compras", { credentials:"include" });
 
-  const filtradas = rows.filter(c => {
-    return String(c.estado || "").toLowerCase() === "pagado" && fechaCuenta(c) === hoy;
-  });
+      if(!res.ok) throw new Error("No se pudo cargar compras");
 
-  const total = filtradas.reduce((a, c) => a + montoCuenta(c), 0);
-  const { pageRows, totalPages, currentPage } = paginateRows(filtradas, state.cuentasDiaPage);
-  state.cuentasDiaPage = currentPage;
+      return res.json();
+    }
 
-  tbody.innerHTML = pageRows.length ? pageRows.map(c => `
-    <tr>
-      <td>${fechaCuenta(c) || "-"}</td>
-      <td>${c.proveedor || c.proveedor_nombre || "-"}</td>
-      <td>${c.concepto || c.descripcion || "-"}</td>
-      <td>${onlyDate(c.vencimiento) || "-"}</td>
-      <td><span class="tag">${c.estado || "Pagado"}</span></td>
-      <td class="cell-muted">${c.caja_tipo || c.tipo_caja || c.caja || "-"}</td>
-      <td class="money">${fmtGs(montoCuenta(c))}</td>
-    </tr>
-  `).join("") : `<tr><td colspan="7" class="empty">Sin cuentas pagadas en el día</td></tr>`;
+    async function getCuentas(){
+      const res = await fetch("/cuentas-pagar", { credentials:"include" });
 
-  document.getElementById("cuentasDiaTotal").textContent = fmtGs(total);
+      if(!res.ok) throw new Error("No se pudo cargar cuentas a pagar");
 
-  renderPagination("prevCuentasDia","nextCuentasDia","infoCuentasDia",currentPage,totalPages,
-    () => { state.cuentasDiaPage--; pintarCuentasDia(rows, hoy); },
-    () => { state.cuentasDiaPage++; pintarCuentasDia(rows, hoy); }
-  );
-}
+      return res.json();
+    }
 
-function pintarCuentasMes(rows, hoy){
-  const tbody = document.getElementById("tbodyCuentasMes");
+    function pintarComprasDia(rows, hoy){
+      const tbody = document.getElementById("tbodyComprasDia");
+      const filtradas = rows.filter(r => onlyDate(r.fecha) === hoy);
+      const total = filtradas.reduce((a, c) => a + Number(c.total || 0), 0);
+      const { pageRows, totalPages, currentPage } = paginateRows(filtradas, state.comprasDiaPage);
 
-  const filtradas = rows.filter(c => {
-    return String(c.estado || "").toLowerCase() === "pagado" && isSameMonth(fechaCuenta(c), hoy);
-  });
+      state.comprasDiaPage = currentPage;
 
-  const total = filtradas.reduce((a, c) => a + montoCuenta(c), 0);
-  const { pageRows, totalPages, currentPage } = paginateRows(filtradas, state.cuentasMesPage);
-  state.cuentasMesPage = currentPage;
+      tbody.innerHTML = pageRows.length ? pageRows.map(c => `
+        <tr>
+          <td>${onlyDate(c.fecha)}</td>
+          <td>${c.proveedor_nombre || "-"}</td>
+          <td>${c.factura || "-"}</td>
+          <td>${c.detalle_productos || c.nombres_productos || c.productos || "-"}</td>
+          <td class="cell-muted">${c.tipo_pago || "-"}</td>
+          <td class="money">${fmtGs(c.total)}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="6" class="empty">Sin compras registradas en el día</td></tr>`;
 
-  tbody.innerHTML = pageRows.length ? pageRows.map(c => `
-    <tr>
-      <td>${fechaCuenta(c) || "-"}</td>
-      <td>${c.proveedor || c.proveedor_nombre || "-"}</td>
-      <td>${c.concepto || c.descripcion || "-"}</td>
-      <td>${onlyDate(c.vencimiento) || "-"}</td>
-      <td><span class="tag">${c.estado || "Pagado"}</span></td>
-      <td class="cell-muted">${c.caja_tipo || c.tipo_caja || c.caja || "-"}</td>
-      <td class="money">${fmtGs(montoCuenta(c))}</td>
-    </tr>
-  `).join("") : `<tr><td colspan="7" class="empty">Sin cuentas pagadas en el mes</td></tr>`;
+      document.getElementById("comprasDiaTotal").textContent = fmtGs(total);
 
-  document.getElementById("cuentasMesTotal").textContent = fmtGs(total);
+      renderPagination("prevComprasDia","nextComprasDia","infoComprasDia",currentPage,totalPages,
+        () => { state.comprasDiaPage--; pintarComprasDia(rows, hoy); },
+        () => { state.comprasDiaPage++; pintarComprasDia(rows, hoy); }
+      );
+    }
 
-  renderPagination("prevCuentasMes","nextCuentasMes","infoCuentasMes",currentPage,totalPages,
-    () => { state.cuentasMesPage--; pintarCuentasMes(rows, hoy); },
-    () => { state.cuentasMesPage++; pintarCuentasMes(rows, hoy); }
-  );
-}
+    function pintarComprasMes(rows, hoy){
+      const tbody = document.getElementById("tbodyComprasMes");
+      const filtradas = rows.filter(r => isSameMonth(onlyDate(r.fecha), hoy));
+      const total = filtradas.reduce((a, c) => a + Number(c.total || 0), 0);
+      const { pageRows, totalPages, currentPage } = paginateRows(filtradas, state.comprasMesPage);
 
-async function cargarDetalleEgresos(){
-  const hoy = hoyLocal();
+      state.comprasMesPage = currentPage;
 
-  const compras = await getCompras();
-  pintarComprasDia(compras || [], hoy);
-  pintarComprasMes(compras || [], hoy);
+      tbody.innerHTML = pageRows.length ? pageRows.map(c => `
+        <tr>
+          <td>${onlyDate(c.fecha)}</td>
+          <td>${c.proveedor_nombre || "-"}</td>
+          <td>${c.factura || "-"}</td>
+          <td>${c.detalle_productos || c.nombres_productos || c.productos || "-"}</td>
+          <td class="cell-muted">${c.tipo_pago || "-"}</td>
+          <td class="money">${fmtGs(c.total)}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="6" class="empty">Sin compras registradas en el mes</td></tr>`;
 
-  const cuentas = await getCuentas();
-  console.log("CUENTAS DESDE BACKEND:", cuentas);
+      document.getElementById("comprasMesTotal").textContent = fmtGs(total);
 
-  pintarCuentasDia(cuentas || [], hoy);
-  pintarCuentasMes(cuentas || [], hoy);
-}
+      renderPagination("prevComprasMes","nextComprasMes","infoComprasMes",currentPage,totalPages,
+        () => { state.comprasMesPage--; pintarComprasMes(rows, hoy); },
+        () => { state.comprasMesPage++; pintarComprasMes(rows, hoy); }
+      );
+    }
 
-cargarDetalleEgresos();
-</script>
+    function pintarCuentasDia(rows, hoy){
+      const tbody = document.getElementById("tbodyCuentasDia");
+
+      const filtradas = rows.filter(c => {
+        return String(c.estado || "").toLowerCase() === "pagado" && fechaCuenta(c) === hoy;
+      });
+
+      const total = filtradas.reduce((a, c) => a + montoCuenta(c), 0);
+      const { pageRows, totalPages, currentPage } = paginateRows(filtradas, state.cuentasDiaPage);
+
+      state.cuentasDiaPage = currentPage;
+
+      tbody.innerHTML = pageRows.length ? pageRows.map(c => `
+        <tr>
+          <td>${fechaCuenta(c) || "-"}</td>
+          <td>${c.proveedor || c.proveedor_nombre || "-"}</td>
+          <td>${c.concepto || c.descripcion || "-"}</td>
+          <td>${onlyDate(c.vencimiento) || "-"}</td>
+          <td><span class="tag">${c.estado || "Pagado"}</span></td>
+          <td class="cell-muted">${c.caja_tipo || c.tipo_caja || c.caja || "-"}</td>
+          <td class="money">${fmtGs(montoCuenta(c))}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="7" class="empty">Sin cuentas pagadas en el día</td></tr>`;
+
+      document.getElementById("cuentasDiaTotal").textContent = fmtGs(total);
+
+      renderPagination("prevCuentasDia","nextCuentasDia","infoCuentasDia",currentPage,totalPages,
+        () => { state.cuentasDiaPage--; pintarCuentasDia(rows, hoy); },
+        () => { state.cuentasDiaPage++; pintarCuentasDia(rows, hoy); }
+      );
+    }
+
+    function pintarCuentasMes(rows, hoy){
+      const tbody = document.getElementById("tbodyCuentasMes");
+
+      const filtradas = rows.filter(c => {
+        return String(c.estado || "").toLowerCase() === "pagado" && isSameMonth(fechaCuenta(c), hoy);
+      });
+
+      const total = filtradas.reduce((a, c) => a + montoCuenta(c), 0);
+      const { pageRows, totalPages, currentPage } = paginateRows(filtradas, state.cuentasMesPage);
+
+      state.cuentasMesPage = currentPage;
+
+      tbody.innerHTML = pageRows.length ? pageRows.map(c => `
+        <tr>
+          <td>${fechaCuenta(c) || "-"}</td>
+          <td>${c.proveedor || c.proveedor_nombre || "-"}</td>
+          <td>${c.concepto || c.descripcion || "-"}</td>
+          <td>${onlyDate(c.vencimiento) || "-"}</td>
+          <td><span class="tag">${c.estado || "Pagado"}</span></td>
+          <td class="cell-muted">${c.caja_tipo || c.tipo_caja || c.caja || "-"}</td>
+          <td class="money">${fmtGs(montoCuenta(c))}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="7" class="empty">Sin cuentas pagadas en el mes</td></tr>`;
+
+      document.getElementById("cuentasMesTotal").textContent = fmtGs(total);
+
+      renderPagination("prevCuentasMes","nextCuentasMes","infoCuentasMes",currentPage,totalPages,
+        () => { state.cuentasMesPage--; pintarCuentasMes(rows, hoy); },
+        () => { state.cuentasMesPage++; pintarCuentasMes(rows, hoy); }
+      );
+    }
+
+    async function cargarDetalleEgresos(){
+      try {
+        const hoy = hoyLocal();
+
+        const compras = await getCompras();
+        pintarComprasDia(compras || [], hoy);
+        pintarComprasMes(compras || [], hoy);
+
+        const cuentas = await getCuentas();
+        pintarCuentasDia(cuentas || [], hoy);
+        pintarCuentasMes(cuentas || [], hoy);
+
+      } catch (err) {
+        console.error("Error cargando detalle de egresos:", err);
+        alert("No se pudo cargar el detalle de egresos.");
+      }
+    }
+
+    aplicarEmpresaEgresos();
+    cargarDetalleEgresos();
+  </script>
 </body>
 </html>

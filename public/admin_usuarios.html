@@ -6,7 +6,7 @@
   <title>Usuarios del sistema</title>
 
   <script>
-    if (localStorage.getItem("adminAuth") !== "yes") {
+    if (localStorage.getItem("adminAuth") !== "yes" && localStorage.getItem("auth") !== "ok") {
       window.location.href = "admin_login.html";
     }
   </script>
@@ -14,9 +14,7 @@
   <link rel="stylesheet" href="css/theme.css" />
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     :root {
       --bg: #f6f8fb;
@@ -63,6 +61,22 @@
       align-items: center;
       justify-content: space-between;
       gap: 14px;
+    }
+
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .empresa-logo {
+      width: 46px;
+      height: 46px;
+      object-fit: contain;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 4px;
     }
 
     .title-wrap {
@@ -114,6 +128,12 @@
       margin: 0 0 6px;
       font-size: 28px;
       color: var(--text);
+    }
+
+    .page-header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
     }
 
     .grid-layout {
@@ -250,9 +270,7 @@
       transition: 0.18s ease;
     }
 
-    .desktop-table {
-      display: block;
-    }
+    .desktop-table { display: block; }
 
     .table-wrap {
       width: 100%;
@@ -268,9 +286,7 @@
       min-width: 720px;
     }
 
-    thead {
-      background: #f8fafc;
-    }
+    thead { background: #f8fafc; }
 
     th,
     td {
@@ -311,7 +327,7 @@
 
     .badge-admin {
       background: #eff6ff;
-      color: #1d4ed8;
+      color: var(--primary);
     }
 
     .badge-usuario {
@@ -347,11 +363,7 @@
     .icon-btn.edit {
       background: var(--edit-soft);
       border-color: #dbeafe;
-      color: #2563eb;
-    }
-
-    .icon-btn.edit:hover {
-      background: #dbeafe;
+      color: var(--primary);
     }
 
     .icon-btn.delete {
@@ -360,13 +372,7 @@
       color: var(--danger);
     }
 
-    .icon-btn.delete:hover {
-      background: #fee2e2;
-    }
-
-    .mobile-list {
-      display: none;
-    }
+    .mobile-list { display: none; }
 
     .user-card {
       border: 1px solid var(--border);
@@ -511,9 +517,7 @@
     }
 
     @media (max-width: 980px) {
-      .grid-layout {
-        grid-template-columns: 1fr;
-      }
+      .grid-layout { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 768px) {
@@ -522,48 +526,30 @@
         align-items: flex-start;
       }
 
-      .page-header h1 {
-        font-size: 24px;
-      }
+      .page-header h1 { font-size: 24px; }
 
       .toolbar {
         flex-direction: column;
         align-items: stretch;
       }
 
-      .search-box {
-        max-width: 100%;
-      }
+      .search-box { max-width: 100%; }
 
-      .desktop-table {
-        display: none;
-      }
+      .desktop-table { display: none; }
 
-      .mobile-list {
-        display: block;
-      }
+      .mobile-list { display: block; }
 
-      .user-meta {
-        grid-template-columns: 1fr;
-      }
+      .user-meta { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 480px) {
-      .container {
-        padding: 18px 12px 28px;
-      }
+      .container { padding: 18px 12px 28px; }
 
-      .card {
-        padding: 16px;
-      }
+      .card { padding: 16px; }
 
-      .title-wrap h2 {
-        font-size: 20px;
-      }
+      .title-wrap h2 { font-size: 20px; }
 
-      .page-header h1 {
-        font-size: 21px;
-      }
+      .page-header h1 { font-size: 21px; }
 
       .field input,
       .field select,
@@ -571,9 +557,7 @@
         font-size: 16px;
       }
 
-      .modal-footer {
-        flex-direction: column;
-      }
+      .modal-footer { flex-direction: column; }
 
       .btn-secondary,
       .btn-danger-solid {
@@ -582,26 +566,34 @@
     }
   </style>
 </head>
+
 <body>
   <div class="topbar">
     <div class="topbar-inner">
-      <div class="title-wrap">
-        <h2>Gestión de Usuarios</h2>
-        <span>Panel administrativo</span>
+      <div class="brand-box">
+        <img id="empresaLogo" class="empresa-logo" src="img/logo.png" alt="Logo empresa">
+        <div class="title-wrap">
+          <h2 id="tituloEmpresa">Gestión de Usuarios</h2>
+          <span id="subtituloEmpresa">Panel administrativo</span>
+        </div>
       </div>
+
       <a class="back-link" href="admin.html">← Volver</a>
     </div>
   </div>
 
   <div class="container">
     <div class="page-header">
-      <h1>Usuarios del sistema</h1>
+      <h1 id="pageTitle">Usuarios del sistema</h1>
+      <p id="pageSubtitle">Usuarios registrados para esta empresa.</p>
     </div>
 
     <div class="grid-layout">
       <div class="card">
         <h3 id="formTitle">Crear usuario</h3>
-        <div class="card-subtitle" id="formSubtitle">Completá los datos para registrar un nuevo usuario.</div>
+        <div class="card-subtitle" id="formSubtitle">
+          Completá los datos para registrar un nuevo usuario.
+        </div>
 
         <input type="hidden" id="editId" />
 
@@ -628,10 +620,14 @@
           </select>
         </div>
 
-        <button class="btn-primary" onclick="guardarUsuario()" id="submitBtn">Crear usuario</button>
+        <button class="btn-primary" onclick="guardarUsuario()" id="submitBtn">
+          Crear usuario
+        </button>
 
         <div id="cancelEditWrap" style="display:none; margin-top:10px;">
-          <button class="btn-secondary" onclick="cancelarEdicion()" style="width:100%;">Cancelar edición</button>
+          <button class="btn-secondary" onclick="cancelarEdicion()" style="width:100%;">
+            Cancelar edición
+          </button>
         </div>
 
         <div id="mensaje" class="mensaje"></div>
@@ -681,14 +677,20 @@
       <div class="modal-header">
         <h3>Eliminar usuario</h3>
       </div>
+
       <div class="modal-body">
         <p id="deleteText" style="margin:0; color:#475569; line-height:1.5;">
           ¿Seguro que querés eliminar este usuario?
         </p>
       </div>
+
       <div class="modal-footer">
-        <button class="btn-secondary" type="button" onclick="cerrarModalEliminar()">Cancelar</button>
-        <button class="btn-danger-solid" type="button" onclick="confirmarEliminar()">Eliminar</button>
+        <button class="btn-secondary" type="button" onclick="cerrarModalEliminar()">
+          Cancelar
+        </button>
+        <button class="btn-danger-solid" type="button" onclick="confirmarEliminar()">
+          Eliminar
+        </button>
       </div>
     </div>
   </div>
@@ -696,6 +698,53 @@
   <script>
     let usuariosData = [];
     let usuarioAEliminar = null;
+
+    function getUserStorage() {
+      try {
+        return JSON.parse(localStorage.getItem("user") || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function aplicarEmpresaUsuarios() {
+      const user = getUserStorage();
+
+      const empresaNombre =
+        localStorage.getItem("empresa_nombre") ||
+        user.empresa_nombre ||
+        "Mi Empresa";
+
+      const empresaLogo =
+        localStorage.getItem("empresa_logo") ||
+        user.empresa_logo ||
+        "img/logo.png";
+
+      const colorPrincipal =
+        localStorage.getItem("color_principal") ||
+        user.color_principal ||
+        "#2563eb";
+
+      document.documentElement.style.setProperty("--primary", colorPrincipal);
+      document.documentElement.style.setProperty("--primary-hover", colorPrincipal);
+
+      document.title = `${empresaNombre} • Usuarios`;
+
+      const logo = document.getElementById("empresaLogo");
+      if (logo) logo.src = empresaLogo;
+
+      const tituloEmpresa = document.getElementById("tituloEmpresa");
+      if (tituloEmpresa) tituloEmpresa.textContent = `Usuarios - ${empresaNombre}`;
+
+      const subtituloEmpresa = document.getElementById("subtituloEmpresa");
+      if (subtituloEmpresa) subtituloEmpresa.textContent = "Panel administrativo multiempresa";
+
+      const pageTitle = document.getElementById("pageTitle");
+      if (pageTitle) pageTitle.textContent = "Usuarios del sistema";
+
+      const pageSubtitle = document.getElementById("pageSubtitle");
+      if (pageSubtitle) pageSubtitle.textContent = `Usuarios registrados para ${empresaNombre}.`;
+    }
 
     function mostrarMensaje(texto, tipo = "ok") {
       const mensaje = document.getElementById("mensaje");
@@ -709,9 +758,10 @@
     }
 
     function badgeRol(rol) {
-      if (rol === "admin") {
+      if (rol === "admin" || rol === "administrador") {
         return `<span class="badge-rol badge-admin">Administrador</span>`;
       }
+
       return `<span class="badge-rol badge-usuario">Usuario</span>`;
     }
 
@@ -755,81 +805,83 @@
     }
 
     function renderUsuarios() {
-  const lista = document.getElementById("listaUsuarios");
-  const listaMobile = document.getElementById("listaUsuariosMobile");
-  const filtrados = obtenerUsuariosFiltrados();
+      const lista = document.getElementById("listaUsuarios");
+      const listaMobile = document.getElementById("listaUsuariosMobile");
+      const filtrados = obtenerUsuariosFiltrados();
 
-  actualizarContador(filtrados.length);
+      actualizarContador(filtrados.length);
 
-  lista.innerHTML = "";
-  listaMobile.innerHTML = "";
+      lista.innerHTML = "";
+      listaMobile.innerHTML = "";
 
-  if (filtrados.length === 0) {
-    lista.innerHTML = `
-      <tr>
-        <td colspan="5" class="empty">No se encontraron usuarios.</td>
-      </tr>
-    `;
-    listaMobile.innerHTML = `<div class="empty">No se encontraron usuarios.</div>`;
-    return;
-  }
+      if (filtrados.length === 0) {
+        lista.innerHTML = `
+          <tr>
+            <td colspan="5" class="empty">No se encontraron usuarios.</td>
+          </tr>
+        `;
 
-  filtrados.forEach((u) => {
-    lista.innerHTML += `
-      <tr>
-        <td>${u.id}</td>
-        <td>${u.nombre}</td>
-        <td>${u.usuario}</td>
-        <td>${badgeRol(u.rol)}</td>
-        <td>
-          <div class="actions">
-            <button type="button" class="icon-btn edit" onclick="editarUsuario(${u.id})">
-              ${iconEdit()}
-            </button>
+        listaMobile.innerHTML = `<div class="empty">No se encontraron usuarios.</div>`;
+        return;
+      }
 
-            <button type="button" class="icon-btn delete" onclick="eliminarUsuario(${u.id})">
-              ${iconDelete()}
-            </button>
+      filtrados.forEach((u) => {
+        lista.innerHTML += `
+          <tr>
+            <td>${u.id}</td>
+            <td>${u.nombre || "-"}</td>
+            <td>${u.usuario || "-"}</td>
+            <td>${badgeRol(u.rol)}</td>
+            <td>
+              <div class="actions">
+                <button type="button" class="icon-btn edit" onclick="editarUsuario(${u.id})">
+                  ${iconEdit()}
+                </button>
+
+                <button type="button" class="icon-btn delete" onclick="abrirModalEliminar(${u.id})">
+                  ${iconDelete()}
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+
+        listaMobile.innerHTML += `
+          <div class="user-card">
+            <div class="user-card-top">
+              <div>
+                <div class="user-name">${u.nombre || "-"}</div>
+                <div class="user-username">@${u.usuario || "-"}</div>
+              </div>
+              <div>${badgeRol(u.rol)}</div>
+            </div>
+
+            <div class="user-meta">
+              <div class="meta-box">
+                <div class="meta-label">ID</div>
+                <div class="meta-value">${u.id}</div>
+              </div>
+
+              <div class="meta-box">
+                <div class="meta-label">Rol</div>
+                <div class="meta-value">${u.rol || "-"}</div>
+              </div>
+            </div>
+
+            <div class="user-actions">
+              <button type="button" class="icon-btn edit" onclick="editarUsuario(${u.id})">
+                ${iconEdit()}
+              </button>
+
+              <button type="button" class="icon-btn delete" onclick="abrirModalEliminar(${u.id})">
+                ${iconDelete()}
+              </button>
+            </div>
           </div>
-        </td>
-      </tr>
-    `;
+        `;
+      });
+    }
 
-    listaMobile.innerHTML += `
-      <div class="user-card">
-        <div class="user-card-top">
-          <div>
-            <div class="user-name">${u.nombre}</div>
-            <div class="user-username">@${u.usuario}</div>
-          </div>
-          <div>${badgeRol(u.rol)}</div>
-        </div>
-
-        <div class="user-meta">
-          <div class="meta-box">
-            <div class="meta-label">ID</div>
-            <div class="meta-value">${u.id}</div>
-          </div>
-
-          <div class="meta-box">
-            <div class="meta-label">Rol</div>
-            <div class="meta-value">${u.rol}</div>
-          </div>
-        </div>
-
-        <div class="user-actions">
-          <button type="button" class="icon-btn edit" onclick="editarUsuario(${u.id})">
-            ${iconEdit()}
-          </button>
-
-          <button type="button" class="icon-btn delete" onclick="eliminarUsuario(${u.id})">
-            ${iconDelete()}
-          </button>
-        </div>
-      </div>
-    `;
-  });
-}
     async function cargarUsuarios() {
       try {
         const res = await fetch("/api/usuarios", {
@@ -843,6 +895,7 @@
         const data = await res.json();
         usuariosData = Array.isArray(data) ? data : [];
         renderUsuarios();
+
       } catch (error) {
         console.error(error);
         usuariosData = [];
@@ -882,6 +935,7 @@
           });
 
           if (!res.ok) throw new Error("No se pudo actualizar");
+
           mostrarMensaje("Usuario actualizado correctamente.", "ok");
         } else {
           if (!password) {
@@ -904,11 +958,13 @@
           });
 
           if (!res.ok) throw new Error("No se pudo crear");
+
           mostrarMensaje("Usuario creado correctamente.", "ok");
         }
 
         limpiarFormulario();
         await cargarUsuarios();
+
       } catch (error) {
         console.error(error);
         mostrarMensaje("Ocurrió un error al guardar el usuario.", "error");
@@ -951,48 +1007,21 @@
     }
 
     function abrirModalEliminar(id) {
-  usuarioAEliminar = id;
+      usuarioAEliminar = id;
 
-  const usuario = usuariosData.find(u => String(u.id) === String(id));
-  const nombre = usuario ? usuario.nombre : "este usuario";
+      const usuario = usuariosData.find(u => String(u.id) === String(id));
+      const nombre = usuario ? usuario.nombre : "este usuario";
 
-  document.getElementById("deleteText").textContent =
-    `¿Seguro que querés eliminar a ${nombre}? Esta acción no se puede deshacer.`;
+      document.getElementById("deleteText").textContent =
+        `¿Seguro que querés eliminar a ${nombre}? Esta acción no se puede deshacer.`;
 
-  document.getElementById("deleteModal").classList.add("active");
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
+      document.getElementById("deleteModal").classList.add("active");
+    }
 
     function cerrarModalEliminar() {
       usuarioAEliminar = null;
       document.getElementById("deleteModal").classList.remove("active");
     }
-
-   async function eliminarUsuario(id) {
-  if (!confirm("¿Seguro que querés eliminar este usuario?")) return;
-
-  try {
-    const res = await fetch(`/api/usuarios/${id}`, {
-      method: "DELETE",
-      credentials: "include"
-    });
-
-    const texto = await res.text();
-    console.log("STATUS:", res.status);
-    console.log("RESPUESTA:", texto);
-
-    if (!res.ok) {
-      alert("Error: " + texto);
-      return;
-    }
-
-    await cargarUsuarios();
-    alert("Usuario eliminado");
-  } catch (error) {
-    console.error(error);
-    alert("Error al eliminar");
-  }
-}
 
     async function confirmarEliminar() {
       if (usuarioAEliminar === null || usuarioAEliminar === undefined) return;
@@ -1014,6 +1043,7 @@
         cerrarModalEliminar();
         await cargarUsuarios();
         mostrarMensaje("Usuario eliminado correctamente.", "ok");
+
       } catch (error) {
         console.error(error);
         mostrarMensaje("Error al eliminar el usuario.", "error");
@@ -1026,6 +1056,7 @@
       }
     });
 
+    aplicarEmpresaUsuarios();
     cargarUsuarios();
   </script>
 </body>

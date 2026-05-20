@@ -6,16 +6,20 @@
   <title>Panel Administrativo</title>
 
   <script>
-    if (localStorage.getItem("adminAuth") !== "yes") {
+    if (localStorage.getItem("adminAuth") !== "yes" && localStorage.getItem("auth") !== "ok") {
       window.location.href = "admin_login.html";
     }
   </script>
 
-  <link rel="stylesheet" href="css/theme.css">
-  <link rel="stylesheet" href="css/modal-fix.css">
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <style>
+    :root{
+      --color-principal:#2563eb;
+      --color-principal-dark:#1d4ed8;
+    }
+
     body{
       background:#f3f4f6;
       margin:0;
@@ -36,11 +40,32 @@
       box-sizing:border-box;
     }
 
+    .topbar-left{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .empresa-logo{
+      width:48px;
+      height:48px;
+      object-fit:contain;
+      border-radius:12px;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      padding:4px;
+    }
+
     .topbar h2{
       margin:0;
       font-size:20px;
       font-weight:800;
       color:#111827;
+    }
+
+    .topbar small{
+      color:#6b7280;
+      font-weight:600;
     }
 
     .topbar-buttons{
@@ -57,12 +82,7 @@
       border-radius:8px;
       font-size:14px;
       font-weight:700;
-      transition:0.2s;
       border:1px solid #e5e7eb;
-    }
-
-    .volver-btn:hover{
-      background:#d1d5db;
     }
 
     .logout-btn{
@@ -71,23 +91,29 @@
       padding:10px 18px;
       border-radius:8px;
       cursor:pointer;
-      text-decoration:none;
       font-weight:800;
-      transition:.2s;
       border:1px solid #dc2626;
     }
+body{
+  margin:0;
+  min-height:100vh;
+  background:#f3f4f6;
+  font-family:Arial,sans-serif;
+  color:#111827;
+  overflow-x:hidden;
+}
 
-    .logout-btn:hover{
-      background:#b91c1c;
-      border-color:#b91c1c;
-    }
+main{
+  width:100%;
+}
 
-    .admin-container{
-      padding:24px;
-      max-width:1400px;
-      margin:0 auto;
-      box-sizing:border-box;
-    }
+ .admin-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 24px !important;
+}
+
 
     .section-title{
       margin:0 0 16px 0;
@@ -95,13 +121,17 @@
       font-weight:800;
       color:#111827;
     }
+.dashboard-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px;
+  margin-bottom: 22px;
+  align-items: stretch;
+}
 
-    .dashboard-grid{
-      display:grid;
-      grid-template-columns:repeat(4, minmax(0,1fr));
-      gap:18px;
-      margin-bottom:22px;
-    }
+.card{
+  width:100%;
+}
 
     .mini-grid{
       display:grid;
@@ -142,13 +172,12 @@
       border-radius:18px 0 0 18px;
     }
 
-    .kpi-ventas::before{ background:#2563eb; }
+    .kpi-ventas::before{ background:var(--color-principal); }
     .kpi-compras::before{ background:#059669; }
     .kpi-stock::before{ background:#f59e0b; }
     .kpi-egresos::before{ background:#dc2626; }
     .kpi-margen::before{ background:#7c3aed; }
     .kpi-bajo::before{ background:#ea580c; }
-    .kpi-agotado::before{ background:#111827; }
 
     .kpi-link{
       cursor:pointer;
@@ -219,6 +248,11 @@
       color:#111827;
     }
 
+    .panel-title i,
+    .title-row i{
+      color:var(--color-principal) !important;
+    }
+
     .chart-box{
       height:320px;
       border:1px dashed #cbd5e1;
@@ -281,10 +315,6 @@
       background:#f59e0b;
     }
 
-    .stock-badge.ok{
-      background:#16a34a;
-    }
-
     .pretty-access{
       max-width:560px;
       margin:0 auto;
@@ -297,11 +327,6 @@
       margin-bottom:16px;
       font-size:18px;
       font-weight:800;
-    }
-
-    .title-row i{
-      color:#2563eb;
-      font-size:22px;
     }
 
     .access-buttons{
@@ -323,16 +348,10 @@
       align-items:center;
       justify-content:center;
       gap:12px;
-      transition:.2s;
       box-shadow:0 8px 22px rgba(0,0,0,.10);
     }
 
-    .acc-btn:hover{
-      transform:translateY(-1px);
-      filter:brightness(.97);
-    }
-
-    .acc-btn.blue{ background:#2563eb; }
+    .acc-btn.blue{ background:var(--color-principal); }
     .acc-btn.green{ background:#16a34a; }
     .acc-btn.orange{ background:#f59e0b; }
 
@@ -359,25 +378,6 @@
       box-shadow:0 20px 60px rgba(0,0,0,.25);
       padding:18px;
       border:1px solid #e5e7eb;
-      animation:pop .12s ease-out;
-    }
-
-    @keyframes pop{
-      from{ transform:scale(.98); opacity:.6; }
-      to{ transform:scale(1); opacity:1; }
-    }
-
-    .modal-box h3{
-      margin:0 0 8px 0;
-      font-size:18px;
-      color:#111827;
-    }
-
-    .modal-box p{
-      margin:0;
-      color:#4b5563;
-      font-size:14px;
-      line-height:1.4;
     }
 
     .modal-actions{
@@ -407,35 +407,174 @@
       cursor:pointer;
     }
 
-    .btn-danger:hover{
-      background:#b91c1c;
-      border-color:#b91c1c;
+    .panel-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:20px;
+      align-items:start;
     }
 
-    #btnLogoutAdminPanel,
-    #cardStockBajo,
-    .kpi-link,
-    .logout-btn {
-      position:relative;
-      z-index:20;
-      pointer-events:auto;
+    .tipo-cambio-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+      margin-top:10px;
     }
 
-    @media (max-width: 1100px){
-      .dashboard-grid{
-        grid-template-columns:repeat(2, minmax(0,1fr));
-      }
-
-      .mini-grid{
-        grid-template-columns:1fr;
-      }
-
-      .bottom-grid{
-        grid-template-columns:1fr;
-      }
+    .card.card-tipo-cambio{
+      max-width:420px !important;
+      width:100% !important;
+      margin:24px auto !important;
+      padding:20px !important;
+      text-align:left;
     }
 
-    @media (max-width: 700px){
+    .card.card-tipo-cambio input{
+      width:100% !important;
+      margin-bottom:10px !important;
+    }
+
+    .btn-wrap{
+      margin-top:15px;
+      display:flex;
+      justify-content:center;
+    }
+
+    .btn.primary{
+      background:var(--color-principal);
+      color:white;
+      border:none;
+      min-width:180px;
+      padding:10px 18px !important;
+      border-radius:10px !important;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    #assistantFloatBtn{
+      position:fixed;
+      right:24px;
+      bottom:24px;
+      width:64px;
+      height:64px;
+      border-radius:50%;
+      background:linear-gradient(135deg,var(--color-principal),var(--color-principal-dark));
+      color:white;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:26px;
+      cursor:pointer;
+      z-index:999999;
+      box-shadow:0 20px 40px rgba(37,99,235,.35);
+    }
+
+    #assistantBox{
+      position:fixed;
+      right:24px;
+      bottom:100px;
+      width:380px;
+      height:560px;
+      background:white;
+      border-radius:24px;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      z-index:999999;
+      box-shadow:0 30px 70px rgba(0,0,0,.18);
+      border:1px solid #e5e7eb;
+    }
+
+    .assistant-hidden{
+      display:none !important;
+    }
+
+    .assistant-header{
+      padding:18px;
+      background:var(--color-principal);
+      color:white;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    #assistantClose{
+      background:none;
+      border:none;
+      color:white;
+      font-size:20px;
+      cursor:pointer;
+    }
+
+    .assistant-messages{
+      flex:1;
+      padding:16px;
+      overflow:auto;
+      background:#f8fafc;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .assistant-msg{
+      max-width:85%;
+      padding:12px 14px;
+      border-radius:16px;
+      font-size:14px;
+      line-height:1.5;
+    }
+
+    .assistant-msg.bot{
+      background:white;
+      color:#111827;
+      border:1px solid #e5e7eb;
+      align-self:flex-start;
+    }
+
+    .assistant-msg.user{
+      background:var(--color-principal);
+      color:white;
+      align-self:flex-end;
+    }
+
+    .assistant-input-area{
+      padding:14px;
+      border-top:1px solid #e5e7eb;
+      display:flex;
+      gap:10px;
+      background:white;
+    }
+
+    #assistantInput{
+      flex:1;
+      border:1px solid #d1d5db;
+      border-radius:14px;
+      padding:12px 14px;
+      outline:none;
+      font-size:14px;
+    }
+
+    #assistantSend{
+      width:48px;
+      border:none;
+      border-radius:14px;
+      background:var(--color-principal);
+      color:white;
+      cursor:pointer;
+      font-size:16px;
+    }
+
+    @media (max-width:1100px){
+      .dashboard-grid{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+      .mini-grid{ grid-template-columns:1fr; }
+      .bottom-grid{ grid-template-columns:1fr; }
+    }
+
+    @media (max-width:900px){
+      .panel-grid{ grid-template-columns:1fr; }
+    }
+
+    @media (max-width:700px){
       .topbar{
         flex-direction:column;
         align-items:flex-start;
@@ -455,211 +594,47 @@
         padding:16px;
       }
 
-      .kpi-main{
-        font-size:22px;
+      #assistantBox{
+        left:12px;
+        right:12px;
+        bottom:90px;
+        width:auto;
+        height:520px;
       }
     }
+ /* FIX ADMIN - sin sidebar */
+body.admin-page,
+body.admin-page * {
+  margin-left: 0 !important;
+}
 
-    .card.card-tipo-cambio {
-  max-width: 420px !important;
+body.admin-page .topbar {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
   width: 100% !important;
-  margin: 24px auto !important;
-  padding: 20px !important;
+  z-index: 100 !important;
 }
 
-.card.card-tipo-cambio input {
+body.admin-page .admin-container {
   width: 100% !important;
-  margin-bottom: 10px !important;
-}
-
-.card.card-tipo-cambio button {
-  width: 100% !important;
-  margin-top: 10px !important;
-}
-
-.card.card-tipo-cambio .btn {
-  width: auto !important;
-  min-width: 180px;
-  padding: 10px 18px !important;
-  border-radius: 10px !important;
-  font-weight: 700;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.card.card-tipo-cambio {
-  text-align: left;
-}
-
-.card.card-tipo-cambio .btn-wrap {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 14px;
-}
-
-
-.panel-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  align-items: start;
-}
-
-.tipo-cambio-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 10px;
-}
-
-.btn-wrap {
-  margin-top: 15px;
-  display: flex;
-  justify-content: center;
-}
-
-@media (max-width: 900px) {
-  .panel-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-
-
-
-#assistantFloatBtn{
-  position:fixed;
-  right:24px;
-  bottom:24px;
-  width:64px;
-  height:64px;
-  border-radius:50%;
-  background:linear-gradient(135deg,#2563eb,#1d4ed8);
-  color:white;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:26px;
-  cursor:pointer;
-  z-index:999999;
-  box-shadow:0 20px 40px rgba(37,99,235,.35);
-  transition:.2s;
-}
-
-#assistantFloatBtn:hover{
-  transform:translateY(-2px) scale(1.03);
-}
-
-#assistantBox{
-  position:fixed;
-  right:24px;
-  bottom:100px;
-  width:380px;
-  height:560px;
-  background:white;
-  border-radius:24px;
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-  z-index:999999;
-  box-shadow:0 30px 70px rgba(0,0,0,.18);
-  border:1px solid #e5e7eb;
-}
-
-.assistant-hidden{
-  display:none !important;
-}
-
-.assistant-header{
-  padding:18px;
-  background:#2563eb;
-  color:white;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.assistant-header strong{
-  display:block;
-  font-size:16px;
-}
-
-.assistant-header small{
-  opacity:.85;
-}
-
-#assistantClose{
-  background:none;
-  border:none;
-  color:white;
-  font-size:20px;
-  cursor:pointer;
-}
-
-.assistant-messages{
-  flex:1;
-  padding:16px;
-  overflow:auto;
-  background:#f8fafc;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
-
-.assistant-msg{
-  max-width:85%;
-  padding:12px 14px;
-  border-radius:16px;
-  font-size:14px;
-  line-height:1.5;
-}
-
-.assistant-msg.bot{
-  background:white;
-  color:#111827;
-  border:1px solid #e5e7eb;
-  align-self:flex-start;
-}
-
-.assistant-msg.user{
-  background:#2563eb;
-  color:white;
-  align-self:flex-end;
-}
-
-.assistant-input-area{
-  padding:14px;
-  border-top:1px solid #e5e7eb;
-  display:flex;
-  gap:10px;
-  background:white;
-}
-
-#assistantInput{
-  flex:1;
-  border:1px solid #d1d5db;
-  border-radius:14px;
-  padding:12px 14px;
-  outline:none;
-  font-size:14px;
-}
-
-#assistantSend{
-  width:48px;
-  border:none;
-  border-radius:14px;
-  background:#2563eb;
-  color:white;
-  cursor:pointer;
-  font-size:16px;
+  max-width: 1450px !important;
+  margin: 0 auto !important;
+  padding: 24px !important;
 }
   </style>
 </head>
-<body>
+
+<body class="admin-page">
 
   <div class="topbar">
-    <h2>Panel Administrativo</h2>
+    <div class="topbar-left">
+      <img id="empresaLogoTop" class="empresa-logo" src="img/logo.png" alt="Logo empresa">
+      <div>
+        <h2 id="empresaNombreTop">Panel Administrativo</h2>
+        <small id="empresaSubtitulo">Resumen general del sistema</small>
+      </div>
+    </div>
 
     <div class="topbar-buttons">
       <a href="index.html" class="volver-btn">← Volver</a>
@@ -672,11 +647,11 @@
   <div class="admin-container">
     <section id="dashboard" class="view">
 
-      <h3 class="section-title">Resumen general</h3>
+      <h3 class="section-title" id="tituloResumen">Resumen general</h3>
 
       <div class="dashboard-grid">
 
-        <div class="card kpi-card kpi-ventas kpi-link" onclick="irA('ventas')" title="Ir a Ventas">
+        <div class="card kpi-card kpi-ventas kpi-link" onclick="irA('ventas')">
           <div class="kpi-header">
             <b>Ventas</b>
             <span id="kpi-ventas-mes-title">Mes actual</span>
@@ -688,7 +663,7 @@
           <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver ventas</div>
         </div>
 
-        <div class="card kpi-card kpi-compras kpi-link" onclick="irA('compras')" title="Ir a Compras">
+        <div class="card kpi-card kpi-compras kpi-link" onclick="irA('compras')">
           <div class="kpi-header">
             <b>Compras</b>
             <span id="kpi-compras-mes-title">Mes actual</span>
@@ -700,7 +675,7 @@
           <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver compras</div>
         </div>
 
-        <div class="card kpi-card kpi-stock kpi-link" onclick="irA('productos')" title="Ir a Productos">
+        <div class="card kpi-card kpi-stock kpi-link" onclick="irA('productos')">
           <div class="kpi-header">
             <b>Stock total</b>
             <span>Inventario</span>
@@ -712,7 +687,7 @@
           <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver productos</div>
         </div>
 
-        <div class="card kpi-card kpi-egresos kpi-link" onclick="location.href='egresos.html'" title="Ver detalle de egresos">
+        <div class="card kpi-card kpi-egresos kpi-link" onclick="location.href='egresos.html'">
           <div class="kpi-header">
             <b>Egresos</b>
             <span>Control</span>
@@ -725,7 +700,6 @@
       </div>
 
       <div class="mini-grid">
-
         <div class="card kpi-card kpi-egresos">
           <div class="kpi-header">
             <b>Egreso del día</b>
@@ -744,7 +718,7 @@
           <small class="kpi-sub">Ventas - Compras - Egresos del mes</small>
         </div>
 
-        <div class="card kpi-card kpi-bajo kpi-link" id="cardStockBajo" onclick="mostrarStockBajo()" title="Ver productos con stock bajo">
+        <div class="card kpi-card kpi-bajo kpi-link" id="cardStockBajo" onclick="mostrarStockBajo()">
           <div class="kpi-header">
             <b>Stock bajo</b>
             <span>Alerta</span>
@@ -753,14 +727,12 @@
           <small class="kpi-sub">Productos con pocas unidades</small>
           <div class="kpi-go"><i class="fa-solid fa-arrow-right"></i> Ver productos bajos</div>
         </div>
-
       </div>
 
       <div class="bottom-grid">
-
         <div class="card">
           <div class="panel-title">
-            <i class="fa-solid fa-chart-line" style="color:#2563eb;"></i>
+            <i class="fa-solid fa-chart-line"></i>
             Comparativo ventas vs compras
           </div>
           <div class="chart-box">
@@ -770,7 +742,7 @@
 
         <div class="card">
           <div class="panel-title">
-            <i class="fa-solid fa-box-open" style="color:#f59e0b;"></i>
+            <i class="fa-solid fa-box-open" style="color:#f59e0b !important;"></i>
             Productos críticos
           </div>
 
@@ -784,65 +756,61 @@
             </div>
           </div>
         </div>
-
       </div>
 
-     <section class="panel-grid">
+      <section class="panel-grid">
+        <div class="card pretty-access">
+          <div class="title-row">
+            <i class="fa-solid fa-bolt"></i>
+            <b>Accesos Rápidos</b>
+          </div>
 
-  <!-- ACCESOS RÁPIDOS -->
-  <div class="card pretty-access">
-    <div class="title-row">
-      <i class="fa-solid fa-bolt"></i>
-      <b>Accesos Rápidos</b>
-    </div>
+          <div class="access-buttons">
+            <button class="acc-btn blue" onclick="location.href='index.html#ventas'">
+              <i class="fa fa-shopping-cart"></i>
+              Nueva Venta
+            </button>
 
-    <div class="access-buttons">
-      <button class="acc-btn blue" onclick="location.href='index.html#ventas'">
-        <i class="fa fa-shopping-cart"></i>
-        Nueva Venta
-      </button>
+            <button class="acc-btn green" onclick="location.href='index.html#compras'">
+              <i class="fa fa-receipt"></i>
+              Nueva Compra
+            </button>
 
-      <button class="acc-btn green" onclick="location.href='index.html#compras'">
-        <i class="fa fa-receipt"></i>
-        Nueva Compra
-      </button>
+            <button class="acc-btn orange" onclick="location.href='index.html#productos'">
+              <i class="fa fa-box"></i>
+              Gestionar Productos
+            </button>
 
-      <button class="acc-btn orange" onclick="location.href='index.html#productos'">
-        <i class="fa fa-box"></i>
-        Gestionar Productos
-      </button>
+            <button class="acc-btn blue" onclick="location.href='admin_usuarios.html'">
+              <i class="fa fa-users"></i>
+              Gestionar Usuarios
+            </button>
+          </div>
+        </div>
 
-      <button class="acc-btn blue" onclick="location.href='admin_usuarios.html'">
-        <i class="fa fa-users"></i>
-        Gestionar Usuarios
-      </button>
-    </div>
-  </div>
+        <div class="card card-tipo-cambio">
+          <h3>Tipo de cambio</h3>
 
-  <!-- TIPO DE CAMBIO -->
-  <div class="card card-tipo-cambio">
-    <h3>Tipo de cambio</h3>
+          <div class="tipo-cambio-grid">
+            <div>
+              <label class="label">Dólar USD</label>
+              <input id="admin_usd" class="input" type="number" value="6350">
+            </div>
 
-    <div class="tipo-cambio-grid">
-      <div>
-        <label class="label">Dólar USD</label>
-        <input id="admin_usd" class="input" type="number" value="6350">
-      </div>
+            <div>
+              <label class="label">Real BRL</label>
+              <input id="admin_brl" class="input" type="number" value="1250">
+            </div>
+          </div>
 
-      <div>
-        <label class="label">Real BRL</label>
-        <input id="admin_brl" class="input" type="number" value="1250">
-      </div>
-    </div>
-
-    <div class="btn-wrap">
-      <button class="btn primary" onclick="guardarTipoCambioAdmin()">
-        Guardar
-      </button>
-    </div>
-  </div>
-
-</section>
+          <div class="btn-wrap">
+            <button class="btn primary" onclick="guardarTipoCambioAdmin()">
+              Guardar
+            </button>
+          </div>
+        </div>
+      </section>
+    </section>
   </div>
 
   <div id="modalCerrarSesionAdmin" class="modal-overlay">
@@ -861,7 +829,6 @@
     <div class="modal-box" style="max-width:520px;">
       <h3>📦 Productos con stock bajo</h3>
       <p>Estos son los productos que actualmente tienen pocas unidades.</p>
-
       <div id="stockBajoContenido" style="margin-top:14px; display:flex; flex-direction:column; gap:10px;"></div>
 
       <div class="modal-actions">
@@ -870,85 +837,90 @@
     </div>
   </div>
 
+  <div id="assistantFloatBtn">
+    <i class="fa-solid fa-robot"></i>
+  </div>
 
+  <div id="assistantBox" class="assistant-hidden">
+    <div class="assistant-header">
+      <div>
+        <strong id="assistantTitle">Asistente</strong>
+        <small>Consultas administrativas</small>
+      </div>
 
-
-<div id="assistantFloatBtn">
-  <i class="fa-solid fa-robot"></i>
-</div>
-
-<div id="assistantBox" class="assistant-hidden">
-
-  <div class="assistant-header">
-    <div>
-      <strong>SPY Asistente</strong>
-      <small>Consultas administrativas</small>
+      <button id="assistantClose" type="button">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
     </div>
 
-    <button id="assistantClose" type="button">
-      <i class="fa-solid fa-xmark"></i>
-    </button>
-  </div>
-
-  <div id="assistantMessages" class="assistant-messages">
-
-    <div class="assistant-msg bot">
-
-      Hola, soy tu asistente del sistema.
-
-      <br><br>
-
-      Podés consultarme información sobre:
-
-      <br><br>
-
-      Ventas del día o del mes<br>
-      Compras realizadas<br>
-      Productos e inventario<br>
-      Stock bajo o crítico<br>
-      Caja abierta<br>
-      Clientes y proveedores<br>
-      Pedidos a proveedor<br>
-      Cuentas pendientes<br>
-      Margen o ganancia mensual
-
-      <br><br>
-
-      <strong>Ejemplos:</strong>
-
-      <br><br>
-
-      ¿Cuánto vendí hoy?<br>
-      ¿Qué productos tienen stock bajo?<br>
-      ¿Qué compras se hicieron hoy?<br>
-      ¿Cuántos pedidos se hicieron?<br>
-      ¿Hay caja abierta?<br>
-      ¿Cuál es el margen del mes?
-
-      <br><br>
-
+    <div id="assistantMessages" class="assistant-messages">
+      <div class="assistant-msg bot" id="assistantWelcome">
+        Hola, soy tu asistente del sistema.<br><br>
+        Podés consultarme información sobre:<br><br>
+        Ventas del día o del mes<br>
+        Compras realizadas<br>
+        Productos e inventario<br>
+        Stock bajo o crítico<br>
+        Caja abierta<br>
+        Clientes y proveedores<br>
+        Pedidos a proveedor<br>
+        Cuentas pendientes<br>
+        Margen o ganancia mensual<br><br>
+        <strong>Ejemplos:</strong><br><br>
+        ¿Cuánto vendí hoy?<br>
+        ¿Qué productos tienen stock bajo?<br>
+        ¿Qué compras se hicieron hoy?<br>
+        ¿Cuántos pedidos se hicieron?<br>
+        ¿Hay caja abierta?<br>
+        ¿Cuál es el margen del mes?
+      </div>
     </div>
 
+    <div class="assistant-input-area">
+      <input type="text" id="assistantInput" placeholder="Ej: cuánto vendí hoy...">
+      <button id="assistantSend" type="button">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </div>
   </div>
-
-  <div class="assistant-input-area">
-
-    <input
-      type="text"
-      id="assistantInput"
-      placeholder="Ej: cuánto vendí hoy..."
-    >
-
-    <button id="assistantSend" type="button">
-      <i class="fa-solid fa-paper-plane"></i>
-    </button>
-
-  </div>
-
-</div>
-
 
   <script>
+    function aplicarEmpresaPanel() {
+      const empresaNombre =
+        localStorage.getItem("empresa_nombre") ||
+        JSON.parse(localStorage.getItem("user") || "{}")?.empresa_nombre ||
+        "Panel Administrativo";
+
+      const empresaLogo =
+        localStorage.getItem("empresa_logo") ||
+        JSON.parse(localStorage.getItem("user") || "{}")?.empresa_logo ||
+        "img/logo.png";
+
+      const colorPrincipal =
+        localStorage.getItem("color_principal") ||
+        JSON.parse(localStorage.getItem("user") || "{}")?.color_principal ||
+        "#2563eb";
+
+      document.documentElement.style.setProperty("--color-principal", colorPrincipal);
+      document.documentElement.style.setProperty("--color-principal-dark", colorPrincipal);
+
+      document.title = `${empresaNombre} • Panel`;
+
+      const topTitle = document.getElementById("empresaNombreTop");
+      if (topTitle) topTitle.textContent = empresaNombre;
+
+      const subtitulo = document.getElementById("empresaSubtitulo");
+      if (subtitulo) subtitulo.textContent = "Panel administrativo";
+
+      const logo = document.getElementById("empresaLogoTop");
+      if (logo) logo.src = empresaLogo;
+
+      const assistantTitle = document.getElementById("assistantTitle");
+      if (assistantTitle) assistantTitle.textContent = `${empresaNombre} Asistente`;
+    }
+
+    aplicarEmpresaPanel();
+
     window.irA = function(seccion) {
       window.location.href = `index.html#${seccion}`;
     };
@@ -1020,16 +992,12 @@
     window.cerrarAdmin = function() {
       localStorage.removeItem("adminAuth");
       sessionStorage.removeItem("adminAuth");
+      localStorage.removeItem("auth");
       window.location.href = "admin_login.html";
     };
 
     document.addEventListener("DOMContentLoaded", function() {
-      const cardStock = document.getElementById("cardStockBajo");
-      if (cardStock) {
-        cardStock.addEventListener("click", function() {
-          mostrarStockBajo();
-        });
-      }
+      aplicarEmpresaPanel();
 
       const modalLogout = document.getElementById("modalCerrarSesionAdmin");
       if (modalLogout) {
@@ -1057,58 +1025,57 @@
   </script>
 
   <script>
+    async function cargarTipoCambioAdmin() {
+      try {
+        const res = await fetch("/config/monedas", { credentials: "include" });
+        const data = await res.json();
 
-async function cargarTipoCambioAdmin() {
-  try {
-    const res = await fetch("/config/monedas", { credentials: "include" });
-    const data = await res.json();
+        const usd = data.monedas?.find(m => m.moneda === "USD");
+        const brl = data.monedas?.find(m => m.moneda === "BRL");
 
-    const usd = data.monedas?.find(m => m.moneda === "USD");
-    const brl = data.monedas?.find(m => m.moneda === "BRL");
-
-    document.getElementById("admin_usd").value = usd?.tipo_cambio || 6350;
-    document.getElementById("admin_brl").value = brl?.tipo_cambio || 1250;
-  } catch (err) {
-    console.error("Error cargando tipo de cambio:", err);
-  }
-}
-
-async function guardarTipoCambioAdmin() {
-  try {
-    const usd = Number(document.getElementById("admin_usd").value || 0);
-    const brl = Number(document.getElementById("admin_brl").value || 0);
-
-    if (usd <= 0 || brl <= 0) {
-      alert("Ingresá valores válidos");
-      return;
+        document.getElementById("admin_usd").value = usd?.tipo_cambio || 6350;
+        document.getElementById("admin_brl").value = brl?.tipo_cambio || 1250;
+      } catch (err) {
+        console.error("Error cargando tipo de cambio:", err);
+      }
     }
 
-    const res = await fetch("/config/monedas", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ USD: usd, BRL: brl })
-    });
+    async function guardarTipoCambioAdmin() {
+      try {
+        const usd = Number(document.getElementById("admin_usd").value || 0);
+        const brl = Number(document.getElementById("admin_brl").value || 0);
 
-    const data = await res.json();
+        if (usd <= 0 || brl <= 0) {
+          alert("Ingresá valores válidos");
+          return;
+        }
 
-    if (!res.ok) {
-      alert(data.msg || "Error al guardar");
-      return;
+        const res = await fetch("/config/monedas", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ USD: usd, BRL: brl })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.msg || "Error al guardar");
+          return;
+        }
+
+        alert("Tipo de cambio actualizado correctamente ✅");
+
+      } catch (err) {
+        console.error(err);
+        alert("Error de conexión con el servidor");
+      }
     }
 
-    alert("Tipo de cambio actualizado correctamente ✅");
+    document.addEventListener("DOMContentLoaded", cargarTipoCambioAdmin);
+  </script>
 
-  } catch (err) {
-    console.error(err);
-    alert("Error de conexión con el servidor");
-  }
-}
-
-document.addEventListener("DOMContentLoaded", cargarTipoCambioAdmin);
-</script>
-
-   <script src="js/app.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
   <script src="js/compras.js?v=2"></script>
   <script src="js/ventas.js?v=2"></script>
 
@@ -1123,80 +1090,71 @@ document.addEventListener("DOMContentLoaded", cargarTipoCambioAdmin);
   </script>
 
   <script>
-const assistantFloatBtn = document.getElementById("assistantFloatBtn");
-const assistantBox = document.getElementById("assistantBox");
-const assistantClose = document.getElementById("assistantClose");
-const assistantSend = document.getElementById("assistantSend");
-const assistantInput = document.getElementById("assistantInput");
-const assistantMessages = document.getElementById("assistantMessages");
+    const assistantFloatBtn = document.getElementById("assistantFloatBtn");
+    const assistantBox = document.getElementById("assistantBox");
+    const assistantClose = document.getElementById("assistantClose");
+    const assistantSend = document.getElementById("assistantSend");
+    const assistantInput = document.getElementById("assistantInput");
+    const assistantMessages = document.getElementById("assistantMessages");
 
-assistantFloatBtn.addEventListener("click", () => {
-  assistantBox.classList.remove("assistant-hidden");
-});
-
-assistantClose.addEventListener("click", () => {
-  assistantBox.classList.add("assistant-hidden");
-});
-
-assistantSend.addEventListener("click", responderAsistente);
-
-assistantInput.addEventListener("keypress", (e) => {
-  if(e.key === "Enter"){
-    responderAsistente();
-  }
-});
-
-function agregarMensaje(tipo, texto){
-  assistantMessages.innerHTML += `
-    <div class="assistant-msg ${tipo}">
-      ${texto}
-    </div>
-  `;
-
-  assistantMessages.scrollTop = assistantMessages.scrollHeight;
-}
-
-async function responderAsistente(){
-
-  const texto = assistantInput.value.trim();
-
-  if(!texto) return;
-
-  agregarMensaje("user", texto);
-
-  assistantInput.value = "";
-
-  agregarMensaje("bot", "Consultando el sistema...");
-
-  try {
-    const res = await fetch("/api/asistente-admin", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        pregunta: texto
-      })
+    assistantFloatBtn.addEventListener("click", () => {
+      assistantBox.classList.remove("assistant-hidden");
     });
 
-    const data = await res.json();
+    assistantClose.addEventListener("click", () => {
+      assistantBox.classList.add("assistant-hidden");
+    });
 
-    const mensajesBot = assistantMessages.querySelectorAll(".assistant-msg.bot");
-    const ultimoBot = mensajesBot[mensajesBot.length - 1];
+    assistantSend.addEventListener("click", responderAsistente);
 
-    if (ultimoBot) {
-      ultimoBot.innerHTML = data.respuesta || "No pude obtener una respuesta.";
+    assistantInput.addEventListener("keypress", (e) => {
+      if(e.key === "Enter"){
+        responderAsistente();
+      }
+    });
+
+    function agregarMensaje(tipo, texto){
+      assistantMessages.innerHTML += `
+        <div class="assistant-msg ${tipo}">
+          ${texto}
+        </div>
+      `;
+      assistantMessages.scrollTop = assistantMessages.scrollHeight;
     }
 
-    assistantMessages.scrollTop = assistantMessages.scrollHeight;
+    async function responderAsistente(){
+      const texto = assistantInput.value.trim();
+      if(!texto) return;
 
-  } catch (err) {
-    console.error("Error asistente:", err);
-    agregarMensaje("bot", "Error de conexión con el servidor.");
-  }
-}
-</script>
+      agregarMensaje("user", texto);
+      assistantInput.value = "";
+      agregarMensaje("bot", "Consultando el sistema...");
+
+      try {
+        const res = await fetch("/api/asistente-admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ pregunta: texto })
+        });
+
+        const data = await res.json();
+
+        const mensajesBot = assistantMessages.querySelectorAll(".assistant-msg.bot");
+        const ultimoBot = mensajesBot[mensajesBot.length - 1];
+
+        if (ultimoBot) {
+          ultimoBot.innerHTML = data.respuesta || "No pude obtener una respuesta.";
+        }
+
+        assistantMessages.scrollTop = assistantMessages.scrollHeight;
+
+      } catch (err) {
+        console.error("Error asistente:", err);
+        agregarMensaje("bot", "Error de conexión con el servidor.");
+      }
+    }
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>

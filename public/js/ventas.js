@@ -23,9 +23,26 @@ const ID_EFECTIVO = 2;
 const MONEDA_BASE = "PYG";
 const MONEDAS_SOPORTADAS = ["PYG", "USD", "BRL"];
 
-/* ===============================
-   FORMAT NUMBER
-=============================== */
+window.USER_EMPRESA = JSON.parse(localStorage.getItem("user") || "{}");
+
+window.EMPRESA_NOMBRE =
+  localStorage.getItem("empresa_nombre") ||
+  window.USER_EMPRESA.empresa_nombre ||
+  "Mi Empresa";
+
+window.EMPRESA_LOGO =
+  localStorage.getItem("empresa_logo") ||
+  window.USER_EMPRESA.empresa_logo ||
+  "img/logo.png";
+
+window.COLOR_PRINCIPAL =
+  localStorage.getItem("color_principal") ||
+  window.USER_EMPRESA.color_principal ||
+  "#2563eb";
+
+document.documentElement.style.setProperty("--primary", COLOR_PRINCIPAL);
+document.documentElement.style.setProperty("--color-principal", COLOR_PRINCIPAL);
+
 function nf(n) {
   return new Intl.NumberFormat("es-PY").format(Number(n || 0));
 }
@@ -37,9 +54,6 @@ function nfDecimal(n, dec = 2) {
   }).format(Number(n || 0));
 }
 
-/* ===============================
-   HELPERS MONEDA
-=============================== */
 function getMonedaVenta() {
   const moneda = (document.getElementById("v_moneda")?.value || MONEDA_BASE).trim().toUpperCase();
   return MONEDAS_SOPORTADAS.includes(moneda) ? moneda : MONEDA_BASE;
@@ -54,37 +68,41 @@ function getTipoCambioVenta() {
 }
 
 async function toggleTipoCambioVenta() {
-  const moneda = document.getElementById("v_moneda").value;
+  const moneda = document.getElementById("v_moneda")?.value || "PYG";
   const wrap = document.getElementById("wrapTipoCambio");
   const input = document.getElementById("v_tipo_cambio");
-
-  // 👇 IMPORTANTE: cargar desde backend
-  const res = await fetch("/config/monedas", { credentials: "include" });
-  const data = await res.json();
 
   let usd = 6350;
   let brl = 1250;
 
-  if (Array.isArray(data.monedas)) {
-    data.monedas.forEach(m => {
-      if (m.moneda === "USD") usd = Number(m.tipo_cambio);
-      if (m.moneda === "BRL") brl = Number(m.tipo_cambio);
-    });
+  try {
+    const res = await fetch("/config/monedas", { credentials: "include" });
+    const data = await res.json();
+
+    if (Array.isArray(data.monedas)) {
+      data.monedas.forEach(m => {
+        if (m.moneda === "USD") usd = Number(m.tipo_cambio);
+        if (m.moneda === "BRL") brl = Number(m.tipo_cambio);
+      });
+    }
+  } catch (e) {
+    console.error("No se pudo cargar moneda:", e);
   }
 
   if (moneda === "USD") {
-    wrap.style.display = "block";
-    input.value = usd;
+    if (wrap) wrap.style.display = "block";
+    if (input) input.value = usd;
   } else if (moneda === "BRL") {
-    wrap.style.display = "block";
-    input.value = brl;
+    if (wrap) wrap.style.display = "block";
+    if (input) input.value = brl;
   } else {
-    wrap.style.display = "none";
-    input.value = 1;
+    if (wrap) wrap.style.display = "none";
+    if (input) input.value = 1;
   }
 
   actualizarResumenMonedaVenta();
 }
+
 function calcularTotalesVenta() {
   const totalPyg = ventaItems.reduce((a, i) => a + (Number(i.subtotal) || 0), 0);
   const moneda = getMonedaVenta();
@@ -125,9 +143,6 @@ function actualizarResumenMonedaVenta() {
   lblPyg.innerText = `Gs. ${nf(total_pyg)}`;
 }
 
-/* ===============================
-   HELPERS MODALES BOOTSTRAP
-=============================== */
 function bsHideModal(id) {
   const el = document.getElementById(id);
   if (!el || typeof bootstrap === "undefined") return;
@@ -144,9 +159,6 @@ function bsShowModal(id, opts = {}) {
   return true;
 }
 
-/* ===============================
-   MODAL CAJA CERRADA
-=============================== */
 function mostrarModalCajaCerrada(msg = "Debe abrir la caja antes de realizar una venta.") {
   const body = document.getElementById("modalCajaCerradaBody");
   if (body) body.textContent = msg;
@@ -165,9 +177,6 @@ function mostrarModalCajaCerrada(msg = "Debe abrir la caja antes de realizar una
   }, 180);
 }
 
-/* ===============================
-   FORMAS CON COMPROBANTE
-=============================== */
 const FORMAS_CON_COMPROBANTE = new Set([4, 5, 6, 7, 8, 9, 10]);
 
 function toggleComprobanteUI(formaPagoId) {
@@ -181,9 +190,6 @@ function toggleComprobanteUI(formaPagoId) {
   if (!necesita) input.value = "";
 }
 
-/* ===============================
-   MAP FORMA PAGO
-=============================== */
 const FORMAS_PAGO_MAP = {
   1: "Débito",
   2: "Efectivo",
@@ -216,9 +222,6 @@ function detectarFormaPagoDesdeBoton(btn) {
   return { id: id || null, nombre: nombre || null };
 }
 
-/* ===============================
-   CLICK FORMAS DE PAGO
-=============================== */
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".pago-grid .btn, .btnFormaPago");
   if (!btn) return;
@@ -229,9 +232,6 @@ document.addEventListener("click", (e) => {
   confirmarPago(btn, id);
 });
 
-/* ===============================
-   INICIAR POS
-=============================== */
 function iniciarPOS() {
   ventaItems = [];
   productoManualSeleccionado = null;
@@ -274,9 +274,6 @@ function iniciarPOS() {
   iniciarScannerVenta();
 }
 
-/* ===============================
-   CLIENTES
-=============================== */
 async function cargarClientesVenta() {
   const select = document.getElementById("v_cliente");
   if (!select) return;
@@ -317,9 +314,6 @@ document.addEventListener("input", e => {
   }
 });
 
-/* ===============================
-   SCANNER
-=============================== */
 function iniciarScannerVenta() {
   const input = document.getElementById("barcodeVenta");
   if (!input) return;
@@ -335,7 +329,10 @@ function iniciarScannerVenta() {
     if (!codigo) return;
 
     try {
-      const res = await fetch(`/productos/barcode/${codigo}`);
+      const res = await fetch(`/productos/barcode/${codigo}`, {
+        credentials: "include"
+      });
+
       if (!res.ok) throw new Error();
 
       const producto = await res.json();
@@ -349,9 +346,6 @@ function iniciarScannerVenta() {
   };
 }
 
-/* ===============================
-   AGREGAR PRODUCTO SCANNER
-=============================== */
 function agregarProductoDesdeBarcode(producto) {
   const existente = ventaItems.find(p => p.producto_id === producto.id);
 
@@ -371,9 +365,6 @@ function agregarProductoDesdeBarcode(producto) {
   renderItemsVenta();
 }
 
-/* ===============================
-   RENDER ITEMS
-=============================== */
 function renderItemsVenta() {
   const tbody = document.getElementById("v_items");
   if (!tbody) return;
@@ -400,9 +391,6 @@ function renderItemsVenta() {
   actualizarResumenMonedaVenta();
 }
 
-/* ===============================
-   FLUJO DE PAGO
-=============================== */
 function abrirPago() {
   if (!ventaItems.length) {
     alert("No hay productos en la venta");
@@ -504,10 +492,7 @@ async function confirmarPagoFinal() {
   const clienteRaw = (document.getElementById("v_cliente")?.value || "").trim();
   const cliente_id = clienteRaw ? Number(clienteRaw) : null;
 
-  let estado_pago = (document.getElementById("v_estado_pago")?.value || "pagado")
-    .trim()
-    .toLowerCase();
-
+  let estado_pago = (document.getElementById("v_estado_pago")?.value || "pagado").trim().toLowerCase();
   if (!estado_pago) estado_pago = "pagado";
 
   const fechaInput = (document.getElementById("v_fecha")?.value || "").trim();
@@ -516,26 +501,27 @@ async function confirmarPagoFinal() {
   const esEfectivo = (formaPagoIdSeleccionada === ID_EFECTIVO);
 
   let vuelto = null;
-if (esEfectivo) {
-  const input = document.getElementById("montoRecibido");
-  const monedaActual = moneda;
 
-  let montoRecibido = 0;
-  if (monedaActual === "PYG") {
-    montoRecibido = Number((input?.value || "").replace(/\D/g, "") || 0);
-  } else {
-    montoRecibido = Number(String(input?.value || "0").replace(",", "."));
+  if (esEfectivo) {
+    const input = document.getElementById("montoRecibido");
+    let montoRecibido = 0;
+
+    if (moneda === "PYG") {
+      montoRecibido = Number((input?.value || "").replace(/\D/g, "") || 0);
+    } else {
+      montoRecibido = Number(String(input?.value || "0").replace(",", "."));
+    }
+
+    const totalComparar = moneda === "PYG" ? total_pyg : total_moneda;
+
+    if (montoRecibido < totalComparar) {
+      alert("❌ El monto recibido es menor al total");
+      return;
+    }
+
+    vuelto = montoRecibido - totalComparar;
   }
 
-  const totalComparar = monedaActual === "PYG" ? total_pyg : total_moneda;
-
-  if (montoRecibido < totalComparar) {
-    alert("❌ El monto recibido es menor al total");
-    return;
-  }
-
-  vuelto = montoRecibido - totalComparar;
-}
   window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
   const tipoCajaNecesaria = esEfectivo ? "efectivo" : "transferencia";
 
@@ -554,7 +540,7 @@ if (esEfectivo) {
       await refrescarCajaAbierta(tipoCajaNecesaria, fecha);
       caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
     } catch (e) {
-      console.error("refrescarCajaAbierta (reintento) falló:", e);
+      console.error("refrescarCajaAbierta reintento falló:", e);
     }
   }
 
@@ -571,13 +557,16 @@ if (esEfectivo) {
   }
 
   let nro_comprobante = null;
+
   if (FORMAS_CON_COMPROBANTE.has(Number(formaPagoIdSeleccionada))) {
     const inp = document.getElementById("inputComprobante");
     const comp = (inp?.value || "").trim();
+
     if (!comp) {
       alert("❌ Ingrese el número de comprobante para esta forma de pago");
       return;
     }
+
     nro_comprobante = comp;
   }
 
@@ -606,6 +595,7 @@ if (esEfectivo) {
 
     const text = await res.text();
     let data = null;
+
     try { data = JSON.parse(text); } catch {}
 
     if (!res.ok) {
@@ -620,24 +610,24 @@ if (esEfectivo) {
     }
 
     if (esEfectivo) {
-  let simbolo = "Gs.";
-  let vueltoTexto = "0";
+      let simbolo = "Gs.";
+      let vueltoTexto = "0";
 
-  if (moneda === "USD") {
-    simbolo = "US$";
-    vueltoTexto = nfDecimal(vuelto || 0);
-  } else if (moneda === "BRL") {
-    simbolo = "R$";
-    vueltoTexto = nfDecimal(vuelto || 0);
-  } else {
-    simbolo = "Gs.";
-    vueltoTexto = nf(vuelto || 0);
-  }
+      if (moneda === "USD") {
+        simbolo = "US$";
+        vueltoTexto = nfDecimal(vuelto || 0);
+      } else if (moneda === "BRL") {
+        simbolo = "R$";
+        vueltoTexto = nfDecimal(vuelto || 0);
+      } else {
+        simbolo = "Gs.";
+        vueltoTexto = nf(vuelto || 0);
+      }
 
-  alert(`✅ Venta registrada. Vuelto: ${vueltoTexto} ${simbolo}`);
-} else {
-  alert("✅ Venta registrada correctamente");
-}
+      alert(`✅ Venta registrada. Vuelto: ${vueltoTexto} ${simbolo}`);
+    } else {
+      alert("✅ Venta registrada correctamente");
+    }
 
     if (typeof closeModal === "function") closeModal("modalPago");
     if (typeof closeModal === "function") closeModal("modalVenta");
@@ -655,9 +645,6 @@ if (esEfectivo) {
   }
 }
 
-/* ===============================
-   EFECTIVO - VUELTO
-=============================== */
 function formatearMontoRecibido() {
   const input = document.getElementById("montoRecibido");
   if (!input) return;
@@ -665,7 +652,6 @@ function formatearMontoRecibido() {
   const moneda = getMonedaVenta();
 
   if (moneda === "PYG") {
-    // SOLO guaraníes → formato con miles
     const limpio = input.value.replace(/\D/g, "");
 
     if (!limpio) {
@@ -676,9 +662,7 @@ function formatearMontoRecibido() {
 
     const monto = Number(limpio);
     input.value = monto.toLocaleString("es-PY");
-
   } else {
-    // USD / BRL → NO formatear miles
     let valor = input.value.replace(/[^0-9.,]/g, "").replace(",", ".");
     input.value = valor;
   }
@@ -728,15 +712,10 @@ function calcularVuelto() {
   }
 }
 
-
-
 let ventasPaginaActual = 1;
 const ventasPorPagina = 7;
 let ventasCache = [];
 
-/* ===============================
-   LISTAR VENTAS
-=============================== */
 async function cargarVentas() {
   try {
     const res = await fetch("/ventas", { credentials: "include" });
@@ -762,6 +741,12 @@ function renderVentasPaginadas() {
   if (!tbody) return;
 
   tbody.innerHTML = "";
+ 
+  if (ventasCache.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:16px; color:#666;">No se encontraron ventas para esta empresa.</td></tr>`;
+    renderPaginacionVentas();
+    return;
+  }
 
   const inicio = (ventasPaginaActual - 1) * ventasPorPagina;
   const fin = inicio + ventasPorPagina;
@@ -819,31 +804,20 @@ function renderPaginacionVentas() {
   const div = document.getElementById("ventas-paginacion");
   if (!div) return;
 
-  const totalPaginas = Math.ceil(ventasCache.length / ventasPorPagina);
+  const total = Math.ceil(ventasCache.length / ventasPorPagina);
+  div.innerHTML = "";
 
-  if (totalPaginas <= 1) {
-    div.innerHTML = "";
-    return;
-  }
+  if (total <= 1) return;
 
-  let html = `
+  div.innerHTML = `
     <button class="pag-btn" onclick="cambiarPaginaVentas(${ventasPaginaActual - 1})"
       ${ventasPaginaActual === 1 ? "disabled" : ""}>‹</button>
-  `;
 
-  for (let i = 1; i <= totalPaginas; i++) {
-    html += `
-      <button class="pag-btn ${i === ventasPaginaActual ? "active" : ""}"
-        onclick="cambiarPaginaVentas(${i})">${i}</button>
-    `;
-  }
+    <span style="padding:0 10px;">Página ${ventasPaginaActual} de ${total}</span>
 
-  html += `
     <button class="pag-btn" onclick="cambiarPaginaVentas(${ventasPaginaActual + 1})"
-      ${ventasPaginaActual === totalPaginas ? "disabled" : ""}>›</button>
+      ${ventasPaginaActual === total ? "disabled" : ""}>›</button>
   `;
-
-  div.innerHTML = html;
 }
 
 function cambiarPaginaVentas(pagina) {
@@ -853,7 +827,6 @@ function cambiarPaginaVentas(pagina) {
   ventasPaginaActual = pagina;
   renderVentasPaginadas();
 }
-
 
 function confirmarEliminarVenta(id) {
   ventaEliminarId = id;
@@ -876,9 +849,6 @@ async function eliminarVentaConfirmada() {
   }
 }
 
-/* ===============================
-   EDITAR VENTA
-=============================== */
 function editarVenta(id) {
   ventaPendienteEditar = id;
   openModal("modalClaveEditar");
@@ -1016,33 +986,22 @@ async function abrirEditarVenta(id) {
       const sub = cant * precioUnit;
 
       tbody.innerHTML += `
-  <tr data-idx="${idx}">
-    <td>${it.producto_nombre || "-"}</td>
-    <td>
-      <input
-        type="number"
-        min="1"
-        class="form-control form-control-sm edit-cant"
-        value="${cant}"
-        data-producto-id="${it.producto_id}"
-      />
-    </td>
-    <td>
-      <input
-        type="number"
-        min="0"
-        class="form-control form-control-sm edit-precio"
-        value="${precioUnit}"
-      />
-    </td>
-    <td style="text-align:right;">
-      <span class="edit-subtotal">${nf(sub)}</span>
-    </td>
-    <td style="text-align:center;">
-      <button class="btn btn-sm btn-danger btn-del-item" type="button">X</button>
-    </td>
-  </tr>
-`;
+        <tr data-idx="${idx}">
+          <td>${it.producto_nombre || "-"}</td>
+          <td>
+            <input type="number" min="1" class="form-control form-control-sm edit-cant" value="${cant}" data-producto-id="${it.producto_id}" />
+          </td>
+          <td>
+            <input type="number" min="0" class="form-control form-control-sm edit-precio" value="${precioUnit}" />
+          </td>
+          <td style="text-align:right;">
+            <span class="edit-subtotal">${nf(sub)}</span>
+          </td>
+          <td style="text-align:center;">
+            <button class="btn btn-sm btn-danger btn-del-item" type="button">X</button>
+          </td>
+        </tr>
+      `;
     });
 
     recalcularEditTotales();
@@ -1125,39 +1084,22 @@ function togglePasswordEditar() {
   input.type = input.type === "password" ? "text" : "password";
 }
 
-/* ===============================
-   CAJA
-=============================== */
 async function refrescarCajaAbierta(tipo = "efectivo", fecha = null) {
   try {
-    let tipoKey = String(tipo || "").trim().toLowerCase();
-    if (tipoKey === "trasferencia") tipoKey = "transferencia";
-    if (tipoKey.includes("trans")) tipoKey = "transferencia";
-    if (tipoKey.includes("efect")) tipoKey = "efectivo";
+    let tipoKey = normalizarTipoCaja(tipo);
 
     const fechaInput = (fecha || document.getElementById("v_fecha")?.value || "").trim();
     const ymd = fechaInput || new Date().toISOString().slice(0, 10);
 
-    const tiposAProbar = (tipoKey === "efectivo")
-      ? ["efectivo", "Efectivo"]
-      : ["transferencia", "Transferencia"];
+    const qs = `tipo=${encodeURIComponent(tipoKey)}&fecha=${encodeURIComponent(ymd)}`;
 
-    let caja = null;
-    let data = null;
+    const r = await fetch(`/caja/estado?${qs}`, {
+      credentials: "include",
+      cache: "no-store"
+    });
 
-    for (const t of tiposAProbar) {
-      const qs = `tipo=${encodeURIComponent(t)}&fecha=${encodeURIComponent(ymd)}`;
-
-      const r = await fetch(`/caja/estado?${qs}`, {
-        credentials: "include",
-        cache: "no-store",
-      });
-
-      data = await r.json().catch(() => ({}));
-      caja = data?.caja ?? data?.data?.caja ?? data?.data ?? null;
-
-      if (caja && caja.id) break;
-    }
+    const data = await r.json().catch(() => ({}));
+    const caja = data?.caja ?? data?.data?.caja ?? data?.data ?? null;
 
     window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
     window.cajasActuales[tipoKey] = (caja && caja.id) ? caja : null;
@@ -1169,10 +1111,7 @@ async function refrescarCajaAbierta(tipo = "efectivo", fecha = null) {
   } catch (e) {
     console.error("No se pudo consultar caja:", e);
 
-    let tipoKey = String(tipo || "").trim().toLowerCase();
-    if (tipoKey === "trasferencia") tipoKey = "transferencia";
-    if (tipoKey.includes("trans")) tipoKey = "transferencia";
-    if (tipoKey.includes("efect")) tipoKey = "efectivo";
+    let tipoKey = normalizarTipoCaja(tipo);
 
     window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
     window.cajasActuales[tipoKey] = null;
@@ -1183,9 +1122,6 @@ async function refrescarCajaAbierta(tipo = "efectivo", fecha = null) {
   }
 }
 
-/* ===============================
-   NUEVA VENTA
-=============================== */
 async function nuevaVenta() {
   openModal("modalVenta");
 
@@ -1224,9 +1160,6 @@ function imprimirPagare(id) {
   window.open(`/ventas/${id}/pagare`, "_blank");
 }
 
-/* ===============================
-   BUSCAR PRODUCTOS MANUAL
-=============================== */
 async function buscarProductosManual(texto) {
   const lista = document.getElementById("listaProductosManual");
   if (!lista) return;
@@ -1252,11 +1185,7 @@ async function buscarProductosManual(texto) {
 
     if (!Array.isArray(productos) || productos.length === 0) {
       lista.style.display = "block";
-      lista.innerHTML = `
-        <div style="padding:10px; color:#666;">
-          No se encontraron productos
-        </div>
-      `;
+      lista.innerHTML = `<div style="padding:10px; color:#666;">No se encontraron productos</div>`;
       return;
     }
 
@@ -1274,11 +1203,7 @@ async function buscarProductosManual(texto) {
   } catch (err) {
     console.error("Error buscando productos manualmente:", err);
     lista.style.display = "block";
-    lista.innerHTML = `
-      <div style="padding:10px; color:red;">
-        Error al buscar productos
-      </div>
-    `;
+    lista.innerHTML = `<div style="padding:10px; color:red;">Error al buscar productos</div>`;
   }
 }
 
@@ -1325,7 +1250,7 @@ function agregarProductoManualVenta() {
       producto_id: productoManualSeleccionado.id,
       nombre: productoManualSeleccionado.nombre,
       precio: productoManualSeleccionado.precio,
-      cantidad: cantidad,
+      cantidad,
       subtotal: productoManualSeleccionado.precio * cantidad
     });
   }
@@ -1345,9 +1270,6 @@ function agregarProductoManualVenta() {
   productoManualSeleccionado = null;
 }
 
-/* ===============================
-   EXPORTS
-=============================== */
 window.imprimirTicket = imprimirTicket;
 window.imprimirPagare = imprimirPagare;
 window.nuevaVenta = nuevaVenta;
@@ -1369,3 +1291,4 @@ window.seleccionarProductoManualVenta = seleccionarProductoManualVenta;
 window.agregarProductoManualVenta = agregarProductoManualVenta;
 window.toggleTipoCambioVenta = toggleTipoCambioVenta;
 window.actualizarResumenMonedaVenta = actualizarResumenMonedaVenta;
+window.refrescarCajaAbierta = refrescarCajaAbierta;

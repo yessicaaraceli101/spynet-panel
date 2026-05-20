@@ -189,6 +189,26 @@ function requireAuth(req, res, next) {
   return res.status(401).json({ error: "No autorizado" });
 }
 
+function getEmpresaId(req) {
+  return Number(req.session?.user?.empresa_id || 0);
+}
+
+function requireEmpresa(req, res, next) {
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({ error: "No autorizado" });
+  }
+
+  const empresaId = getEmpresaId(req);
+
+  if (!empresaId) {
+    return res.status(403).json({
+      error: "El usuario no tiene empresa asignada"
+    });
+  }
+
+  next();
+}
+
 
 app.get("/supabase-test", async (req, res) => {
   const table = String(req.query.table || "productos").trim();
@@ -216,10 +236,23 @@ app.post("/login", async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT id, usuario, nombre, password_hash, rol, activo
-       FROM usuarios
-       WHERE lower(usuario) = lower($1)
-       LIMIT 1`,
+      `
+      SELECT 
+        u.id,
+        u.usuario,
+        u.nombre,
+        u.password_hash,
+        u.rol,
+        u.activo,
+        u.empresa_id,
+        e.nombre AS empresa_nombre,
+        e.logo AS empresa_logo,
+        e.color_principal
+      FROM usuarios u
+      LEFT JOIN empresas e ON e.id = u.empresa_id
+      WHERE lower(u.usuario) = lower($1)
+      LIMIT 1
+      `,
       [usuario.trim()]
     );
 
@@ -231,6 +264,10 @@ app.post("/login", async (req, res) => {
 
     if (u.activo === false) {
       return res.status(403).json({ error: "Usuario inactivo" });
+    }
+
+    if (u.empresa_id && u.empresa_nombre === null) {
+      return res.status(403).json({ error: "La empresa asignada no existe" });
     }
 
     let ok = false;
@@ -249,14 +286,21 @@ app.post("/login", async (req, res) => {
       id: u.id,
       usuario: u.usuario,
       nombre: u.nombre,
-      rol: u.rol
+      rol: u.rol,
+      empresa_id: u.empresa_id,
+      empresa_nombre: u.empresa_nombre,
+      empresa_logo: u.empresa_logo,
+      color_principal: u.color_principal
     };
 
-    res.json({ ok: true, user: req.session.user });
+    return res.json({
+      ok: true,
+      user: req.session.user
+    });
 
   } catch (e) {
     console.error("POST /login", e);
-    res.status(500).json({ error: "Error en el servidor" });
+    return res.status(500).json({ error: "Error en el servidor" });
   }
 });
 app.post("/ventas/validar-edicion", requireAuth, async (req, res) => {
@@ -287,9 +331,20 @@ app.post("/logout", (req, res) => {
 });
 
 /* ---------------------------------- Clientes -------------------------------- */
-app.get("/clientes", requireAuth, async (_req, res) => {
+app.get("/clientes", requireEmpresa, async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM clientes ORDER BY id DESC");
+    const empresaId = getEmpresaId(req);
+
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM clientes
+      WHERE empresa_id = $1
+      ORDER BY id DESC
+      `,
+      [empresaId]
+    );
+
     res.json(result.rows);
   } catch (err) {
     console.error("GET /clientes", err.message);
@@ -297,52 +352,168 @@ app.get("/clientes", requireAuth, async (_req, res) => {
   }
 });
 
-app.post("/clientes", requireAuth, async (req, res) => {
+app.post("/clientes", requireEmpresa, async (req, res) => {
   try {
-    const { nombre, apellido, ci, telefono, pais, ciudad, direccion, estado } = req.body;
+    const empresaId = getEmpresaId(req);
+    const {
+      nombre,
+      apellido,
+      ci,
+      telefono,
+      pais,
+      ciudad,
+      direccion,
+      estado
+    } = req.body;
+
     const q = `
-      INSERT INTO clientes (nombre, apellido, ci, telefono, pais, ciudad, direccion, estado)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`;
-    const { rows } = await pool.query(q, [nombre, apellido, ci, telefono, pais, ciudad, direccion, estado]);
-    res.json({ message: "Cliente guardado correctamente", cliente: rows[0] });
+      INSERT INTO clientes (
+        nombre,
+        apellido,
+        ci,
+        telefono,
+        pais,
+        ciudad,
+        direccion,
+        estado,
+        empresa_id
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      RETURNING *
+    `;
+
+    const { rows } = await pool.query(q, [
+      nombre,
+      apellido,
+      ci,
+      telefono,
+      pais,
+      ciudad,
+      direccion,
+      estado,
+      empresaId
+    ]);
+
+    res.json({
+      message: "Cliente guardado correctamente",
+      cliente: rows[0]
+    });
   } catch (err) {
     console.error("POST /clientes", err.message);
     res.status(500).json({ error: "Error al guardar cliente" });
   }
 });
 
-app.put("/clientes/:id", requireAuth, async (req, res) => {
+app.put("/clientes/:id", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const { id } = req.params;
-    const { nombre, apellido, ci, telefono, pais, ciudad, direccion, estado } = req.body;
+
+    const {
+      nombre,
+      apellido,
+      ci,
+      telefono,
+      pais,
+      ciudad,
+      direccion,
+      estado
+    } = req.body;
+
     const q = `
       UPDATE clientes
-      SET nombre=$1, apellido=$2, ci=$3, telefono=$4, pais=$5, ciudad=$6, direccion=$7, estado=$8
-      WHERE id=$9 RETURNING *`;
-    const { rows } = await pool.query(q, [nombre, apellido, ci, telefono, pais, ciudad, direccion, estado, id]);
-    res.json({ message: "Cliente actualizado correctamente", cliente: rows[0] });
+      SET
+        nombre = $1,
+        apellido = $2,
+        ci = $3,
+        telefono = $4,
+        pais = $5,
+        ciudad = $6,
+        direccion = $7,
+        estado = $8
+      WHERE id = $9
+        AND empresa_id = $10
+      RETURNING *
+    `;
+
+    const { rows } = await pool.query(q, [
+      nombre,
+      apellido,
+      ci,
+      telefono,
+      pais,
+      ciudad,
+      direccion,
+      estado,
+      id,
+      empresaId
+    ]);
+
+    if (!rows.length) {
+      return res.status(404).json({
+        error: "Cliente no encontrado o no pertenece a esta empresa"
+      });
+    }
+
+    res.json({
+      message: "Cliente actualizado correctamente",
+      cliente: rows[0]
+    });
   } catch (err) {
     console.error("PUT /clientes/:id", err.message);
     res.status(500).json({ error: "Error al actualizar cliente" });
   }
 });
 
-app.delete("/clientes/:id", requireAuth, async (req, res) => {
+app.delete("/clientes/:id", requireEmpresa, async (req, res) => {
   try {
-    await pool.query("DELETE FROM clientes WHERE id=$1", [req.params.id]);
+    const empresaId = getEmpresaId(req);
+
+    const { rowCount } = await pool.query(
+      `
+      DELETE FROM clientes
+      WHERE id = $1
+        AND empresa_id = $2
+      `,
+      [req.params.id, empresaId]
+    );
+
+    if (!rowCount) {
+      return res.status(404).json({
+        error: "Cliente no encontrado o no pertenece a esta empresa"
+      });
+    }
+
     res.json({ message: "Cliente eliminado correctamente" });
   } catch (err) {
     console.error("DELETE /clientes/:id", err.message);
     res.status(500).json({ error: "Error al eliminar cliente" });
   }
 });
-
 /* -------------------------------- Proveedores ------------------------------- */
-app.get("/proveedores", requireAuth, async (_req, res) => {
+app.get("/proveedores", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
+
     const { rows } = await pool.query(
-      "SELECT id, nombre, ruc, contacto, telefono, pais, ciudad, direccion, estado FROM proveedores ORDER BY id DESC"
+      `
+      SELECT 
+        id,
+        nombre,
+        ruc,
+        contacto,
+        telefono,
+        pais,
+        ciudad,
+        direccion,
+        estado
+      FROM proveedores
+      WHERE empresa_id = $1
+      ORDER BY id DESC
+      `,
+      [empresaId]
     );
+
     res.json(rows);
   } catch (e) {
     console.error("GET /proveedores", e);
@@ -350,18 +521,67 @@ app.get("/proveedores", requireAuth, async (_req, res) => {
   }
 });
 
-app.post("/proveedores", requireAuth, async (req, res) => {
+app.post("/proveedores", requireEmpresa, async (req, res) => {
   try {
-    const { nombre = "", ruc = "", contacto = null, telefono = null, pais = null, ciudad = null, direccion = null, estado = true } = req.body || {};
-    if (!nombre.trim()) return res.status(400).json({ error: "El nombre es obligatorio" });
-    if (!ruc.trim())    return res.status(400).json({ error: "El RUC es obligatorio" });
+    const empresaId = getEmpresaId(req);
+
+    const {
+      nombre = "",
+      ruc = "",
+      contacto = null,
+      telefono = null,
+      pais = null,
+      ciudad = null,
+      direccion = null,
+      estado = true
+    } = req.body || {};
+
+    if (!nombre.trim()) {
+      return res.status(400).json({ error: "El nombre es obligatorio" });
+    }
+
+    if (!ruc.trim()) {
+      return res.status(400).json({ error: "El RUC es obligatorio" });
+    }
 
     const { rows } = await pool.query(
-      `INSERT INTO proveedores (nombre, ruc, contacto, telefono, pais, ciudad, direccion, estado)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-       RETURNING id, nombre, ruc, contacto, telefono, pais, ciudad, direccion, estado`,
-      [nombre.trim(), ruc.trim(), contacto, telefono, pais, ciudad, direccion, !!estado]
+      `
+      INSERT INTO proveedores (
+        nombre,
+        ruc,
+        contacto,
+        telefono,
+        pais,
+        ciudad,
+        direccion,
+        estado,
+        empresa_id
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      RETURNING 
+        id,
+        nombre,
+        ruc,
+        contacto,
+        telefono,
+        pais,
+        ciudad,
+        direccion,
+        estado
+      `,
+      [
+        nombre.trim(),
+        ruc.trim(),
+        contacto,
+        telefono,
+        pais,
+        ciudad,
+        direccion,
+        !!estado,
+        empresaId
+      ]
     );
+
     res.status(201).json(rows[0]);
   } catch (e) {
     console.error("POST /proveedores", e);
@@ -369,22 +589,79 @@ app.post("/proveedores", requireAuth, async (req, res) => {
   }
 });
 
-app.put("/proveedores/:id", requireAuth, async (req, res) => {
+app.put("/proveedores/:id", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const id = Number(req.params.id);
-    const { nombre = "", ruc = "", contacto = null, telefono = null, pais = null, ciudad = null, direccion = null, estado = true } = req.body || {};
-    if (!id) return res.status(400).json({ error: "ID inválido" });
-    if (!nombre.trim()) return res.status(400).json({ error: "El nombre es obligatorio" });
-    if (!ruc.trim())    return res.status(400).json({ error: "El RUC es obligatorio" });
+
+    const {
+      nombre = "",
+      ruc = "",
+      contacto = null,
+      telefono = null,
+      pais = null,
+      ciudad = null,
+      direccion = null,
+      estado = true
+    } = req.body || {};
+
+    if (!id) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    if (!nombre.trim()) {
+      return res.status(400).json({ error: "El nombre es obligatorio" });
+    }
+
+    if (!ruc.trim()) {
+      return res.status(400).json({ error: "El RUC es obligatorio" });
+    }
 
     const { rows } = await pool.query(
-      `UPDATE proveedores
-       SET nombre=$1, ruc=$2, contacto=$3, telefono=$4, pais=$5, ciudad=$6, direccion=$7, estado=$8
-       WHERE id=$9
-       RETURNING id, nombre, ruc, contacto, telefono, pais, ciudad, direccion, estado`,
-      [nombre.trim(), ruc.trim(), contacto, telefono, pais, ciudad, direccion, !!estado, id]
+      `
+      UPDATE proveedores
+      SET
+        nombre = $1,
+        ruc = $2,
+        contacto = $3,
+        telefono = $4,
+        pais = $5,
+        ciudad = $6,
+        direccion = $7,
+        estado = $8
+      WHERE id = $9
+        AND empresa_id = $10
+      RETURNING 
+        id,
+        nombre,
+        ruc,
+        contacto,
+        telefono,
+        pais,
+        ciudad,
+        direccion,
+        estado
+      `,
+      [
+        nombre.trim(),
+        ruc.trim(),
+        contacto,
+        telefono,
+        pais,
+        ciudad,
+        direccion,
+        !!estado,
+        id,
+        empresaId
+      ]
     );
-    if (!rows.length) return res.status(404).json({ error: "Proveedor no encontrado" });
+
+    if (!rows.length) {
+      return res.status(404).json({
+        error: "Proveedor no encontrado o no pertenece a esta empresa"
+      });
+    }
+
     res.json(rows[0]);
   } catch (e) {
     console.error("PUT /proveedores/:id", e);
@@ -392,10 +669,30 @@ app.put("/proveedores/:id", requireAuth, async (req, res) => {
   }
 });
 
-app.delete("/proveedores/:id", requireAuth, async (req, res) => {
+app.delete("/proveedores/:id", requireEmpresa, async (req, res) => {
   try {
-    const { rowCount } = await pool.query("DELETE FROM proveedores WHERE id=$1", [Number(req.params.id)]);
-    if (!rowCount) return res.status(404).json({ error: "Proveedor no encontrado" });
+    const empresaId = getEmpresaId(req);
+    const id = Number(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    const { rowCount } = await pool.query(
+      `
+      DELETE FROM proveedores
+      WHERE id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
+    );
+
+    if (!rowCount) {
+      return res.status(404).json({
+        error: "Proveedor no encontrado o no pertenece a esta empresa"
+      });
+    }
+
     res.json({ ok: true });
   } catch (e) {
     console.error("DELETE /proveedores/:id", e);
@@ -413,10 +710,31 @@ async function bootstrapCategorias() {
         codigo TEXT,
         descripcion TEXT,
         imagen_base64 TEXT,
+        empresa_id INTEGER REFERENCES empresas(id),
         creado_en TIMESTAMP DEFAULT NOW()
       );
     `);
-    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS categorias_nombre_uk ON categorias (nombre)`);
+
+    await pool.query(`
+      ALTER TABLE categorias
+      ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id)
+    `);
+
+    await pool.query(`
+      UPDATE categorias
+      SET empresa_id = 1
+      WHERE empresa_id IS NULL
+    `);
+
+    await pool.query(`
+      DROP INDEX IF EXISTS categorias_nombre_uk
+    `);
+
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS categorias_nombre_empresa_uk
+      ON categorias (LOWER(nombre), empresa_id)
+    `);
+
   } catch (e) {
     console.error("Bootstrap categorias:", e.message);
   }
@@ -424,30 +742,39 @@ async function bootstrapCategorias() {
 bootstrapCategorias();
 
 /*  GET /categorias  */
-app.get("/categorias", requireAuth, async (_req, res) => {
+app.get("/categorias", requireEmpresa, async (req, res) => {
   try {
-    const { rows } = await pool.query(`
+    const empresaId = getEmpresaId(req);
+
+    const { rows } = await pool.query(
+      `
       SELECT
         c.id,
         c.nombre,
         COALESCE(
           c.codigo,
-          (SELECT p.codigo
-             FROM productos p
+          (
+            SELECT p.codigo
+            FROM productos p
             WHERE p.categoria_id = c.id
+              AND p.empresa_id = $1
               AND p.codigo IS NOT NULL
             ORDER BY p.id DESC
-            LIMIT 1)
+            LIMIT 1
+          )
         ) AS codigo,
         c.descripcion,
         COALESCE(
           c.imagen_base64,
-          (SELECT COALESCE(p.imagen_base64, p.imagen)
-             FROM productos p
+          (
+            SELECT COALESCE(p.imagen_base64, p.imagen)
+            FROM productos p
             WHERE p.categoria_id = c.id
+              AND p.empresa_id = $1
               AND (p.imagen_base64 IS NOT NULL OR p.imagen IS NOT NULL)
             ORDER BY p.id DESC
-            LIMIT 1)
+            LIMIT 1
+          )
         ) AS imagen_base64,
         COALESCE(
           STRING_AGG(p.nombre, ', ' ORDER BY p.nombre)
@@ -457,11 +784,19 @@ app.get("/categorias", requireAuth, async (_req, res) => {
       FROM categorias c
       LEFT JOIN productos p
         ON p.categoria_id = c.id
+       AND p.empresa_id = $1
        AND COALESCE(p.activo, true) = true
+      WHERE c.empresa_id = $1
       GROUP BY
-        c.id, c.nombre, c.codigo, c.descripcion, c.imagen_base64
+        c.id,
+        c.nombre,
+        c.codigo,
+        c.descripcion,
+        c.imagen_base64
       ORDER BY c.id ASC
-    `);
+      `,
+      [empresaId]
+    );
 
     res.json(rows);
   } catch (e) {
@@ -469,7 +804,6 @@ app.get("/categorias", requireAuth, async (_req, res) => {
     res.status(500).json({ error: "Error al listar categorías" });
   }
 });
-
 async function bootstrapComprasTipoPago() {
   try {
     await pool.query(`
@@ -478,10 +812,33 @@ async function bootstrapComprasTipoPago() {
     `);
 
     await pool.query(`
+      ALTER TABLE compras
+      ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id)
+    `);
+
+    await pool.query(`
+      ALTER TABLE compras_items
+      ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id)
+    `);
+
+    await pool.query(`
       UPDATE compras
       SET tipo_pago = 'efectivo'
       WHERE tipo_pago IS NULL OR TRIM(tipo_pago) = ''
     `);
+
+    await pool.query(`
+      UPDATE compras
+      SET empresa_id = 1
+      WHERE empresa_id IS NULL
+    `);
+
+    await pool.query(`
+      UPDATE compras_items
+      SET empresa_id = 1
+      WHERE empresa_id IS NULL
+    `);
+
   } catch (e) {
     console.error("bootstrapComprasTipoPago:", e.message);
   }
@@ -544,27 +901,59 @@ async function bootstrapComprasMoneda() {
       SET total_moneda = total
       WHERE total_moneda IS NULL OR total_moneda = 0
     `);
+
   } catch (e) {
     console.error("bootstrapComprasMoneda:", e.message);
   }
 }
 bootstrapComprasMoneda();
 
-app.post("/categorias", requireAuth, async (req, res) => {
+app.post("/categorias", requireEmpresa, async (req, res) => {
   try {
-    const { nombre = "", codigo = null, descripcion = null, imagen_base64 = null } = req.body || {};
-    if (!nombre.trim()) return res.status(400).json({ error: "El nombre es obligatorio" });
+    const empresaId = getEmpresaId(req);
+
+    const {
+      nombre = "",
+      codigo = null,
+      descripcion = null,
+      imagen_base64 = null
+    } = req.body || {};
+
+    if (!nombre.trim()) {
+      return res.status(400).json({ error: "El nombre es obligatorio" });
+    }
 
     const { rows } = await pool.query(
-      `INSERT INTO categorias (nombre, codigo, descripcion, imagen_base64)
-       VALUES ($1,$2,$3,$4)
-       ON CONFLICT (nombre) DO UPDATE SET
-         codigo = COALESCE(EXCLUDED.codigo, categorias.codigo),
-         descripcion = COALESCE(EXCLUDED.descripcion, categorias.descripcion),
-         imagen_base64 = COALESCE(EXCLUDED.imagen_base64, categorias.imagen_base64)
-       RETURNING id, nombre, codigo, descripcion, imagen_base64`,
-      [nombre.trim(), codigo, descripcion, imagen_base64]
+      `
+      INSERT INTO categorias (
+        nombre,
+        codigo,
+        descripcion,
+        imagen_base64,
+        empresa_id
+      )
+      VALUES ($1,$2,$3,$4,$5)
+      ON CONFLICT (LOWER(nombre), empresa_id)
+      DO UPDATE SET
+        codigo = COALESCE(EXCLUDED.codigo, categorias.codigo),
+        descripcion = COALESCE(EXCLUDED.descripcion, categorias.descripcion),
+        imagen_base64 = COALESCE(EXCLUDED.imagen_base64, categorias.imagen_base64)
+      RETURNING 
+        id,
+        nombre,
+        codigo,
+        descripcion,
+        imagen_base64
+      `,
+      [
+        nombre.trim(),
+        codigo,
+        descripcion,
+        imagen_base64,
+        empresaId
+      ]
     );
+
     res.status(201).json(rows[0]);
   } catch (e) {
     console.error("POST /categorias", e);
@@ -572,21 +961,59 @@ app.post("/categorias", requireAuth, async (req, res) => {
   }
 });
 
-app.put("/categorias/:id", requireAuth, async (req, res) => {
+app.put("/categorias/:id", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const id = Number(req.params.id);
-    const { nombre = "", codigo = null, descripcion = null, imagen_base64 = null } = req.body || {};
-    if (!id) return res.status(400).json({ error: "ID inválido" });
-    if (!nombre.trim()) return res.status(400).json({ error: "El nombre es obligatorio" });
+
+    const {
+      nombre = "",
+      codigo = null,
+      descripcion = null,
+      imagen_base64 = null
+    } = req.body || {};
+
+    if (!id) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    if (!nombre.trim()) {
+      return res.status(400).json({ error: "El nombre es obligatorio" });
+    }
 
     const { rows } = await pool.query(
-      `UPDATE categorias
-       SET nombre=$1, codigo=$2, descripcion=$3, imagen_base64=$4
-       WHERE id=$5
-       RETURNING id, nombre, codigo, descripcion, imagen_base64`,
-      [nombre.trim(), codigo, descripcion, imagen_base64, id]
+      `
+      UPDATE categorias
+      SET
+        nombre = $1,
+        codigo = $2,
+        descripcion = $3,
+        imagen_base64 = $4
+      WHERE id = $5
+        AND empresa_id = $6
+      RETURNING 
+        id,
+        nombre,
+        codigo,
+        descripcion,
+        imagen_base64
+      `,
+      [
+        nombre.trim(),
+        codigo,
+        descripcion,
+        imagen_base64,
+        id,
+        empresaId
+      ]
     );
-    if (!rows.length) return res.status(404).json({ error: "Categoría no encontrada" });
+
+    if (!rows.length) {
+      return res.status(404).json({
+        error: "Categoría no encontrada o no pertenece a esta empresa"
+      });
+    }
+
     res.json(rows[0]);
   } catch (e) {
     console.error("PUT /categorias/:id", e);
@@ -594,23 +1021,41 @@ app.put("/categorias/:id", requireAuth, async (req, res) => {
   }
 });
 
-app.delete("/categorias/:id", requireAuth, async (req, res) => {
+app.delete("/categorias/:id", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const id = Number(req.params.id);
-    if (!id) return res.status(400).json({ error: "ID inválido" });
-    await pool.query("DELETE FROM categorias WHERE id=$1", [id]);
+
+    if (!id) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    const { rowCount } = await pool.query(
+      `
+      DELETE FROM categorias
+      WHERE id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
+    );
+
+    if (!rowCount) {
+      return res.status(404).json({
+        error: "Categoría no encontrada o no pertenece a esta empresa"
+      });
+    }
+
     res.json({ ok: true });
   } catch (e) {
     console.error("DELETE /categorias/:id", e);
     res.status(500).json({ error: "Error al eliminar categoría" });
   }
 });
-
 /* ----------------------------------- Productos ------------------------------ */
 /*
  Tabla `productos` esperada:
   id SERIAL PK,
-  codigo TEXT UNIQUE NULL,
+  codigo TEXT NULL,
   nombre TEXT NOT NULL,
   descripcion TEXT NULL,
   marca TEXT NULL,
@@ -619,26 +1064,65 @@ app.delete("/categorias/:id", requireAuth, async (req, res) => {
   stock INTEGER DEFAULT 0,
   categoria_id INTEGER NULL REFERENCES categorias(id) ON DELETE SET NULL,
   imagen TEXT NULL,
-  imagen_base64 TEXT NULL
+  imagen_base64 TEXT NULL,
+  empresa_id INTEGER REFERENCES empresas(id)
 */
 
-async function resolveCategoriaId(client, categoria_id, categoria_nombre) {
+async function resolveCategoriaId(client, categoria_id, categoria_nombre, empresaId) {
   const maybeId = Number(categoria_id);
-  if (Number.isInteger(maybeId) && maybeId > 0) return maybeId;
+
+  if (Number.isInteger(maybeId) && maybeId > 0) {
+    const check = await client.query(
+      `
+      SELECT id
+      FROM categorias
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [maybeId, empresaId]
+    );
+
+    if (check.rowCount) {
+      return maybeId;
+    }
+
+    return null;
+  }
 
   const name = (categoria_nombre || "").trim();
-  if (!name) return null;
+
+  if (!name) {
+    return null;
+  }
 
   const sel = await client.query(
-    "SELECT id FROM categorias WHERE TRIM(LOWER(nombre)) = TRIM(LOWER($1)) LIMIT 1",
-    [name]
+    `
+    SELECT id
+    FROM categorias
+    WHERE TRIM(LOWER(nombre)) = TRIM(LOWER($1))
+      AND empresa_id = $2
+    LIMIT 1
+    `,
+    [name, empresaId]
   );
-  if (sel.rowCount) return sel.rows[0].id;
+
+  if (sel.rowCount) {
+    return sel.rows[0].id;
+  }
 
   const ins = await client.query(
-    "INSERT INTO categorias (nombre) VALUES ($1) RETURNING id",
-    [name]
+    `
+    INSERT INTO categorias (
+      nombre,
+      empresa_id
+    )
+    VALUES ($1,$2)
+    RETURNING id
+    `,
+    [name, empresaId]
   );
+
   return ins.rows[0].id;
 }
 
@@ -646,10 +1130,10 @@ function toNumber(n, def = 0) {
   const v = Number(n);
   return Number.isFinite(v) ? v : def;
 }
-
 // ---------- GET /productos ----------
-app.get("/productos", requireAuth, async (req, res) => {
+app.get("/productos", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const buscar = (req.query.buscar || "").trim().toLowerCase();
 
     let rows;
@@ -672,17 +1156,20 @@ app.get("/productos", requireAuth, async (req, res) => {
             COALESCE(p.imagen_base64, p.imagen) AS imagen_base64,
             p.imagen
           FROM productos p
-          LEFT JOIN categorias c ON c.id = p.categoria_id
-          WHERE p.activo = true
+          LEFT JOIN categorias c 
+            ON c.id = p.categoria_id
+           AND c.empresa_id = $2
+          WHERE p.empresa_id = $2
+            AND COALESCE(p.activo, true) = true
             AND (
-              LOWER(p.nombre) LIKE '%' || $1 || '%'
-              OR LOWER(p.codigo) LIKE '%' || $1 || '%'
-              OR LOWER(p.marca)  LIKE '%' || $1 || '%'
+              LOWER(COALESCE(p.nombre, '')) LIKE '%' || $1 || '%'
+              OR LOWER(COALESCE(p.codigo, '')) LIKE '%' || $1 || '%'
+              OR LOWER(COALESCE(p.marca, '')) LIKE '%' || $1 || '%'
               OR LOWER(COALESCE(c.nombre, '')) LIKE '%' || $1 || '%'
             )
           ORDER BY p.nombre ASC
-        `,
-          [buscar]
+          `,
+          [buscar, empresaId]
         )
       ).rows;
     } else {
@@ -703,10 +1190,14 @@ app.get("/productos", requireAuth, async (req, res) => {
             COALESCE(p.imagen_base64, p.imagen) AS imagen_base64,
             p.imagen
           FROM productos p
-          LEFT JOIN categorias c ON c.id = p.categoria_id
-          WHERE p.activo = true
+          LEFT JOIN categorias c 
+            ON c.id = p.categoria_id
+           AND c.empresa_id = $1
+          WHERE p.empresa_id = $1
+            AND COALESCE(p.activo, true) = true
           ORDER BY p.nombre ASC
-        `
+          `,
+          [empresaId]
         )
       ).rows;
     }
@@ -718,7 +1209,9 @@ app.get("/productos", requireAuth, async (req, res) => {
   }
 });
 // ---------- POST /productos ----------
-app.post("/productos", requireAuth, upload.single("imagen"), async (req, res) => {
+app.post("/productos", requireEmpresa, upload.single("imagen"), async (req, res) => {
+  const empresaId = getEmpresaId(req);
+
   const {
     codigo = null,
     nombre = "",
@@ -738,12 +1231,19 @@ app.post("/productos", requireAuth, upload.single("imagen"), async (req, res) =>
     "SIN NOMBRE";
 
   const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
 
-    const catId = await resolveCategoriaId(client, categoria_id, categoria);
+    const catId = await resolveCategoriaId(
+      client,
+      categoria_id,
+      categoria,
+      empresaId
+    );
 
     let imagenPathOrBase64 = null;
+
     if (req.file) {
       imagenPathOrBase64 = `/uploads/${req.file.filename}`;
     } else if (imagen_base64 && String(imagen_base64).startsWith("data:")) {
@@ -751,11 +1251,22 @@ app.post("/productos", requireAuth, upload.single("imagen"), async (req, res) =>
     }
 
     const insertSql = `
-      INSERT INTO productos
-        (codigo, nombre, descripcion, marca, precio, costo, stock, categoria_id, imagen)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      INSERT INTO productos (
+        codigo,
+        nombre,
+        descripcion,
+        marca,
+        precio,
+        costo,
+        stock,
+        categoria_id,
+        imagen,
+        empresa_id
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       RETURNING id
     `;
+
     const params = [
       codigo || null,
       nombreFinal,
@@ -765,36 +1276,55 @@ app.post("/productos", requireAuth, upload.single("imagen"), async (req, res) =>
       toNumber(costo, 0),
       toNumber(stock, 0),
       catId,
-      imagenPathOrBase64
+      imagenPathOrBase64,
+      empresaId
     ];
 
     const r = await client.query(insertSql, params);
 
     if (catId) {
       await client.query(
-        `UPDATE categorias c
-            SET codigo = COALESCE(c.codigo, $1),
-                imagen_base64 = COALESCE(c.imagen_base64, $2)
-          WHERE c.id = $3`,
-        [codigo || null, imagenPathOrBase64 || null, catId]
+        `
+        UPDATE categorias c
+        SET
+          codigo = COALESCE(c.codigo, $1),
+          imagen_base64 = COALESCE(c.imagen_base64, $2)
+        WHERE c.id = $3
+          AND c.empresa_id = $4
+        `,
+        [
+          codigo || null,
+          imagenPathOrBase64 || null,
+          catId,
+          empresaId
+        ]
       );
     }
 
     await client.query("COMMIT");
-    res.status(201).json({ id: r.rows[0].id });
+
+    res.status(201).json({
+      id: r.rows[0].id
+    });
+
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("POST /productos", e);
-    res.status(500).json({ error: "Error al crear producto" });
+    res.status(500).json({
+      error: "Error al crear producto"
+    });
   } finally {
     client.release();
   }
 });
-
 // ---------- PUT /productos/:id ----------
-app.put("/productos/:id", requireAuth, upload.single("imagen"), async (req, res) => {
+app.put("/productos/:id", requireEmpresa, upload.single("imagen"), async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
-  if (!id) return res.status(400).json({ error: "ID inválido" });
+
+  if (!id) {
+    return res.status(400).json({ error: "ID inválido" });
+  }
 
   const {
     codigo = null,
@@ -810,92 +1340,168 @@ app.put("/productos/:id", requireAuth, upload.single("imagen"), async (req, res)
   } = req.body || {};
 
   const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
 
-    const catId = await resolveCategoriaId(client, categoria_id, categoria);
+    const catId = await resolveCategoriaId(
+      client,
+      categoria_id,
+      categoria,
+      empresaId
+    );
 
     let idx = 1;
     const sets = [];
     const values = [];
 
-    sets.push(`codigo=$${idx++}`);      values.push(codigo);
+    sets.push(`codigo=$${idx++}`);
+    values.push(codigo || null);
+
     if (String(nombre || "").trim()) {
-      sets.push(`nombre=$${idx++}`);    values.push(String(nombre).trim());
+      sets.push(`nombre=$${idx++}`);
+      values.push(String(nombre).trim());
     }
-    sets.push(`descripcion=$${idx++}`); values.push(descripcion);
-    sets.push(`marca=$${idx++}`);       values.push(marca);
-    sets.push(`precio=$${idx++}`);      values.push(toNumber(precio, 0));
-    sets.push(`costo=$${idx++}`);       values.push(toNumber(costo, 0));
-    sets.push(`stock=$${idx++}`);       values.push(Number.parseInt(stock, 10) || 0);
-    sets.push(`categoria_id=$${idx++}`);values.push(catId);
+
+    sets.push(`descripcion=$${idx++}`);
+    values.push(descripcion || null);
+
+    sets.push(`marca=$${idx++}`);
+    values.push(marca || null);
+
+    sets.push(`precio=$${idx++}`);
+    values.push(toNumber(precio, 0));
+
+    sets.push(`costo=$${idx++}`);
+    values.push(toNumber(costo, 0));
+
+    sets.push(`stock=$${idx++}`);
+    values.push(Number.parseInt(stock, 10) || 0);
+
+    sets.push(`categoria_id=$${idx++}`);
+    values.push(catId);
 
     let nuevaImg = null;
+
     if (req.file) {
       nuevaImg = `/uploads/${req.file.filename}`;
     } else if (imagen_base64 && String(imagen_base64).startsWith("data:")) {
       nuevaImg = saveDataUrlToFile(imagen_base64, "prod");
     }
-    if (nuevaImg) { sets.push(`imagen=$${idx++}`); values.push(nuevaImg); }
+
+    if (nuevaImg) {
+      sets.push(`imagen=$${idx++}`);
+      values.push(nuevaImg);
+    }
 
     values.push(id);
+    const idParam = idx++;
+
+    values.push(empresaId);
+    const empresaParam = idx++;
 
     const q = `
       UPDATE productos
       SET ${sets.join(", ")}
-      WHERE id=$${idx}
+      WHERE id = $${idParam}
+        AND empresa_id = $${empresaParam}
       RETURNING id
     `;
+
     const { rows } = await client.query(q, values);
+
     if (!rows.length) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Producto no encontrado" });
+      return res.status(404).json({
+        error: "Producto no encontrado o no pertenece a esta empresa"
+      });
     }
 
     if (catId) {
       await client.query(
-        `UPDATE categorias c
-            SET codigo = COALESCE(c.codigo, $1),
-                imagen_base64 = COALESCE(c.imagen_base64, $2)
-          WHERE c.id = $3`,
-        [codigo || null, nuevaImg || null, catId]
+        `
+        UPDATE categorias c
+        SET
+          codigo = COALESCE(c.codigo, $1),
+          imagen_base64 = COALESCE(c.imagen_base64, $2)
+        WHERE c.id = $3
+          AND c.empresa_id = $4
+        `,
+        [
+          codigo || null,
+          nuevaImg || null,
+          catId,
+          empresaId
+        ]
       );
     }
 
     await client.query("COMMIT");
-    res.json({ ok: true, id });
+
+    res.json({
+      ok: true,
+      id
+    });
+
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("PUT /productos/:id", e);
-    res.status(500).json({ error: "Error al actualizar producto" });
+    res.status(500).json({
+      error: "Error al actualizar producto"
+    });
   } finally {
     client.release();
   }
 });
 
 // ---------- DELETE /productos/:id ----------
-app.delete("/productos/:id", async (req, res) => {
+app.delete("/productos/:id", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const id = Number(req.params.id);
-    if (!id) return res.status(400).json({ ok: false, msg: "ID inválido" });
 
-    // ✅ En vez de borrar (DELETE), desactivamos
-    await pool.query(
-      "UPDATE productos SET activo = false WHERE id = $1",
-      [id]
+    if (!id) {
+      return res.status(400).json({
+        ok: false,
+        msg: "ID inválido"
+      });
+    }
+
+    const { rowCount } = await pool.query(
+      `
+      UPDATE productos
+      SET activo = false
+      WHERE id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
     );
 
-    return res.json({ ok: true, msg: "Producto desactivado" });
+    if (!rowCount) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Producto no encontrado o no pertenece a esta empresa"
+      });
+    }
+
+    return res.json({
+      ok: true,
+      msg: "Producto desactivado"
+    });
+
   } catch (err) {
     console.error("DELETE /productos/:id error:", err);
-    return res.status(500).json({ ok: false, msg: "Error al desactivar" });
+    return res.status(500).json({
+      ok: false,
+      msg: "Error al desactivar"
+    });
   }
 });
-
 /* ======================= PEDIDOS A PROVEEDOR (BACKEND) ======================= */
 /** Carpeta para PDFs */
 const DATA_DIR = path.join(process.cwd(), "data");
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
 const PDF_DIR = path.join(DATA_DIR, "pedidos_pdf");
 if (!fs.existsSync(PDF_DIR)) fs.mkdirSync(PDF_DIR, { recursive: true });
 
@@ -908,7 +1514,9 @@ function costoPromedio(costoAnterior, stockAnterior, costoCompra, cantidadCompra
   const ca = Number(costoAnterior || 0);
   const cc = Number(costoCompra || 0);
   const qn = Number(cantidadCompra || 0);
+
   if (sa + qn <= 0) return cc;
+
   return Math.round(((sa * ca) + (qn * cc)) / (sa + qn));
 }
 
@@ -918,75 +1526,169 @@ async function bootstrapPedidos(pool) {
       id SERIAL PRIMARY KEY,
       proveedor_id INTEGER NOT NULL REFERENCES proveedores(id),
       fecha_pedido DATE NOT NULL,
-      observacion  TEXT,
-      estado TEXT NOT NULL DEFAULT 'pendiente',  -- pendiente|enviado|recibido|cancelado
+      observacion TEXT,
+      estado TEXT NOT NULL DEFAULT 'pendiente',
       subtotal NUMERIC(14,2) NOT NULL DEFAULT 0,
-      iva      NUMERIC(14,2) NOT NULL DEFAULT 0,
-      total    NUMERIC(14,2) NOT NULL DEFAULT 0,
+      iva NUMERIC(14,2) NOT NULL DEFAULT 0,
+      total NUMERIC(14,2) NOT NULL DEFAULT 0,
+      empresa_id INTEGER REFERENCES empresas(id),
       creado_en TIMESTAMP DEFAULT NOW()
     );
   `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS pedidos_prov_items (
       id SERIAL PRIMARY KEY,
-      pedido_id   INTEGER NOT NULL REFERENCES pedidos_prov(id) ON DELETE CASCADE,
+      pedido_id INTEGER NOT NULL REFERENCES pedidos_prov(id) ON DELETE CASCADE,
       producto_id INTEGER NOT NULL REFERENCES productos(id),
       descripcion TEXT,
-      cantidad    INTEGER NOT NULL,
+      cantidad INTEGER NOT NULL,
       precio_unit NUMERIC(14,2) NOT NULL,
-      total       NUMERIC(14,2) NOT NULL
+      total NUMERIC(14,2) NOT NULL,
+      empresa_id INTEGER REFERENCES empresas(id)
     );
   `);
-  await pool.query(`ALTER TABLE productos ADD COLUMN IF NOT EXISTS alerta BOOLEAN DEFAULT FALSE;`);
+
+  await pool.query(`
+    ALTER TABLE pedidos_prov
+    ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id)
+  `);
+
+  await pool.query(`
+    ALTER TABLE pedidos_prov_items
+    ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id)
+  `);
+
+  await pool.query(`
+    ALTER TABLE productos
+    ADD COLUMN IF NOT EXISTS alerta BOOLEAN DEFAULT FALSE
+  `);
+
+  await pool.query(`
+    UPDATE pedidos_prov
+    SET empresa_id = 1
+    WHERE empresa_id IS NULL
+  `);
+
+  await pool.query(`
+    UPDATE pedidos_prov_items
+    SET empresa_id = 1
+    WHERE empresa_id IS NULL
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_pedidos_prov_empresa_id
+    ON pedidos_prov(empresa_id)
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_pedidos_prov_items_empresa_id
+    ON pedidos_prov_items(empresa_id)
+  `);
 }
+
 await bootstrapPedidos(pool);
 
 /* ---------- PDF generator ---------- */
-async function generarPDFPedido(pool, pedidoId) {
-  const { rows: pr } = await pool.query(`SELECT * FROM pedidos_prov WHERE id=$1`, [pedidoId]);
+async function generarPDFPedido(pool, pedidoId, empresaId) {
+  const { rows: pr } = await pool.query(
+    `
+    SELECT *
+    FROM pedidos_prov
+    WHERE id = $1
+      AND empresa_id = $2
+    LIMIT 1
+    `,
+    [pedidoId, empresaId]
+  );
+
   if (!pr.length) return null;
+
   const pedido = pr[0];
 
-  const { rows: provr } = await pool.query(`SELECT * FROM proveedores WHERE id=$1`, [pedido.proveedor_id]);
+  const { rows: provr } = await pool.query(
+    `
+    SELECT *
+    FROM proveedores
+    WHERE id = $1
+      AND empresa_id = $2
+    LIMIT 1
+    `,
+    [pedido.proveedor_id, empresaId]
+  );
+
   const prov = provr[0] || {};
 
-  const { rows: items } = await pool.query(`
-    SELECT i.*, p.nombre, p.codigo
+  const { rows: items } = await pool.query(
+    `
+    SELECT 
+      i.*,
+      p.nombre,
+      p.codigo
     FROM pedidos_prov_items i
-    LEFT JOIN productos p ON p.id = i.producto_id
-    WHERE i.pedido_id=$1
+    LEFT JOIN productos p
+      ON p.id = i.producto_id
+     AND p.empresa_id = $2
+    WHERE i.pedido_id = $1
+      AND i.empresa_id = $2
     ORDER BY i.id ASC
-  `, [pedidoId]);
+    `,
+    [pedidoId, empresaId]
+  );
 
-  const pdfName = `pedido_${pedidoId}.pdf`;
+  const pdfName = `pedido_${empresaId}_${pedidoId}.pdf`;
   const outPath = path.join(PDF_DIR, pdfName);
 
-  const doc = new PDFDocument({ size: "A4", margin: 40 });
+  const doc = new PDFDocument({
+    size: "A4",
+    margin: 40
+  });
+
   const stream = fs.createWriteStream(outPath);
   doc.pipe(stream);
 
   doc.fontSize(18).text("AUTOSERVICE • Orden de Compra");
+
   doc.moveDown(0.3).fontSize(10)
     .text(`N° Pedido: ${pedido.id}`)
-    .text(`Fecha: ${pedido.fecha_pedido.toISOString().slice(0,10)}`);
+    .text(`Fecha: ${pedido.fecha_pedido.toISOString().slice(0, 10)}`);
+
   doc.moveDown(0.5).fontSize(12).text("Proveedor", { underline: true });
+
   doc.fontSize(10)
     .text(`Nombre: ${prov.nombre || pedido.proveedor_id}`)
     .text(`RUC: ${prov.ruc || "-"}`)
     .text(`Contacto: ${prov.contacto || "-"}`)
     .text(`Teléfono: ${prov.telefono || "-"}`);
+
   doc.moveDown(0.5).fontSize(12).text("Observación", { underline: true });
   doc.fontSize(10).text(pedido.observacion || "-");
   doc.moveDown(0.8);
 
-  const header = ["#", "Producto", "Descripción", "Cant.", "Costo (Gs.)", "Total (Gs.)"];
+  const header = [
+    "#",
+    "Producto",
+    "Descripción",
+    "Cant.",
+    "Costo (Gs.)",
+    "Total (Gs.)"
+  ];
+
   const widths = [30, 170, 150, 60, 80, 80];
   const startX = doc.x;
   let y = doc.y;
+
   doc.fontSize(10).fillColor("#000");
+
   header.forEach((h, i) => {
-    doc.text(h, startX + widths.slice(0, i).reduce((a,b)=>a+b,0), y, { width: widths[i] });
+    doc.text(
+      h,
+      startX + widths.slice(0, i).reduce((a, b) => a + b, 0),
+      y,
+      { width: widths[i] }
+    );
   });
+
   y += 16;
 
   items.forEach((it, idx) => {
@@ -998,52 +1700,102 @@ async function generarPDFPedido(pool, pedidoId) {
       fmtPY(it.precio_unit),
       fmtPY(it.total)
     ];
+
     cells.forEach((c, i) => {
-      doc.text(c, startX + widths.slice(0, i).reduce((a,b)=>a+b,0), y, { width: widths[i] });
+      doc.text(
+        c,
+        startX + widths.slice(0, i).reduce((a, b) => a + b, 0),
+        y,
+        { width: widths[i] }
+      );
     });
+
     y += 16;
-    if (y > 750) { doc.addPage(); y = doc.y; }
+
+    if (y > 750) {
+      doc.addPage();
+      y = doc.y;
+    }
   });
 
   y += 10;
+
   const rightX = startX + widths[0] + widths[1] + widths[2] + widths[3];
-  doc.text("Subtotal", rightX, y, { width: widths[4], align: "right" });
-  doc.text(fmtPY(pedido.subtotal), rightX + widths[4], y, { width: widths[5], align: "right" });
+
+  doc.text("Subtotal", rightX, y, {
+    width: widths[4],
+    align: "right"
+  });
+
+  doc.text(fmtPY(pedido.subtotal), rightX + widths[4], y, {
+    width: widths[5],
+    align: "right"
+  });
+
   y += 16;
-  doc.text("IVA 10%", rightX, y, { width: widths[4], align: "right" });
-  doc.text(fmtPY(pedido.iva), rightX + widths[4], y, { width: widths[5], align: "right" });
+
+  doc.text("IVA 10%", rightX, y, {
+    width: widths[4],
+    align: "right"
+  });
+
+  doc.text(fmtPY(pedido.iva), rightX + widths[4], y, {
+    width: widths[5],
+    align: "right"
+  });
+
   y += 16;
+
   doc.font("Helvetica-Bold");
-  doc.text("TOTAL", rightX, y, { width: widths[4], align: "right" });
-  doc.text(fmtPY(pedido.total), rightX + widths[4], y, { width: widths[5], align: "right" });
+
+  doc.text("TOTAL", rightX, y, {
+    width: widths[4],
+    align: "right"
+  });
+
+  doc.text(fmtPY(pedido.total), rightX + widths[4], y, {
+    width: widths[5],
+    align: "right"
+  });
+
   doc.font("Helvetica");
 
   doc.moveDown(2);
-  doc.fontSize(9).fillColor("#666").text("© 2025 Consorcio SPY — Generado automáticamente", { align: "center" });
+
+  doc.fontSize(9)
+    .fillColor("#666")
+    .text("© 2025 Consorcio SPY — Generado automáticamente", {
+      align: "center"
+    });
+
   doc.end();
 
-  return new Promise(resolve => stream.on("finish", () => resolve({ file: pdfName })));
+  return new Promise(resolve =>
+    stream.on("finish", () => resolve({ file: pdfName }))
+  );
 }
 
 /* ---------- Helpers estado ---------- */
 function normalizeOutPedidoRow(p) {
-  // Adaptamos salida a lo que espera el front
   return {
     id: p.id,
-    fecha: p.fecha_pedido, // front usa p.fecha
+    fecha: p.fecha_pedido,
     proveedor_id: p.proveedor_id,
     proveedor_nombre: p.proveedor_nombre || p.nombre_proveedor || null,
-    estado: (p.estado || 'pendiente').replace(/^\w/, c => c.toUpperCase()), // Pendiente/Enviado/Recibido/Cancelado
+    estado: (p.estado || "pendiente").replace(/^\w/, c => c.toUpperCase()),
     subtotal: p.subtotal,
     iva: p.iva,
     total: p.total,
-    total_estimado: p.total // compat
+    total_estimado: p.total
   };
 }
 
-app.get("/pedidos", requireAuth, async (req, res) => {
+app.get("/pedidos", requireEmpresa, async (req, res) => {
   try {
-    const { rows: pedidos } = await pool.query(`
+    const empresaId = getEmpresaId(req);
+
+    const { rows: pedidos } = await pool.query(
+      `
       SELECT 
         p.id, 
         p.proveedor_id, 
@@ -1054,12 +1806,18 @@ app.get("/pedidos", requireAuth, async (req, res) => {
         p.iva, 
         p.total
       FROM pedidos_prov p
-      LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
+      LEFT JOIN proveedores pr 
+        ON pr.id = p.proveedor_id
+       AND pr.empresa_id = $1
+      WHERE p.empresa_id = $1
       ORDER BY p.id DESC
-    `);
+      `,
+      [empresaId]
+    );
 
     for (let p of pedidos) {
-      const { rows: items } = await pool.query(`
+      const { rows: items } = await pool.query(
+        `
         SELECT 
           i.id,
           i.producto_id,
@@ -1071,11 +1829,18 @@ app.get("/pedidos", requireAuth, async (req, res) => {
           i.precio_unit,
           i.total
         FROM pedidos_prov_items i
-        LEFT JOIN productos prod ON prod.id = i.producto_id
-        LEFT JOIN categorias cat ON cat.id = prod.categoria_id
+        LEFT JOIN productos prod 
+          ON prod.id = i.producto_id
+         AND prod.empresa_id = $2
+        LEFT JOIN categorias cat 
+          ON cat.id = prod.categoria_id
+         AND cat.empresa_id = $2
         WHERE i.pedido_id = $1
+          AND i.empresa_id = $2
         ORDER BY i.id
-      `, [p.id]);
+        `,
+        [p.id, empresaId]
+      );
 
       p.items = items;
     }
@@ -1083,15 +1848,19 @@ app.get("/pedidos", requireAuth, async (req, res) => {
     res.json(pedidos);
 
   } catch (err) {
-    console.error(err);
+    console.error("GET /pedidos", err);
     res.status(500).json({ error: "Error obteniendo pedidos" });
   }
 });
+
 /* ---------- LISTAR pedidos + ítems embebidos ---------- */
-app.get('/api/pedidos', requireAuth, async (_req, res) => {
+app.get("/api/pedidos", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
+
     // === 1) PEDIDOS ===
-    const { rows: pedidos } = await pool.query(`
+    const { rows: pedidos } = await pool.query(
+      `
       SELECT 
         p.id,
         p.proveedor_id,
@@ -1102,12 +1871,18 @@ app.get('/api/pedidos', requireAuth, async (_req, res) => {
         p.iva,
         p.total
       FROM pedidos_prov p
-      LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
+      LEFT JOIN proveedores pr 
+        ON pr.id = p.proveedor_id
+       AND pr.empresa_id = $1
+      WHERE p.empresa_id = $1
       ORDER BY p.id DESC
-    `);
+      `,
+      [empresaId]
+    );
 
     // === 2) ITEMS con PRODUCTO y CATEGORÍA ===
-    const { rows: items } = await pool.query(`
+    const { rows: items } = await pool.query(
+      `
       SELECT 
         i.id,
         i.pedido_id,
@@ -1120,10 +1895,17 @@ app.get('/api/pedidos', requireAuth, async (_req, res) => {
         i.precio_unit,
         i.total
       FROM pedidos_prov_items i
-      LEFT JOIN productos prod ON prod.id = i.producto_id
-      LEFT JOIN categorias cat ON cat.id = prod.categoria_id
+      LEFT JOIN productos prod 
+        ON prod.id = i.producto_id
+       AND prod.empresa_id = $1
+      LEFT JOIN categorias cat 
+        ON cat.id = prod.categoria_id
+       AND cat.empresa_id = $1
+      WHERE i.empresa_id = $1
       ORDER BY i.pedido_id, i.id
-    `);
+      `,
+      [empresaId]
+    );
 
     // === 3) Agrupar items por pedido ===
     const itemsByPedido = items.reduce((acc, it) => {
@@ -1137,6 +1919,7 @@ app.get('/api/pedidos', requireAuth, async (_req, res) => {
         precio_unit: it.precio_unit,
         total: it.total
       });
+
       return acc;
     }, {});
 
@@ -1149,30 +1932,47 @@ app.get('/api/pedidos', requireAuth, async (_req, res) => {
     res.json(response);
 
   } catch (error) {
-    console.error('GET /api/pedidos', error);
-    res.status(500).json({ error: 'Error al listar pedidos' });
+    console.error("GET /api/pedidos", error);
+    res.status(500).json({ error: "Error al listar pedidos" });
   }
 });
-
 /* ---------- OBTENER pedido por id (con ítems) ---------- */
-async function getPedidoFull(id) {
-  const { rows } = await pool.query(`
-    SELECT p.*, pr.nombre AS proveedor_nombre
+async function getPedidoFull(id, empresaId) {
+  const { rows } = await pool.query(
+    `
+    SELECT 
+      p.*,
+      pr.nombre AS proveedor_nombre
     FROM pedidos_prov p
-    LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
-    WHERE p.id=$1
+    LEFT JOIN proveedores pr 
+      ON pr.id = p.proveedor_id
+     AND pr.empresa_id = $2
+    WHERE p.id = $1
+      AND p.empresa_id = $2
     LIMIT 1
-  `, [id]);
+    `,
+    [id, empresaId]
+  );
+
   if (!rows.length) return null;
+
   const base = normalizeOutPedidoRow(rows[0]);
 
-  const { rows: items } = await pool.query(`
-    SELECT i.*, prod.nombre AS producto_nombre
+  const { rows: items } = await pool.query(
+    `
+    SELECT 
+      i.*,
+      prod.nombre AS producto_nombre
     FROM pedidos_prov_items i
-    LEFT JOIN productos prod ON prod.id = i.producto_id
-    WHERE i.pedido_id=$1
+    LEFT JOIN productos prod 
+      ON prod.id = i.producto_id
+     AND prod.empresa_id = $2
+    WHERE i.pedido_id = $1
+      AND i.empresa_id = $2
     ORDER BY i.id
-  `, [id]);
+    `,
+    [id, empresaId]
+  );
 
   base.items = items.map(it => ({
     id: it.id,
@@ -1184,78 +1984,156 @@ async function getPedidoFull(id) {
     precio_unit: it.precio_unit,
     total: it.total
   }));
+
   return base;
 }
 
-app.get('/api/pedidos/:id', requireAuth, async (req, res) => {
+app.get("/api/pedidos/:id", requireEmpresa, async (req, res) => {
   const id = Number(req.params.id);
+  const empresaId = getEmpresaId(req);
+
   try {
-    const p = await getPedidoFull(id);
-    if (!p) return res.status(404).json({ error: 'Pedido no encontrado' });
+    const p = await getPedidoFull(id, empresaId);
+
+    if (!p) {
+      return res.status(404).json({
+        error: "Pedido no encontrado o no pertenece a esta empresa"
+      });
+    }
+
     res.json(p);
   } catch (e) {
-    console.error('GET /api/pedidos/:id', e);
-    res.status(500).json({ error: 'Error al obtener pedido' });
+    console.error("GET /api/pedidos/:id", e);
+    res.status(500).json({
+      error: "Error al obtener pedido"
+    });
   }
 });
-
 /* ---------- CREAR pedido (y PDF) ---------- */
-app.post("/api/pedidos", requireAuth, async (req, res) => {
-  const { proveedor_id, fecha_pedido, fecha_recepcion, observacion, items } = req.body || {};
+app.post("/api/pedidos", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
 
-  // Validación
+  const {
+    proveedor_id,
+    fecha_pedido,
+    observacion,
+    items
+  } = req.body || {};
+
   if (!proveedor_id || !Array.isArray(items) || !items.length) {
-    return res.status(400).json({ ok: false, msg: "Proveedor e ítems son obligatorios." });
+    return res.status(400).json({
+      ok: false,
+      msg: "Proveedor e ítems son obligatorios."
+    });
   }
 
   const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
 
-    const fechaPedidoFinal = fecha_pedido || hoyStr();
-    const fechaRecepcionFinal = null;
+    const provQ = await client.query(
+      `
+      SELECT id
+      FROM proveedores
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [proveedor_id, empresaId]
+    );
 
-    // INSERT CORRECTO (4 valores + estado)
+    if (!provQ.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        ok: false,
+        msg: "Proveedor no encontrado o no pertenece a esta empresa"
+      });
+    }
+
+    const fechaPedidoFinal = fecha_pedido || hoyStr();
+
     const { rows: rp } = await client.query(
-  `
-  INSERT INTO pedidos_prov 
-    (proveedor_id, fecha_pedido, fecha_recepcion, observacion, estado)
-  VALUES ($1, $2, $3, $4, 'pendiente')
-  RETURNING id
-  `,
-  [
-    proveedor_id,
-    fechaPedidoFinal,
-    fechaRecepcionFinal,
-    observacion || ""
-  ]
-);
+      `
+      INSERT INTO pedidos_prov (
+        proveedor_id,
+        fecha_pedido,
+        fecha_recepcion,
+        observacion,
+        estado,
+        empresa_id
+      )
+      VALUES ($1, $2, NULL, $3, 'pendiente', $4)
+      RETURNING id
+      `,
+      [
+        proveedor_id,
+        fechaPedidoFinal,
+        observacion || "",
+        empresaId
+      ]
+    );
 
     const pedidoId = rp[0].id;
-
-    // Calcular totales + guardar items
     let subtotal = 0;
 
     for (const it of items) {
+      const productoId = Number(it.producto_id || 0);
       const cantidad = Number(it.cantidad || 0);
-      const precio_unit = Number(it.costo_estimado ?? it.precio_unit ?? 0);
-      const total = cantidad * precio_unit;
+      const precioUnit = Number(it.costo_estimado ?? it.precio_unit ?? 0);
 
-      subtotal += total;
+      if (!productoId || cantidad <= 0 || precioUnit < 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          ok: false,
+          msg: "Ítem inválido en el pedido"
+        });
+      }
+
+      const prodQ = await client.query(
+        `
+        SELECT id
+        FROM productos
+        WHERE id = $1
+          AND empresa_id = $2
+          AND COALESCE(activo, true) = true
+        LIMIT 1
+        `,
+        [productoId, empresaId]
+      );
+
+      if (!prodQ.rowCount) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({
+          ok: false,
+          msg: `Producto ${productoId} no encontrado o no pertenece a esta empresa`
+        });
+      }
+
+      const totalLinea = cantidad * precioUnit;
+      subtotal += totalLinea;
 
       await client.query(
         `
-        INSERT INTO pedidos_prov_items 
-          (pedido_id, producto_id, descripcion, cantidad, precio_unit, total)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO pedidos_prov_items (
+          pedido_id,
+          producto_id,
+          descripcion,
+          cantidad,
+          precio_unit,
+          total,
+          empresa_id
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
         `,
         [
           pedidoId,
-          it.producto_id,
+          productoId,
           it.descripcion || "",
           cantidad,
-          precio_unit,
-          total
+          precioUnit,
+          totalLinea,
+          empresaId
         ]
       );
     }
@@ -1265,110 +2143,211 @@ app.post("/api/pedidos", requireAuth, async (req, res) => {
 
     await client.query(
       `
-      UPDATE pedidos_prov 
-      SET subtotal = $1, iva = $2, total = $3 
+      UPDATE pedidos_prov
+      SET subtotal = $1,
+          iva = $2,
+          total = $3
       WHERE id = $4
+        AND empresa_id = $5
       `,
-      [subtotal, iva, total, pedidoId]
+      [
+        subtotal,
+        iva,
+        total,
+        pedidoId,
+        empresaId
+      ]
     );
 
     await client.query("COMMIT");
 
-    // Generar PDF
-    const pdf = await generarPDFPedido(pool, pedidoId);
+    const pdf = await generarPDFPedido(pool, pedidoId, empresaId);
 
-    res.status(201).json({ 
-      ok: true, 
-      pedidoId, 
-      pdf_file: pdf?.file 
+    res.status(201).json({
+      ok: true,
+      pedidoId,
+      pdf_file: pdf?.file
     });
 
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("POST /api/pedidos ERROR:", e);
-    res.status(500).json({ ok: false, msg: "No se pudo crear el pedido" });
+
+    res.status(500).json({
+      ok: false,
+      msg: "No se pudo crear el pedido"
+    });
   } finally {
     client.release();
   }
 });
 
 /* ---------- CAMBIAR estado genérico ---------- */
-app.put("/api/pedidos/:id/estado", requireAuth, async (req, res) => {
+app.put("/api/pedidos/:id/estado", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
   const { estado } = req.body || {};
-  const valid = ["pendiente","enviado","recibido","cancelado"];
-  if (!valid.includes(estado)) return res.status(400).json({ ok:false, msg:"Estado inválido" });
+
+  const valid = ["pendiente", "enviado", "recibido", "cancelado"];
+
+  if (!id) {
+    return res.status(400).json({ ok: false, msg: "ID inválido" });
+  }
+
+  if (!valid.includes(estado)) {
+    return res.status(400).json({ ok: false, msg: "Estado inválido" });
+  }
 
   const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
 
-    const { rows: prs } = await client.query(`SELECT estado FROM pedidos_prov WHERE id=$1`, [id]);
-    if (!prs.length) { await client.query("ROLLBACK"); return res.status(404).json({ ok:false, msg:"Pedido no encontrado" }); }
+    const { rows: prs } = await client.query(
+      `
+      SELECT estado
+      FROM pedidos_prov
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [id, empresaId]
+    );
+
+    if (!prs.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        ok: false,
+        msg: "Pedido no encontrado o no pertenece a esta empresa"
+      });
+    }
+
     const prev = prs[0].estado;
 
-    if (estado === "recibido") {
-  await client.query(
-    `UPDATE pedidos_prov SET estado=$1, fecha_recepcion=NOW() WHERE id=$2`,
-    [estado, id]
-  );
-} else {
-  await client.query(
-    `UPDATE pedidos_prov SET estado=$1, fecha_recepcion=NULL WHERE id=$2`,
-    [estado, id]
-  );
-}
-    // Si se recibe el pedido: actualizar stock y costo promedio
+    await client.query(
+      `
+      UPDATE pedidos_prov
+      SET estado = $1,
+          fecha_recepcion = CASE WHEN $1 = 'recibido' THEN NOW() ELSE NULL END
+      WHERE id = $2
+        AND empresa_id = $3
+      `,
+      [estado, id, empresaId]
+    );
+
     if (estado === "recibido" && prev !== "recibido") {
-      const { rows: items } = await client.query(`SELECT * FROM pedidos_prov_items WHERE pedido_id=$1`, [id]);
+      const { rows: items } = await client.query(
+        `
+        SELECT *
+        FROM pedidos_prov_items
+        WHERE pedido_id = $1
+          AND empresa_id = $2
+        `,
+        [id, empresaId]
+      );
+
       for (const it of items) {
-        const { rows: prd } = await client.query(`SELECT stock, costo FROM productos WHERE id=$1`, [it.producto_id]);
+        const { rows: prd } = await client.query(
+          `
+          SELECT stock, costo
+          FROM productos
+          WHERE id = $1
+            AND empresa_id = $2
+          LIMIT 1
+          `,
+          [it.producto_id, empresaId]
+        );
+
         if (!prd.length) continue;
+
         const stockAnterior = Number(prd[0].stock || 0);
         const costoAnterior = Number(prd[0].costo || 0);
         const nuevoStock = stockAnterior + Number(it.cantidad || 0);
-        const nuevoCosto = costoPromedio(costoAnterior, stockAnterior, Number(it.precio_unit || 0), Number(it.cantidad || 0));
-        await client.query(`UPDATE productos SET stock=$1, costo=$2 WHERE id=$3`, [nuevoStock, nuevoCosto, it.producto_id]);
+
+        const nuevoCosto = costoPromedio(
+          costoAnterior,
+          stockAnterior,
+          Number(it.precio_unit || 0),
+          Number(it.cantidad || 0)
+        );
+
+        await client.query(
+          `
+          UPDATE productos
+          SET stock = $1,
+              costo = $2
+          WHERE id = $3
+            AND empresa_id = $4
+          `,
+          [nuevoStock, nuevoCosto, it.producto_id, empresaId]
+        );
       }
-      // alerta simple (puedes cambiar a stock_min)
-      await client.query(`UPDATE productos SET alerta = (stock <= 3)`);
+
+      await client.query(
+        `
+        UPDATE productos
+        SET alerta = (stock <= 3)
+        WHERE empresa_id = $1
+        `,
+        [empresaId]
+      );
     }
 
     await client.query("COMMIT");
-    res.json({ ok:true });
+    res.json({ ok: true });
+
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("PUT /api/pedidos/:id/estado", e);
-    res.status(500).json({ ok:false, msg:"No se pudo cambiar el estado" });
+    res.status(500).json({ ok: false, msg: "No se pudo cambiar el estado" });
   } finally {
     client.release();
   }
 });
 
 /* ---------- PDF ---------- */
-app.get("/api/pedidos/:id/pdf", requireAuth, async (req, res) => {
+app.get("/api/pedidos/:id/pdf", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
-  const pdfName = `pedido_${id}.pdf`;
+
+  const pdfName = `pedido_${empresaId}_${id}.pdf`;
   const full = path.join(PDF_DIR, pdfName);
+
   if (!fs.existsSync(full)) {
-    // si falta, lo regeneramos
-    await generarPDFPedido(pool, id);
+    await generarPDFPedido(pool, id, empresaId);
   }
-  if (!fs.existsSync(full)) return res.status(404).send("PDF no encontrado");
+
+  if (!fs.existsSync(full)) {
+    return res.status(404).send("PDF no encontrado");
+  }
+
   res.setHeader("Content-Type", "application/pdf");
   res.sendFile(full);
 });
 
 /* ==================== RUTAS DE COMPATIBILIDAD (legacy) ===================== */
+
 // Front antiguo: POST /pedidos (crear)
-app.post("/pedidos", requireAuth, (req, res) => app._router.handle({ ...req, url: "/api/pedidos", method: "POST" }, res));
+app.post("/pedidos", requireEmpresa, (req, res) => {
+  req.url = "/api/pedidos";
+  req.method = "POST";
+  app._router.handle(req, res);
+});
 
 // Front antiguo: GET /pedidos/:id (detalle)
-app.get("/pedidos/:id", requireAuth, async (req, res) => {
+app.get("/pedidos/:id", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
+
   try {
-    const data = await getPedidoFull(id);
-    if (!data) return res.status(404).json({ error: "Pedido no encontrado" });
+    const data = await getPedidoFull(id, empresaId);
+
+    if (!data) {
+      return res.status(404).json({
+        error: "Pedido no encontrado o no pertenece a esta empresa"
+      });
+    }
+
     res.json(data);
   } catch (e) {
     console.error("GET /pedidos/:id", e);
@@ -1377,10 +2356,28 @@ app.get("/pedidos/:id", requireAuth, async (req, res) => {
 });
 
 // Front antiguo: POST /pedidos/:id/enviar
-app.post("/pedidos/:id/enviar", requireAuth, async (req, res) => {
+app.post("/pedidos/:id/enviar", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
+
   try {
-    await pool.query(`UPDATE pedidos_prov SET estado='enviado' WHERE id=$1`, [id]);
+    const { rowCount } = await pool.query(
+      `
+      UPDATE pedidos_prov
+      SET estado = 'enviado',
+          fecha_recepcion = NULL
+      WHERE id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
+    );
+
+    if (!rowCount) {
+      return res.status(404).json({
+        error: "Pedido no encontrado o no pertenece a esta empresa"
+      });
+    }
+
     res.json({ ok: true });
   } catch (e) {
     console.error("POST /pedidos/:id/enviar", e);
@@ -1388,64 +2385,162 @@ app.post("/pedidos/:id/enviar", requireAuth, async (req, res) => {
   }
 });
 
-// Front antiguo: POST /pedidos/:id/recibir
-app.put("/api/pedidos/:id/recibir", requireAuth, async (req, res) => {
+// Front antiguo: PUT /api/pedidos/:id/recibir
+app.put("/api/pedidos/:id/recibir", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
+
   const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
-    // Reutilizamos lógica de /api/pedidos/:id/estado => recibido
-    const call = await client.query(`SELECT estado,total FROM pedidos_prov WHERE id=$1`, [id]);
-    if (!call.rowCount) { await client.query("ROLLBACK"); return res.status(404).json({ error: "Pedido no encontrado" }); }
 
-    // si todavía no estaba recibido, ejecutar la actualización
-    if (call.rows[0].estado !== 'recibido') {
-      // items -> actualizar stock/costo promedio
-      const { rows: items } = await client.query(`SELECT * FROM pedidos_prov_items WHERE pedido_id=$1`, [id]);
+    const call = await client.query(
+      `
+      SELECT estado, total
+      FROM pedidos_prov
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [id, empresaId]
+    );
+
+    if (!call.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        error: "Pedido no encontrado o no pertenece a esta empresa"
+      });
+    }
+
+    if (call.rows[0].estado !== "recibido") {
+      const { rows: items } = await client.query(
+        `
+        SELECT *
+        FROM pedidos_prov_items
+        WHERE pedido_id = $1
+          AND empresa_id = $2
+        `,
+        [id, empresaId]
+      );
+
       for (const it of items) {
-        const { rows: prd } = await client.query(`SELECT stock, costo FROM productos WHERE id=$1`, [it.producto_id]);
+        const { rows: prd } = await client.query(
+          `
+          SELECT stock, costo
+          FROM productos
+          WHERE id = $1
+            AND empresa_id = $2
+          LIMIT 1
+          `,
+          [it.producto_id, empresaId]
+        );
+
         if (!prd.length) continue;
+
         const stockAnterior = Number(prd[0].stock || 0);
         const costoAnterior = Number(prd[0].costo || 0);
         const nuevoStock = stockAnterior + Number(it.cantidad || 0);
-        const nuevoCosto = costoPromedio(costoAnterior, stockAnterior, Number(it.precio_unit || 0), Number(it.cantidad || 0));
-        await client.query(`UPDATE productos SET stock=$1, costo=$2 WHERE id=$3`, [nuevoStock, nuevoCosto, it.producto_id]);
+
+        const nuevoCosto = costoPromedio(
+          costoAnterior,
+          stockAnterior,
+          Number(it.precio_unit || 0),
+          Number(it.cantidad || 0)
+        );
+
+        await client.query(
+          `
+          UPDATE productos
+          SET stock = $1,
+              costo = $2
+          WHERE id = $3
+            AND empresa_id = $4
+          `,
+          [nuevoStock, nuevoCosto, it.producto_id, empresaId]
+        );
       }
-      await client.query(`UPDATE productos SET alerta = (stock <= 3)`);
+
       await client.query(
-  `UPDATE pedidos_prov SET estado='recibido', fecha_recepcion=NOW() WHERE id=$1`,
-  [id]
-);
+        `
+        UPDATE productos
+        SET alerta = (stock <= 3)
+        WHERE empresa_id = $1
+        `,
+        [empresaId]
+      );
+
+      await client.query(
+        `
+        UPDATE pedidos_prov
+        SET estado = 'recibido',
+            fecha_recepcion = NOW()
+        WHERE id = $1
+          AND empresa_id = $2
+        `,
+        [id, empresaId]
+      );
     }
+
     await client.query("COMMIT");
-    res.json({ ok: true, compra_generada: id, total: call.rows[0].total });
+
+    res.json({
+      ok: true,
+      compra_generada: id,
+      total: call.rows[0].total
+    });
+
   } catch (e) {
     await client.query("ROLLBACK");
-    console.error("POST /pedidos/:id/recibir", e);
+    console.error("PUT /api/pedidos/:id/recibir", e);
     res.status(500).json({ error: "No se pudo recibir el pedido" });
   } finally {
     client.release();
   }
 });
-
 // Front antiguo: PDF
-app.get("/pedidos/:id/pdf", requireAuth, (req, res) => {
+app.get("/pedidos/:id/pdf", requireEmpresa, (req, res) => {
   const id = Number(req.params.id);
   req.url = `/api/pedidos/${id}/pdf`;
   app._router.handle(req, res);
 });
+
 /* =================== FIN PEDIDOS A PROVEEDOR (BACKEND) =================== */
 
 /* ----------------------------------- Health --------------------------------- */
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 /* ----------------------------------- Server --------------------------------- */
+
 // ✅ Próximo N° Factura por proveedor (autocompletar en compras)
-app.get("/compras/proxima-factura", requireAuth, async (req, res) => {
+app.get("/compras/proxima-factura", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const proveedor_id = Number(req.query.proveedor_id || 0);
+
     if (!proveedor_id) {
-      return res.status(400).json({ ok: false, msg: "Falta proveedor_id" });
+      return res.status(400).json({
+        ok: false,
+        msg: "Falta proveedor_id"
+      });
+    }
+
+    const provQ = await pool.query(
+      `
+      SELECT id
+      FROM proveedores
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [proveedor_id, empresaId]
+    );
+
+    if (!provQ.rowCount) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Proveedor no encontrado o no pertenece a esta empresa"
+      });
     }
 
     const lastQ = await pool.query(
@@ -1453,39 +2548,61 @@ app.get("/compras/proxima-factura", requireAuth, async (req, res) => {
       SELECT factura
       FROM compras
       WHERE proveedor_id = $1
+        AND empresa_id = $2
         AND factura IS NOT NULL
         AND TRIM(factura) <> ''
       ORDER BY id DESC
       LIMIT 1
       `,
-      [proveedor_id]
+      [proveedor_id, empresaId]
     );
 
     const last = (lastQ.rows[0]?.factura || "").toString().trim();
 
     if (!last) {
-      return res.json({ ok: true, factura: "0001", last: null });
+      return res.json({
+        ok: true,
+        factura: "0001",
+        last: null
+      });
     }
 
     const m = last.match(/(\d+)\s*$/);
+
     if (!m) {
-      return res.json({ ok: true, factura: `${last}-1`, last });
+      return res.json({
+        ok: true,
+        factura: `${last}-1`,
+        last
+      });
     }
 
     const digits = m[1];
     const prefix = last.slice(0, last.length - digits.length);
     const next = String(Number(digits) + 1).padStart(digits.length, "0");
 
-    return res.json({ ok: true, factura: `${prefix}${next}`, last });
+    return res.json({
+      ok: true,
+      factura: `${prefix}${next}`,
+      last
+    });
+
   } catch (err) {
     console.error("GET /compras/proxima-factura", err);
-    return res.status(500).json({ ok: false, msg: "Error generando próxima factura" });
+
+    return res.status(500).json({
+      ok: false,
+      msg: "Error generando próxima factura"
+    });
   }
 });
 
-app.get("/compras", requireAuth, async (_req, res) => {
+app.get("/compras", requireEmpresa, async (req, res) => {
   try {
-    const { rows } = await pool.query(`
+    const empresaId = getEmpresaId(req);
+
+    const { rows } = await pool.query(
+      `
       SELECT 
         c.id,
         c.fecha,
@@ -1510,8 +2627,11 @@ app.get("/compras", requireAuth, async (_req, res) => {
             ORDER BY pr.codigo
           )
           FROM compras_items ci
-          JOIN productos pr ON pr.id = ci.producto_id
+          JOIN productos pr 
+            ON pr.id = ci.producto_id
+           AND pr.empresa_id = $1
           WHERE ci.compra_id = c.id
+            AND ci.empresa_id = $1
         ) AS productos,
 
         (
@@ -1521,8 +2641,11 @@ app.get("/compras", requireAuth, async (_req, res) => {
             ORDER BY pr.nombre
           )
           FROM compras_items ci
-          JOIN productos pr ON pr.id = ci.producto_id
+          JOIN productos pr 
+            ON pr.id = ci.producto_id
+           AND pr.empresa_id = $1
           WHERE ci.compra_id = c.id
+            AND ci.empresa_id = $1
         ) AS nombres_productos,
 
         (
@@ -1532,15 +2655,21 @@ app.get("/compras", requireAuth, async (_req, res) => {
             ORDER BY COALESCE(cat.nombre, 'Sin categoría')
           )
           FROM compras_items ci
-          JOIN productos pr ON pr.id = ci.producto_id
-          LEFT JOIN categorias cat ON cat.id = pr.categoria_id
+          JOIN productos pr 
+            ON pr.id = ci.producto_id
+           AND pr.empresa_id = $1
+          LEFT JOIN categorias cat 
+            ON cat.id = pr.categoria_id
+           AND cat.empresa_id = $1
           WHERE ci.compra_id = c.id
+            AND ci.empresa_id = $1
         ) AS categorias,
 
         (
           SELECT COALESCE(SUM(ci.cantidad), 0)
           FROM compras_items ci
           WHERE ci.compra_id = c.id
+            AND ci.empresa_id = $1
         ) AS cantidad_total,
 
         (
@@ -1552,23 +2681,35 @@ app.get("/compras", requireAuth, async (_req, res) => {
             ORDER BY pr.nombre
           )
           FROM compras_items ci
-          JOIN productos pr ON pr.id = ci.producto_id
+          JOIN productos pr 
+            ON pr.id = ci.producto_id
+           AND pr.empresa_id = $1
           WHERE ci.compra_id = c.id
+            AND ci.empresa_id = $1
         ) AS detalle_productos
 
       FROM compras c
-      LEFT JOIN proveedores p ON p.id = c.proveedor_id
+      LEFT JOIN proveedores p 
+        ON p.id = c.proveedor_id
+       AND p.empresa_id = $1
+      WHERE c.empresa_id = $1
       ORDER BY c.id DESC
-    `);
+      `,
+      [empresaId]
+    );
 
     res.json(rows);
 
   } catch (e) {
     console.error("GET /compras", e);
-    res.status(500).json({ error: "Error al listar compras" });
+    res.status(500).json({
+      error: "Error al listar compras"
+    });
   }
 });
-app.post("/compras", requireAuth, async (req, res) => {
+app.post("/compras", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
+
   const {
     proveedor_id,
     fecha,
@@ -1618,13 +2759,34 @@ app.post("/compras", requireAuth, async (req, res) => {
   }
 
   const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
+
+    const provQ = await client.query(
+      `
+      SELECT id
+      FROM proveedores
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [proveedor_id, empresaId]
+    );
+
+    if (!provQ.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        ok: false,
+        msg: "Proveedor no encontrado o no pertenece a esta empresa"
+      });
+    }
 
     let subtotalPyg = Number(subtotal || 0);
 
     if (!subtotalPyg || subtotalPyg <= 0) {
       subtotalPyg = 0;
+
       for (const it of items) {
         subtotalPyg += Number(it.cantidad || 0) * Number(it.costo || 0);
       }
@@ -1642,13 +2804,22 @@ app.post("/compras", requireAuth, async (req, res) => {
       ivaMon = ivaPyg;
       totalMon = totalPyg;
     } else {
-      if (!subtotalMon || subtotalMon <= 0) subtotalMon = subtotalPyg / tipoCambioFinal;
-      if (!ivaMon || ivaMon <= 0) ivaMon = ivaPyg / tipoCambioFinal;
-      if (!totalMon || totalMon <= 0) totalMon = totalPyg / tipoCambioFinal;
+      if (!subtotalMon || subtotalMon <= 0) {
+        subtotalMon = subtotalPyg / tipoCambioFinal;
+      }
+
+      if (!ivaMon || ivaMon <= 0) {
+        ivaMon = ivaPyg / tipoCambioFinal;
+      }
+
+      if (!totalMon || totalMon <= 0) {
+        totalMon = totalPyg / tipoCambioFinal;
+      }
     }
 
     const qCab = await client.query(
-      `INSERT INTO compras (
+      `
+      INSERT INTO compras (
         proveedor_id,
         fecha,
         factura,
@@ -1660,10 +2831,15 @@ app.post("/compras", requireAuth, async (req, res) => {
         total,
         subtotal_moneda,
         iva_moneda,
-        total_moneda
+        total_moneda,
+        empresa_id
       )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-       RETURNING id`,
+      VALUES (
+        $1,$2,$3,$4,$5,$6,
+        $7,$8,$9,$10,$11,$12,$13
+      )
+      RETURNING id
+      `,
       [
         proveedor_id,
         fecha,
@@ -1676,62 +2852,105 @@ app.post("/compras", requireAuth, async (req, res) => {
         totalPyg,
         subtotalMon,
         ivaMon,
-        totalMon
+        totalMon,
+        empresaId
       ]
     );
 
     const compraId = qCab.rows[0].id;
 
     for (const it of items) {
+      const productoId = Number(it.producto_id || 0);
+
+      const prodQ = await client.query(
+        `
+        SELECT stock, costo
+        FROM productos
+        WHERE id = $1
+          AND empresa_id = $2
+        LIMIT 1
+        `,
+        [productoId, empresaId]
+      );
+
+      if (!prodQ.rowCount) {
+        await client.query("ROLLBACK");
+
+        return res.status(404).json({
+          ok: false,
+          msg: `Producto ${productoId} no encontrado o no pertenece a esta empresa`
+        });
+      }
+
       await client.query(
-        `INSERT INTO compras_items (compra_id, producto_id, cantidad, costo, subtotal)
-         VALUES ($1,$2,$3,$4,$5)`,
+        `
+        INSERT INTO compras_items (
+          compra_id,
+          producto_id,
+          cantidad,
+          costo,
+          subtotal,
+          empresa_id
+        )
+        VALUES ($1,$2,$3,$4,$5,$6)
+        `,
         [
           compraId,
-          it.producto_id,
+          productoId,
           it.cantidad,
           it.costo,
-          Number(it.cantidad) * Number(it.costo)
+          Number(it.cantidad) * Number(it.costo),
+          empresaId
         ]
       );
 
-      const prod = await client.query(
-        "SELECT stock, costo FROM productos WHERE id=$1",
-        [it.producto_id]
+      const sAnt = Number(prodQ.rows[0].stock || 0);
+      const cAnt = Number(prodQ.rows[0].costo || 0);
+      const sNew = sAnt + Number(it.cantidad);
+
+      const cNew =
+        sAnt + Number(it.cantidad) === 0
+          ? Number(it.costo)
+          : Math.round(
+              ((sAnt * cAnt) + (Number(it.cantidad) * Number(it.costo))) /
+              (sAnt + Number(it.cantidad))
+            );
+
+      await client.query(
+        `
+        UPDATE productos
+        SET stock = $1,
+            costo = $2
+        WHERE id = $3
+          AND empresa_id = $4
+        `,
+        [sNew, cNew, productoId, empresaId]
       );
-
-      if (prod.rowCount) {
-        const sAnt = Number(prod.rows[0].stock);
-        const cAnt = Number(prod.rows[0].costo);
-        const sNew = sAnt + Number(it.cantidad);
-
-        const cNew =
-          sAnt + Number(it.cantidad) === 0
-            ? Number(it.costo)
-            : Math.round(
-                ((sAnt * cAnt) + (Number(it.cantidad) * Number(it.costo))) /
-                (sAnt + Number(it.cantidad))
-              );
-
-        await client.query(
-          "UPDATE productos SET stock=$1, costo=$2 WHERE id=$3",
-          [sNew, cNew, it.producto_id]
-        );
-      }
     }
 
     await client.query("COMMIT");
-    res.json({ ok: true, compra_id: compraId });
+
+    res.json({
+      ok: true,
+      compra_id: compraId
+    });
 
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("POST /compras", e);
-    res.status(500).json({ ok: false, msg: "Error al registrar compra" });
+
+    res.status(500).json({
+      ok: false,
+      msg: "Error al registrar compra"
+    });
+
   } finally {
     client.release();
   }
 });
-app.get("/compras/:id", requireAuth, async (req, res) => {
+
+app.get("/compras/:id", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
 
   try {
@@ -1754,15 +2973,21 @@ app.get("/compras/:id", requireAuth, async (req, res) => {
         p.nombre AS proveedor_nombre,
         p.ruc AS proveedor_ruc
       FROM compras c
-      LEFT JOIN proveedores p ON p.id = c.proveedor_id
+      LEFT JOIN proveedores p 
+        ON p.id = c.proveedor_id
+       AND p.empresa_id = $2
       WHERE c.id = $1
+        AND c.empresa_id = $2
       LIMIT 1
       `,
-      [id]
+      [id, empresaId]
     );
 
     if (!cab.rowCount) {
-      return res.status(404).json({ ok: false, error: "Compra no encontrada" });
+      return res.status(404).json({
+        ok: false,
+        error: "Compra no encontrada o no pertenece a esta empresa"
+      });
     }
 
     const items = await pool.query(
@@ -1777,12 +3002,17 @@ app.get("/compras/:id", requireAuth, async (req, res) => {
         ci.costo,
         ci.subtotal
       FROM compras_items ci
-      LEFT JOIN productos pr ON pr.id = ci.producto_id
-      LEFT JOIN categorias cat ON cat.id = pr.categoria_id
+      LEFT JOIN productos pr 
+        ON pr.id = ci.producto_id
+       AND pr.empresa_id = $2
+      LEFT JOIN categorias cat 
+        ON cat.id = pr.categoria_id
+       AND cat.empresa_id = $2
       WHERE ci.compra_id = $1
+        AND ci.empresa_id = $2
       ORDER BY ci.id
       `,
-      [id]
+      [id, empresaId]
     );
 
     return res.json({
@@ -1790,12 +3020,19 @@ app.get("/compras/:id", requireAuth, async (req, res) => {
       ...cab.rows[0],
       items: items.rows
     });
+
   } catch (e) {
     console.error("GET /compras/:id", e);
-    return res.status(500).json({ ok: false, error: "Error al obtener compra" });
+
+    return res.status(500).json({
+      ok: false,
+      error: "Error al obtener compra"
+    });
   }
 });
-app.put("/compras/:id", requireAuth, async (req, res) => {
+
+app.put("/compras/:id", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
 
   const {
@@ -1805,12 +3042,6 @@ app.put("/compras/:id", requireAuth, async (req, res) => {
     tipo_pago,
     moneda,
     tipo_cambio,
-    subtotal,
-    iva,
-    total,
-    subtotal_moneda,
-    iva_moneda,
-    total_moneda,
     items
   } = req.body || {};
 
@@ -1818,15 +3049,20 @@ app.put("/compras/:id", requireAuth, async (req, res) => {
   const monedaFinal = String(moneda || "PYG").toUpperCase();
   const tipoCambioFinal = Number(tipo_cambio || 1);
 
-  if (!id) return res.status(400).json({ ok: false, msg: "ID inválido" });
-  if (!proveedor_id) return res.status(400).json({ ok: false, msg: "Falta proveedor_id" });
-  if (!fecha) return res.status(400).json({ ok: false, msg: "Falta fecha" });
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ ok: false, msg: "No hay items" });
+  if (!id) {
+    return res.status(400).json({ ok: false, msg: "ID inválido" });
   }
 
-  if (monedaFinal !== "PYG" && (!tipoCambioFinal || tipoCambioFinal <= 0)) {
-    return res.status(400).json({ ok: false, msg: "Tipo de cambio inválido" });
+  if (!proveedor_id) {
+    return res.status(400).json({ ok: false, msg: "Falta proveedor_id" });
+  }
+
+  if (!fecha) {
+    return res.status(400).json({ ok: false, msg: "Falta fecha" });
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ ok: false, msg: "No hay items" });
   }
 
   const client = await pool.connect();
@@ -1834,15 +3070,46 @@ app.put("/compras/:id", requireAuth, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    const prevItemsQ = await client.query(
-      `SELECT producto_id, cantidad, costo
-       FROM compras_items
-       WHERE compra_id = $1`,
-      [id]
+    const compraCheck = await client.query(
+      `
+      SELECT id
+      FROM compras
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [id, empresaId]
     );
+
+    if (!compraCheck.rowCount) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        ok: false,
+        msg: "Compra no encontrada o no pertenece a esta empresa"
+      });
+    }
+
+    const prevItemsQ = await client.query(
+      `
+      SELECT producto_id, cantidad
+      FROM compras_items
+      WHERE compra_id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
+    );
+
     const prevItems = prevItemsQ.rows || [];
 
-    await client.query(`DELETE FROM compras_items WHERE compra_id = $1`, [id]);
+    await client.query(
+      `
+      DELETE FROM compras_items
+      WHERE compra_id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
+    );
 
     let subtotalCalc = 0;
 
@@ -1853,51 +3120,75 @@ app.put("/compras/:id", requireAuth, async (req, res) => {
 
       if (!producto_id || cantidad <= 0 || costo <= 0) {
         await client.query("ROLLBACK");
-        return res.status(400).json({ ok: false, msg: "Item inválido (producto/cantidad/costo)" });
+
+        return res.status(400).json({
+          ok: false,
+          msg: "Item inválido"
+        });
       }
 
       const sub = cantidad * costo;
       subtotalCalc += sub;
 
       await client.query(
-        `INSERT INTO compras_items (compra_id, producto_id, cantidad, costo, subtotal)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [id, producto_id, cantidad, costo, sub]
+        `
+        INSERT INTO compras_items (
+          compra_id,
+          producto_id,
+          cantidad,
+          costo,
+          subtotal,
+          empresa_id
+        )
+        VALUES ($1,$2,$3,$4,$5,$6)
+        `,
+        [
+          id,
+          producto_id,
+          cantidad,
+          costo,
+          sub,
+          empresaId
+        ]
       );
     }
 
     const ivaCalc = Math.round(subtotalCalc * 0.10);
     const totalCalc = subtotalCalc + ivaCalc;
 
-    let subtotalMonedaFinal = Number(subtotal_moneda || 0);
-    let ivaMonedaFinal = Number(iva_moneda || 0);
-    let totalMonedaFinal = Number(total_moneda || 0);
+    const subtotalMonedaFinal =
+      monedaFinal === "PYG"
+        ? subtotalCalc
+        : subtotalCalc / tipoCambioFinal;
 
-    if (monedaFinal === "PYG") {
-      subtotalMonedaFinal = subtotalCalc;
-      ivaMonedaFinal = ivaCalc;
-      totalMonedaFinal = totalCalc;
-    } else {
-      if (!subtotalMonedaFinal) subtotalMonedaFinal = subtotalCalc / tipoCambioFinal;
-      if (!ivaMonedaFinal) ivaMonedaFinal = ivaCalc / tipoCambioFinal;
-      if (!totalMonedaFinal) totalMonedaFinal = totalCalc / tipoCambioFinal;
-    }
+    const ivaMonedaFinal =
+      monedaFinal === "PYG"
+        ? ivaCalc
+        : ivaCalc / tipoCambioFinal;
+
+    const totalMonedaFinal =
+      monedaFinal === "PYG"
+        ? totalCalc
+        : totalCalc / tipoCambioFinal;
 
     await client.query(
-      `UPDATE compras
-       SET proveedor_id = $1,
-           fecha = $2,
-           factura = $3,
-           tipo_pago = $4,
-           moneda = $5,
-           tipo_cambio = $6,
-           subtotal = $7,
-           iva = $8,
-           total = $9,
-           subtotal_moneda = $10,
-           iva_moneda = $11,
-           total_moneda = $12
-       WHERE id = $13`,
+      `
+      UPDATE compras
+      SET proveedor_id = $1,
+          fecha = $2,
+          factura = $3,
+          tipo_pago = $4,
+          moneda = $5,
+          tipo_cambio = $6,
+          subtotal = $7,
+          iva = $8,
+          total = $9,
+          subtotal_moneda = $10,
+          iva_moneda = $11,
+          total_moneda = $12
+      WHERE id = $13
+        AND empresa_id = $14
+      `,
       [
         Number(proveedor_id),
         fecha,
@@ -1911,65 +3202,107 @@ app.put("/compras/:id", requireAuth, async (req, res) => {
         subtotalMonedaFinal,
         ivaMonedaFinal,
         totalMonedaFinal,
-        id
+        id,
+        empresaId
       ]
     );
 
     for (const p of prevItems) {
       await client.query(
-        `UPDATE productos
-         SET stock = stock - $1
-         WHERE id = $2`,
-        [Number(p.cantidad), Number(p.producto_id)]
+        `
+        UPDATE productos
+        SET stock = stock - $1
+        WHERE id = $2
+          AND empresa_id = $3
+        `,
+        [
+          Number(p.cantidad),
+          Number(p.producto_id),
+          empresaId
+        ]
       );
     }
 
     for (const it of items) {
       await client.query(
-        `UPDATE productos
-         SET stock = stock + $1,
-             costo = $2
-         WHERE id = $3`,
-        [Number(it.cantidad), Number(it.costo), Number(it.producto_id)]
+        `
+        UPDATE productos
+        SET stock = stock + $1,
+            costo = $2
+        WHERE id = $3
+          AND empresa_id = $4
+        `,
+        [
+          Number(it.cantidad),
+          Number(it.costo),
+          Number(it.producto_id),
+          empresaId
+        ]
       );
     }
 
     await client.query("COMMIT");
+
     return res.json({ ok: true });
+
   } catch (e) {
-    try { await client.query("ROLLBACK"); } catch {}
+    try {
+      await client.query("ROLLBACK");
+    } catch {}
+
     console.error("PUT /compras/:id", e);
-    return res.status(500).json({ ok: false, msg: "Error actualizando compra", error: e.message });
+
+    return res.status(500).json({
+      ok: false,
+      msg: "Error actualizando compra",
+      error: e.message
+    });
+
   } finally {
     client.release();
   }
 });
 
 /* ---------- ELIMINAR PEDIDO ---------- */
-app.delete("/api/pedidos/:id", requireAuth, async (req, res) => {
+app.delete("/api/pedidos/:id", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
 
   try {
-    // IMPORTANTE: la tabla items debe tener ON DELETE CASCADE
     const { rowCount } = await pool.query(
-      "DELETE FROM pedidos_prov WHERE id = $1",
-      [id]
+      `
+      DELETE FROM pedidos_prov
+      WHERE id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
     );
 
     if (rowCount === 0) {
-      return res.status(404).json({ ok: false, msg: "Pedido no encontrado" });
+      return res.status(404).json({
+        ok: false,
+        msg: "Pedido no encontrado o no pertenece a esta empresa"
+      });
     }
 
     return res.json({ ok: true });
+
   } catch (err) {
     console.error("Error eliminando pedido:", err);
-    return res.status(500).json({ ok: false, msg: "Error eliminando pedido" });
+
+    return res.status(500).json({
+      ok: false,
+      msg: "Error eliminando pedido"
+    });
   }
 });
 
-app.get("/ventas", async (_req, res) => {
+app.get("/ventas", requireEmpresa, async (req, res) => {
   try {
-    const result = await pool.query(`
+    const empresaId = getEmpresaId(req);
+
+    const result = await pool.query(
+      `
       SELECT 
         v.id,
         v.fecha,
@@ -1989,22 +3322,40 @@ app.get("/ventas", async (_req, res) => {
             ORDER BY vi.id
           )
           FROM ventas_items vi
-          JOIN productos p ON p.id = vi.producto_id
+          JOIN productos p 
+            ON p.id = vi.producto_id
+           AND p.empresa_id = $1
           WHERE vi.venta_id = v.id
+            AND vi.empresa_id = $1
         ), '-') AS productos
       FROM ventas v
-      LEFT JOIN clientes c ON c.id = v.cliente_id
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+      LEFT JOIN clientes c 
+        ON c.id = v.cliente_id
+       AND c.empresa_id = $1
+      LEFT JOIN formas_pago fp 
+        ON fp.id = v.forma_pago_id
+       AND fp.empresa_id = $1
+      WHERE v.empresa_id = $1
       ORDER BY v.id DESC
-    `);
+      `,
+      [empresaId]
+    );
 
     res.json(result.rows);
+
   } catch (err) {
     console.error("❌ Error listando ventas:", err);
-    res.status(500).json({ ok: false, msg: "Error listando ventas" });
+
+    res.status(500).json({
+      ok: false,
+      msg: "Error listando ventas"
+    });
   }
 });
-app.post("/ventas", async (req, res) => {
+
+app.post("/ventas", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
+
   const {
     cliente_id,
     total,
@@ -2022,8 +3373,19 @@ app.post("/ventas", async (req, res) => {
   const client = await pool.connect();
 
   try {
-    if (!forma_pago_id) return res.status(400).json({ ok: false, msg: "Falta forma_pago_id" });
-    if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ ok: false, msg: "No hay items" });
+    if (!forma_pago_id) {
+      return res.status(400).json({
+        ok: false,
+        msg: "Falta forma_pago_id"
+      });
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        msg: "No hay items"
+      });
+    }
 
     const EFECTIVO_ID = 2;
     const fpId = Number(forma_pago_id);
@@ -2034,19 +3396,60 @@ app.post("/ventas", async (req, res) => {
     const totalMonedaFinal = Number(total_moneda || totalPygFinal || 0);
     const totalFinal = totalPygFinal;
 
-    if (!["PYG", "USD", "BRL"].includes(monedaFinal)) return res.status(400).json({ ok: false, msg: "Moneda inválida" });
-    if (!Number.isFinite(fpId) || fpId <= 0) return res.status(400).json({ ok: false, msg: "forma_pago_id inválido" });
-    if (!Number.isFinite(totalPygFinal) || totalPygFinal <= 0) return res.status(400).json({ ok: false, msg: "Total inválido" });
+    if (!["PYG", "USD", "BRL"].includes(monedaFinal)) {
+      return res.status(400).json({
+        ok: false,
+        msg: "Moneda inválida"
+      });
+    }
+
+    if (!Number.isFinite(fpId) || fpId <= 0) {
+      return res.status(400).json({
+        ok: false,
+        msg: "forma_pago_id inválido"
+      });
+    }
+
+    if (!Number.isFinite(totalPygFinal) || totalPygFinal <= 0) {
+      return res.status(400).json({
+        ok: false,
+        msg: "Total inválido"
+      });
+    }
 
     if (monedaFinal !== "PYG" && (!Number.isFinite(tipoCambioFinal) || tipoCambioFinal <= 0)) {
-      return res.status(400).json({ ok: false, msg: "tipo_cambio inválido" });
+      return res.status(400).json({
+        ok: false,
+        msg: "tipo_cambio inválido"
+      });
+    }
+
+    const formaPagoQ = await client.query(
+      `
+      SELECT id
+      FROM formas_pago
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [fpId, empresaId]
+    );
+
+    if (!formaPagoQ.rowCount) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Forma de pago no encontrada o no pertenece a esta empresa"
+      });
     }
 
     const FORMAS_CON_COMPROBANTE = new Set([4, 5, 6, 7, 8, 9, 10]);
     const compStr = (nro_comprobante || "").toString().trim();
 
     if (FORMAS_CON_COMPROBANTE.has(fpId) && !compStr) {
-      return res.status(400).json({ ok: false, msg: "Falta nro_comprobante" });
+      return res.status(400).json({
+        ok: false,
+        msg: "Falta nro_comprobante"
+      });
     }
 
     const tipoCajaNecesaria = fpId === EFECTIVO_ID ? "efectivo" : "transferencia";
@@ -2064,14 +3467,16 @@ app.post("/ventas", async (req, res) => {
       WHERE estado = 'abierta'
         AND lower(tipo) = lower($1)
         AND fecha::date = $2::date
+        AND empresa_id = $3
       ORDER BY id DESC
       LIMIT 1
       `,
-      [tipoCajaNecesaria, fechaFinal]
+      [tipoCajaNecesaria, fechaFinal, empresaId]
     );
 
     if (cajaQ.rows.length === 0) {
       await client.query("ROLLBACK");
+
       return res.status(400).json({
         ok: false,
         msg: `Debe abrir la caja de ${tipoCajaNecesaria} antes de realizar una venta`,
@@ -2080,8 +3485,30 @@ app.post("/ventas", async (req, res) => {
 
     const caja_id_final = cajaQ.rows[0].id;
 
-    const clienteIdFinal =
+    let clienteIdFinal =
       cliente_id && String(cliente_id) !== "0" ? Number(cliente_id) : null;
+
+    if (clienteIdFinal) {
+      const clienteQ = await client.query(
+        `
+        SELECT id
+        FROM clientes
+        WHERE id = $1
+          AND empresa_id = $2
+        LIMIT 1
+        `,
+        [clienteIdFinal, empresaId]
+      );
+
+      if (!clienteQ.rowCount) {
+        await client.query("ROLLBACK");
+
+        return res.status(404).json({
+          ok: false,
+          msg: "Cliente no encontrado o no pertenece a esta empresa"
+        });
+      }
+    }
 
     const usuarioId = req.session?.user?.id || null;
     const cajeroNombre =
@@ -2106,9 +3533,10 @@ app.post("/ventas", async (req, res) => {
         tipo_cambio,
         forma_pago_id,
         estado_pago,
-        nro_comprobante
+        nro_comprobante,
+        empresa_id
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
       RETURNING id
       `,
       [
@@ -2125,6 +3553,7 @@ app.post("/ventas", async (req, res) => {
         fpId,
         (estado_pago || "pendiente").toString().trim().toLowerCase(),
         compFinal,
+        empresaId
       ]
     );
 
@@ -2138,25 +3567,72 @@ app.post("/ventas", async (req, res) => {
 
       if (!productoId || productoId <= 0) {
         await client.query("ROLLBACK");
-        return res.status(400).json({ ok: false, msg: "Item con producto_id inválido" });
+
+        return res.status(400).json({
+          ok: false,
+          msg: "Item con producto_id inválido"
+        });
       }
 
       if (!Number.isFinite(cantidad) || cantidad <= 0) {
         await client.query("ROLLBACK");
-        return res.status(400).json({ ok: false, msg: "Item con cantidad inválida" });
+
+        return res.status(400).json({
+          ok: false,
+          msg: "Item con cantidad inválida"
+        });
       }
 
       if (!Number.isFinite(precio) || precio < 0) {
         await client.query("ROLLBACK");
-        return res.status(400).json({ ok: false, msg: "Item con precio inválido" });
+
+        return res.status(400).json({
+          ok: false,
+          msg: "Item con precio inválido"
+        });
+      }
+
+      const prodQ = await client.query(
+        `
+        SELECT id, stock
+        FROM productos
+        WHERE id = $1
+          AND empresa_id = $2
+          AND COALESCE(activo, true) = true
+        LIMIT 1
+        `,
+        [productoId, empresaId]
+      );
+
+      if (!prodQ.rowCount) {
+        await client.query("ROLLBACK");
+
+        return res.status(404).json({
+          ok: false,
+          msg: `Producto ID ${productoId} no encontrado o no pertenece a esta empresa`
+        });
       }
 
       await client.query(
         `
-        INSERT INTO ventas_items (venta_id, producto_id, cantidad, precio, subtotal)
-        VALUES ($1,$2,$3,$4,$5)
+        INSERT INTO ventas_items (
+          venta_id,
+          producto_id,
+          cantidad,
+          precio,
+          subtotal,
+          empresa_id
+        )
+        VALUES ($1,$2,$3,$4,$5,$6)
         `,
-        [ventaId, productoId, cantidad, precio, subtotal]
+        [
+          ventaId,
+          productoId,
+          cantidad,
+          precio,
+          subtotal,
+          empresaId
+        ]
       );
 
       const upd = await client.query(
@@ -2164,17 +3640,23 @@ app.post("/ventas", async (req, res) => {
         UPDATE productos
         SET stock = stock - $1
         WHERE id = $2
+          AND empresa_id = $3
           AND stock >= $1
         RETURNING id
         `,
-        [cantidad, productoId]
+        [
+          cantidad,
+          productoId,
+          empresaId
+        ]
       );
 
       if (upd.rows.length === 0) {
         await client.query("ROLLBACK");
+
         return res.status(400).json({
           ok: false,
-          msg: `Stock insuficiente para el producto ID ${productoId}`,
+          msg: `Stock insuficiente para el producto ID ${productoId}`
         });
       }
     }
@@ -2196,19 +3678,25 @@ app.post("/ventas", async (req, res) => {
     });
 
   } catch (err) {
-    try { await client.query("ROLLBACK"); } catch {}
+    try {
+      await client.query("ROLLBACK");
+    } catch {}
+
     console.error("❌ Error guardando venta:", err);
+
     return res.status(500).json({
       ok: false,
       msg: "Error guardando venta",
       error: err.message
     });
+
   } finally {
     client.release();
   }
 });
-app.get("/ventas/:id", async (req, res) => {
+app.get("/ventas/:id", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const ventaId = Number(req.params.id);
 
     const ven = await pool.query(
@@ -2227,13 +3715,17 @@ app.get("/ventas/:id", async (req, res) => {
         v.tipo_cambio
       FROM ventas v
       WHERE v.id = $1
+        AND v.empresa_id = $2
       LIMIT 1
       `,
-      [ventaId]
+      [ventaId, empresaId]
     );
 
     if (ven.rows.length === 0) {
-      return res.status(404).json({ ok: false, msg: "Venta no encontrada" });
+      return res.status(404).json({
+        ok: false,
+        msg: "Venta no encontrada o no pertenece a esta empresa"
+      });
     }
 
     const items = await pool.query(
@@ -2247,11 +3739,14 @@ app.get("/ventas/:id", async (req, res) => {
         vi.subtotal,
         p.nombre AS producto_nombre
       FROM ventas_items vi
-      LEFT JOIN productos p ON p.id = vi.producto_id
+      LEFT JOIN productos p 
+        ON p.id = vi.producto_id
+       AND p.empresa_id = $2
       WHERE vi.venta_id = $1
+        AND vi.empresa_id = $2
       ORDER BY vi.id ASC
       `,
-      [ventaId]
+      [ventaId, empresaId]
     );
 
     res.json({
@@ -2281,21 +3776,41 @@ app.get("/ventas/:id", async (req, res) => {
     res.status(500).json({ ok: false, msg: "Error obteniendo venta" });
   }
 });
+
 // ELIMINAR VENTA
-app.delete("/ventas/:id", async (req, res) => {
-  const { id } = req.params;
+app.delete("/ventas/:id", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
+  const id = Number(req.params.id);
 
   try {
-    await pool.query("DELETE FROM ventas WHERE id = $1", [id]);
+    const { rowCount } = await pool.query(
+      `
+      DELETE FROM ventas
+      WHERE id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
+    );
+
+    if (!rowCount) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Venta no encontrada o no pertenece a esta empresa"
+      });
+    }
+
     res.json({ ok: true });
+
   } catch (err) {
     console.error("❌ Error eliminando venta:", err);
     res.status(500).json({ ok: false, msg: "Error eliminando venta" });
   }
 });
 
-app.put("/ventas/:id", requireAuth, async (req, res) => {
+app.put("/ventas/:id", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
+
   const {
     fecha,
     forma_pago_id,
@@ -2321,28 +3836,55 @@ app.put("/ventas/:id", requireAuth, async (req, res) => {
   const totalMonedaFinal = Number(total_moneda || totalPygFinal || 0);
 
   const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
 
-    const prevItemsQ = await client.query(
-      `SELECT producto_id, cantidad
-       FROM ventas_items
-       WHERE venta_id = $1`,
-      [id]
+    const ventaCheck = await client.query(
+      `
+      SELECT id
+      FROM ventas
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [id, empresaId]
     );
+
+    if (!ventaCheck.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        ok: false,
+        msg: "Venta no encontrada o no pertenece a esta empresa"
+      });
+    }
+
+    const prevItemsQ = await client.query(
+      `
+      SELECT producto_id, cantidad
+      FROM ventas_items
+      WHERE venta_id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
+    );
+
     const prevItems = prevItemsQ.rows || [];
 
     await client.query(
-      `UPDATE ventas
-       SET fecha = $1,
-           forma_pago_id = $2,
-           estado_pago = $3,
-           total = $4,
-           total_pyg = $5,
-           total_moneda = $6,
-           moneda = $7,
-           tipo_cambio = $8
-       WHERE id = $9`,
+      `
+      UPDATE ventas
+      SET fecha = $1,
+          forma_pago_id = $2,
+          estado_pago = $3,
+          total = $4,
+          total_pyg = $5,
+          total_moneda = $6,
+          moneda = $7,
+          tipo_cambio = $8
+      WHERE id = $9
+        AND empresa_id = $10
+      `,
       [
         fecha,
         Number(forma_pago_id),
@@ -2352,11 +3894,19 @@ app.put("/ventas/:id", requireAuth, async (req, res) => {
         totalMonedaFinal,
         monedaFinal,
         tipoCambioFinal,
-        id
+        id,
+        empresaId
       ]
     );
 
-    await client.query(`DELETE FROM ventas_items WHERE venta_id = $1`, [id]);
+    await client.query(
+      `
+      DELETE FROM ventas_items
+      WHERE venta_id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
+    );
 
     for (const it of items) {
       const producto_id = Number(it.producto_id);
@@ -2369,23 +3919,42 @@ app.put("/ventas/:id", requireAuth, async (req, res) => {
       }
 
       await client.query(
-        `INSERT INTO ventas_items (venta_id, producto_id, cantidad, precio, subtotal)
-         VALUES ($1,$2,$3,$4,$5)`,
-        [id, producto_id, cantidad, precio, subtotal]
+        `
+        INSERT INTO ventas_items (
+          venta_id,
+          producto_id,
+          cantidad,
+          precio,
+          subtotal,
+          empresa_id
+        )
+        VALUES ($1,$2,$3,$4,$5,$6)
+        `,
+        [id, producto_id, cantidad, precio, subtotal, empresaId]
       );
     }
 
     for (const p of prevItems) {
       await client.query(
-        `UPDATE productos SET stock = stock + $1 WHERE id = $2`,
-        [Number(p.cantidad), Number(p.producto_id)]
+        `
+        UPDATE productos
+        SET stock = stock + $1
+        WHERE id = $2
+          AND empresa_id = $3
+        `,
+        [Number(p.cantidad), Number(p.producto_id), empresaId]
       );
     }
 
     for (const it of items) {
       await client.query(
-        `UPDATE productos SET stock = stock - $1 WHERE id = $2`,
-        [Number(it.cantidad), Number(it.producto_id)]
+        `
+        UPDATE productos
+        SET stock = stock - $1
+        WHERE id = $2
+          AND empresa_id = $3
+        `,
+        [Number(it.cantidad), Number(it.producto_id), empresaId]
       );
     }
 
@@ -2395,12 +3964,18 @@ app.put("/ventas/:id", requireAuth, async (req, res) => {
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("❌ Error actualizando venta:", err);
-    return res.status(500).json({ ok: false, msg: "Error actualizando venta", error: err.message });
+    return res.status(500).json({
+      ok: false,
+      msg: "Error actualizando venta",
+      error: err.message
+    });
   } finally {
     client.release();
   }
 });
-app.get("/ventas/:id/ticket", async (req, res) => {
+
+app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const ventaId = Number(req.params.id);
 
   try {
@@ -2412,13 +3987,23 @@ app.get("/ventas/:id/ticket", async (req, res) => {
         c.nombre,
         c.apellido,
         c.ci,
-        fp.nombre AS forma_pago_nombre
+        fp.nombre AS forma_pago_nombre,
+        e.nombre AS empresa_nombre,
+        e.logo AS empresa_logo
       FROM ventas v
-      LEFT JOIN clientes c ON c.id = v.cliente_id
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+      LEFT JOIN clientes c 
+        ON c.id = v.cliente_id
+       AND c.empresa_id = $2
+      LEFT JOIN formas_pago fp 
+        ON fp.id = v.forma_pago_id
+       AND fp.empresa_id = $2
+      LEFT JOIN empresas e
+        ON e.id = v.empresa_id
       WHERE v.id = $1
+        AND v.empresa_id = $2
+      LIMIT 1
       `,
-      [ventaId]
+      [ventaId, empresaId]
     );
 
     if (v.rows.length === 0) {
@@ -2433,10 +4018,14 @@ app.get("/ventas/:id/ticket", async (req, res) => {
         vi.*,
         p.nombre AS producto_nombre
       FROM ventas_items vi
-      JOIN productos p ON p.id = vi.producto_id
+      JOIN productos p 
+        ON p.id = vi.producto_id
+       AND p.empresa_id = $2
       WHERE vi.venta_id = $1
+        AND vi.empresa_id = $2
+      ORDER BY vi.id ASC
       `,
-      [ventaId]
+      [ventaId, empresaId]
     );
 
     const ticketWidth = 226;
@@ -2448,7 +4037,7 @@ app.get("/ventas/:id/ticket", async (req, res) => {
     });
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=ticket_${ventaId}.pdf`);
+    res.setHeader("Content-Disposition", `inline; filename=ticket_${empresaId}_${ventaId}.pdf`);
 
     doc.pipe(res);
 
@@ -2467,13 +4056,22 @@ app.get("/ventas/:id/ticket", async (req, res) => {
     doc
       .font("Helvetica-Bold")
       .fontSize(10)
-      .text("SPYNET VALENZUELA", 72, 10, { width: 135, align: "center" });
+      .text(venta.empresa_nombre || "SPYNET", 72, 10, {
+        width: 135,
+        align: "center"
+      });
 
     doc
       .font("Helvetica-Oblique")
       .fontSize(7)
-      .text("Telefono: 0983 399 215", 72, 24, { width: 135, align: "center" })
-      .text("info@spynet.com.py", 72, 34, { width: 135, align: "center" });
+      .text("Telefono: 0983 399 215", 72, 24, {
+        width: 135,
+        align: "center"
+      })
+      .text("info@spynet.com.py", 72, 34, {
+        width: 135,
+        align: "center"
+      });
 
     doc.moveDown(2.2);
 
@@ -2484,7 +4082,9 @@ app.get("/ventas/:id/ticket", async (req, res) => {
 
     doc
       .fontSize(8)
-      .text(`** ${String(ventaId).padStart(3, "0")} **`, { align: "center" });
+      .text(`** ${String(ventaId).padStart(3, "0")} **`, {
+        align: "center"
+      });
 
     doc.moveDown(0.6);
 
@@ -2562,150 +4162,291 @@ app.get("/ventas/:id/ticket", async (req, res) => {
     res.status(500).send("Error generando ticket");
   }
 });
-app.get("/formas-pago", async (req, res) => {
-  const result = await pool.query("SELECT * FROM formas_pago WHERE activo = true ORDER BY nombre");
-  res.json(result.rows);
-});
-app.post("/formas-pago", async (req, res) => {
-  const { nombre, tipo, descripcion } = req.body;
-  await pool.query(
-    "INSERT INTO formas_pago (nombre, tipo, descripcion) VALUES ($1, $2, $3)",
-    [nombre, tipo, descripcion]
-  );
-  res.json({ ok: true });
-});
-app.put("/formas-pago/:id", async (req, res) => {
-  const { id } = req.params;
-  const { nombre, tipo, descripcion, activo } = req.body;
+app.get("/formas-pago", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
 
-  await pool.query(`
-    UPDATE formas_pago SET 
-      nombre = $1, tipo = $2, descripcion = $3, activo = $4
-    WHERE id = $5`,
-    [nombre, tipo, descripcion, activo, id]
-  );
-
-  res.json({ ok: true });
-});
-
-app.get("/compras/:id/pdf", requireAuth, async (req, res) => {
-    const id = Number(req.params.id);
-
-    // Obtener datos de la compra
-    const cab = await pool.query(
-        `SELECT c.*, p.nombre AS proveedor_nombre, p.ruc AS proveedor_ruc
-         FROM compras c
-         LEFT JOIN proveedores p ON p.id = c.proveedor_id
-         WHERE c.id=$1`,
-        [id]
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM formas_pago
+      WHERE activo = true
+        AND empresa_id = $1
+      ORDER BY nombre
+      `,
+      [empresaId]
     );
 
-    if (!cab.rowCount) return res.status(404).send("Compra no encontrada");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("GET /formas-pago", err);
+    res.status(500).json({ ok: false, msg: "Error listando formas de pago" });
+  }
+});
+
+app.post("/formas-pago", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const { nombre, tipo, descripcion } = req.body;
+
+    await pool.query(
+      `
+      INSERT INTO formas_pago (
+        nombre,
+        tipo,
+        descripcion,
+        empresa_id
+      )
+      VALUES ($1, $2, $3, $4)
+      `,
+      [nombre, tipo, descripcion, empresaId]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /formas-pago", err);
+    res.status(500).json({ ok: false, msg: "Error creando forma de pago" });
+  }
+});
+
+app.put("/formas-pago/:id", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const { id } = req.params;
+    const { nombre, tipo, descripcion, activo } = req.body;
+
+    const { rowCount } = await pool.query(
+      `
+      UPDATE formas_pago
+      SET 
+        nombre = $1,
+        tipo = $2,
+        descripcion = $3,
+        activo = $4
+      WHERE id = $5
+        AND empresa_id = $6
+      `,
+      [nombre, tipo, descripcion, activo, id, empresaId]
+    );
+
+    if (!rowCount) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Forma de pago no encontrada o no pertenece a esta empresa"
+      });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("PUT /formas-pago/:id", err);
+    res.status(500).json({ ok: false, msg: "Error actualizando forma de pago" });
+  }
+});
+
+app.get("/compras/:id/pdf", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
+  const id = Number(req.params.id);
+
+  try {
+    const cab = await pool.query(
+      `
+      SELECT 
+        c.*,
+        p.nombre AS proveedor_nombre,
+        p.ruc AS proveedor_ruc,
+        e.nombre AS empresa_nombre
+      FROM compras c
+      LEFT JOIN proveedores p 
+        ON p.id = c.proveedor_id
+       AND p.empresa_id = $2
+      LEFT JOIN empresas e
+        ON e.id = c.empresa_id
+      WHERE c.id = $1
+        AND c.empresa_id = $2
+      LIMIT 1
+      `,
+      [id, empresaId]
+    );
+
+    if (!cab.rowCount) {
+      return res.status(404).send("Compra no encontrada");
+    }
 
     const comp = cab.rows[0];
 
-    const items = await pool.query(`
-        SELECT ci.*, pr.nombre AS producto_nombre
-        FROM compras_items ci
-        LEFT JOIN productos pr ON pr.id = ci.producto_id
-        WHERE ci.compra_id=$1
-    `, [id]);
+    const items = await pool.query(
+      `
+      SELECT 
+        ci.*,
+        pr.nombre AS producto_nombre
+      FROM compras_items ci
+      LEFT JOIN productos pr 
+        ON pr.id = ci.producto_id
+       AND pr.empresa_id = $2
+      WHERE ci.compra_id = $1
+        AND ci.empresa_id = $2
+      ORDER BY ci.id
+      `,
+      [id, empresaId]
+    );
 
-
-    // Crear PDF
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=compra_${id}.pdf`);
+    res.setHeader("Content-Disposition", `inline; filename=compra_${empresaId}_${id}.pdf`);
 
-    const doc = new PDFDocument({ margin:30 });
+    const doc = new PDFDocument({ margin: 30 });
     doc.pipe(res);
 
-    // Encabezado
-    doc.fontSize(20).text("Compras – Energy Green", { align:"center" });
-    doc.moveDown(1);
-
-    doc.fontSize(12).text(`ID Compra: ${comp.id}`);
-    doc.text(`Fecha: ${comp.fecha.toISOString().slice(0,10)}`);
-    doc.text(`Proveedor: ${comp.proveedor_nombre}`);
-    doc.text(`RUC: ${comp.proveedor_ruc}`);
-    doc.text(`Factura: ${comp.factura || "-"}`);
-    doc.moveDown(1);
-
-    // Tabla
-    doc.fontSize(12).text("Detalle de Productos", { underline:true });
-    doc.moveDown(0.5);
-
-    items.rows.forEach(it => {
-        doc.fontSize(11).text(
-            `${it.producto_nombre}  | Cant: ${it.cantidad} | Costo: ${it.costo} | Subtotal: ${it.subtotal}`
-        );
+    doc.fontSize(20).text(`Compras – ${comp.empresa_nombre || "Empresa"}`, {
+      align: "center"
     });
 
     doc.moveDown(1);
-    doc.fontSize(14).text(`TOTAL: Gs. ${comp.total}`, { align:"right" });
+
+    doc.fontSize(12).text(`ID Compra: ${comp.id}`);
+    doc.text(`Fecha: ${comp.fecha ? comp.fecha.toISOString().slice(0, 10) : "-"}`);
+    doc.text(`Proveedor: ${comp.proveedor_nombre || "-"}`);
+    doc.text(`RUC: ${comp.proveedor_ruc || "-"}`);
+    doc.text(`Factura: ${comp.factura || "-"}`);
+    doc.moveDown(1);
+
+    doc.fontSize(12).text("Detalle de Productos", { underline: true });
+    doc.moveDown(0.5);
+
+    items.rows.forEach(it => {
+      doc.fontSize(11).text(
+        `${it.producto_nombre || "-"} | Cant: ${it.cantidad} | Costo: ${it.costo} | Subtotal: ${it.subtotal}`
+      );
+    });
+
+    doc.moveDown(1);
+    doc.fontSize(14).text(`TOTAL: Gs. ${Number(comp.total || 0).toLocaleString("es-PY")}`, {
+      align: "right"
+    });
 
     doc.end();
+
+  } catch (err) {
+    console.error("GET /compras/:id/pdf", err);
+    res.status(500).send("Error generando PDF de compra");
+  }
 });
 
-app.delete("/compras/:id", requireAuth, async (req, res) => {
-    const id = Number(req.params.id);
+app.delete("/compras/:id", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
+  const id = Number(req.params.id);
 
-    if (!id) {
-        return res.json({ ok: false, msg: "ID inválido" });
-    }
-
-    try {
-        const client = await pool.connect();
-        await client.query("BEGIN");
-
-        // 1 Borrar ítems de la compra
-        await client.query(
-            "DELETE FROM compras_items WHERE compra_id=$1",
-            [id]
-        );
-
-        // 2 Borrar compra
-        const { rowCount } = await client.query(
-            "DELETE FROM compras WHERE id=$1",
-            [id]
-        );
-
-        await client.query("COMMIT");
-        client.release();
-
-        if (!rowCount) {
-            return res.json({ ok: false, msg: "Compra no encontrada" });
-        }
-
-        res.json({ ok: true, msg: "Compra eliminada correctamente" });
-
-    } catch (err) {
-        console.error("DELETE /compras/:id", err);
-        res.json({ ok: false, msg: "Error eliminando compra" });
-    }
-});
-
-app.get("/productos/barcode/:codigo", async (req, res) => {
-  const codigo = req.params.codigo;
-
-  const result = await pool.query(
-    "SELECT * FROM productos WHERE codigo = $1",
-    [codigo]
-  );
-
-  if (result.rows.length === 0) {
-    return res.status(404).json({ error: "Producto no encontrado" });
+  if (!id) {
+    return res.json({
+      ok: false,
+      msg: "ID inválido"
+    });
   }
 
-  res.json(result.rows[0]);
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const compraQ = await client.query(
+      `
+      SELECT id
+      FROM compras
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [id, empresaId]
+    );
+
+    if (!compraQ.rowCount) {
+      await client.query("ROLLBACK");
+
+      return res.json({
+        ok: false,
+        msg: "Compra no encontrada o no pertenece a esta empresa"
+      });
+    }
+
+    await client.query(
+      `
+      DELETE FROM compras_items
+      WHERE compra_id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
+    );
+
+    const { rowCount } = await client.query(
+      `
+      DELETE FROM compras
+      WHERE id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
+    );
+
+    await client.query("COMMIT");
+
+    if (!rowCount) {
+      return res.json({
+        ok: false,
+        msg: "Compra no encontrada"
+      });
+    }
+
+    res.json({
+      ok: true,
+      msg: "Compra eliminada correctamente"
+    });
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("DELETE /compras/:id", err);
+
+    res.json({
+      ok: false,
+      msg: "Error eliminando compra"
+    });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/productos/barcode/:codigo", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const codigo = req.params.codigo;
+
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM productos
+      WHERE codigo = $1
+        AND empresa_id = $2
+        AND COALESCE(activo, true) = true
+      LIMIT 1
+      `,
+      [codigo, empresaId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "Producto no encontrado"
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("GET /productos/barcode/:codigo", err);
+    res.status(500).json({ error: "Error buscando producto por código" });
+  }
 });
 
 function toISODate(fecha) {
   const s = String(fecha || "").trim();
 
-  // si viene YYYY-MM-DD (ok)
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-  // si viene DD/MM/YYYY -> convertir a YYYY-MM-DD
   const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (m) return `${m[3]}-${m[2]}-${m[1]}`;
 
@@ -2713,7 +4454,9 @@ function toISODate(fecha) {
 }
 
 
-app.post("/caja/abrir", async (req, res) => {
+app.post("/caja/abrir", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
+
   const {
     tipo,
     fecha,
@@ -2727,17 +4470,18 @@ app.post("/caja/abrir", async (req, res) => {
     const tipoNorm = normTipoCaja(tipo);
     const fechaISO = toISODate(fecha);
 
-   const existeQ = await pool.query(
-  `
-  SELECT id
-  FROM caja
-  WHERE estado = 'abierta'
-    AND tipo = $1
-    AND fecha::date = $2::date
-  LIMIT 1
-  `,
-  [tipoNorm, fechaISO]
-);
+    const existeQ = await pool.query(
+      `
+      SELECT id
+      FROM caja
+      WHERE estado = 'abierta'
+        AND tipo = $1
+        AND fecha::date = $2::date
+        AND empresa_id = $3
+      LIMIT 1
+      `,
+      [tipoNorm, fechaISO, empresaId]
+    );
 
     if (existeQ.rowCount > 0) {
       return res.status(400).json({
@@ -2759,9 +4503,10 @@ app.post("/caja/abrir", async (req, res) => {
         saldo_gs,
         saldo_us,
         saldo_rs,
-        estado
+        estado,
+        empresa_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 'abierta')
+      VALUES ($1, $2, $3, $4, $5, $6, 'abierta', $7)
       RETURNING *
       `,
       [
@@ -2770,18 +4515,29 @@ app.post("/caja/abrir", async (req, res) => {
         saldoGsFinal,
         saldoGsFinal,
         saldoUsFinal,
-        saldoRsFinal
+        saldoRsFinal,
+        empresaId
       ]
     );
 
-    return res.json({ ok: true, caja: q.rows[0] });
+    return res.json({
+      ok: true,
+      caja: q.rows[0]
+    });
+
   } catch (err) {
     console.error("❌ /caja/abrir:", err);
-    return res.status(500).json({ ok: false, msg: "Error al abrir caja" });
+
+    return res.status(500).json({
+      ok: false,
+      msg: "Error al abrir caja"
+    });
   }
 });
-app.get("/caja/abierta", async (req, res) => {
+
+app.get("/caja/abierta", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const tipo = req.query.tipo ? normTipoCaja(req.query.tipo) : null;
     const fecha = req.query.fecha ? toISODate(req.query.fecha) : null;
 
@@ -2789,9 +4545,10 @@ app.get("/caja/abierta", async (req, res) => {
       SELECT *
       FROM caja
       WHERE estado = 'abierta'
+        AND empresa_id = $1
     `;
 
-    const params = [];
+    const params = [empresaId];
 
     if (tipo) {
       params.push(tipo);
@@ -2811,7 +4568,10 @@ app.get("/caja/abierta", async (req, res) => {
     const r = await pool.query(q, params);
 
     if (!r.rowCount) {
-      return res.json({ abierta: false, caja: null });
+      return res.json({
+        abierta: false,
+        caja: null
+      });
     }
 
     const caja = r.rows[0];
@@ -2834,9 +4594,10 @@ app.get("/caja/abierta", async (req, res) => {
         END), 0)::numeric AS total_ventas_rs
       FROM ventas
       WHERE caja_id = $1
+        AND empresa_id = $2
         AND (estado_pago IS NULL OR estado_pago <> 'anulado')
       `,
-      [caja.id]
+      [caja.id, empresaId]
     );
 
     const total_ventas_gs = Number(ventasQ.rows[0].total_ventas_gs || 0);
@@ -2870,46 +4631,65 @@ app.get("/caja/abierta", async (req, res) => {
 
   } catch (err) {
     console.error("GET /caja/abierta", err);
+
     return res.status(500).json({
       abierta: false,
       msg: "Error consultando caja"
     });
   }
 });
-app.get("/caja/estado", async (req, res) => {
+app.get("/caja/estado", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const tipo = req.query.tipo ? normTipoCaja(req.query.tipo) : null;
     const fecha = req.query.fecha ? toISODate(req.query.fecha) : null;
 
     if (!tipo) {
-      return res.status(400).json({ abierta: false, msg: "Falta tipo (efectivo/transferencia)" });
-    }
-    if (!fecha) {
-      return res.status(400).json({ abierta: false, msg: "Falta fecha (YYYY-MM-DD)" });
+      return res.status(400).json({
+        abierta: false,
+        msg: "Falta tipo (efectivo/transferencia)"
+      });
     }
 
-    // 1) buscar caja abierta de ese tipo y fecha
+    if (!fecha) {
+      return res.status(400).json({
+        abierta: false,
+        msg: "Falta fecha (YYYY-MM-DD)"
+      });
+    }
+
     const cajaQ = await pool.query(
-      `SELECT * FROM caja
-       WHERE estado='abierta' AND tipo=$1 AND fecha::date=$2::date
-       ORDER BY id DESC
-       LIMIT 1`,
-      [tipo, fecha]
+      `
+      SELECT *
+      FROM caja
+      WHERE estado = 'abierta'
+        AND tipo = $1
+        AND fecha::date = $2::date
+        AND empresa_id = $3
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+      [tipo, fecha, empresaId]
     );
 
     if (!cajaQ.rowCount) {
-      return res.json({ abierta: false, caja: null });
+      return res.json({
+        abierta: false,
+        caja: null
+      });
     }
 
     const caja = cajaQ.rows[0];
 
-    // 2) sumar ventas de ESA caja
     const ventasQ = await pool.query(
-      `SELECT COALESCE(SUM(total),0) AS total_ventas
-       FROM ventas
-       WHERE caja_id = $1
-         AND (estado_pago IS NULL OR estado_pago <> 'anulado')`,
-      [caja.id]
+      `
+      SELECT COALESCE(SUM(total), 0) AS total_ventas
+      FROM ventas
+      WHERE caja_id = $1
+        AND empresa_id = $2
+        AND (estado_pago IS NULL OR estado_pago <> 'anulado')
+      `,
+      [caja.id, empresaId]
     );
 
     const saldo_inicial = Number(caja.saldo_inicial || 0);
@@ -2924,49 +4704,105 @@ app.get("/caja/estado", async (req, res) => {
         saldo_actual
       }
     });
+
   } catch (err) {
     console.error("GET /caja/estado", err);
-    res.status(500).json({ abierta: false, msg: "Error estado caja" });
+    res.status(500).json({
+      abierta: false,
+      msg: "Error estado caja"
+    });
   }
 });
 
-//  Alias para compatibilidad con el front (que llama /formas_pago)
-app.get("/formas_pago", requireAuth, async (req, res) => {
-  const result = await pool.query("SELECT * FROM formas_pago WHERE activo = true ORDER BY nombre");
-  res.json(result.rows);
+// Alias para compatibilidad con el front (que llama /formas_pago)
+app.get("/formas_pago", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM formas_pago
+      WHERE activo = true
+        AND empresa_id = $1
+      ORDER BY nombre
+      `,
+      [empresaId]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("GET /formas_pago", err);
+    res.status(500).json({ ok: false, msg: "Error listando formas de pago" });
+  }
 });
 
-app.post("/formas_pago", requireAuth, async (req, res) => {
-  const { nombre, tipo, descripcion } = req.body;
-  await pool.query(
-    "INSERT INTO formas_pago (nombre, tipo, descripcion) VALUES ($1, $2, $3)",
-    [nombre, tipo, descripcion]
-  );
-  res.json({ ok: true });
+app.post("/formas_pago", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const { nombre, tipo, descripcion } = req.body;
+
+    await pool.query(
+      `
+      INSERT INTO formas_pago (
+        nombre,
+        tipo,
+        descripcion,
+        empresa_id
+      )
+      VALUES ($1, $2, $3, $4)
+      `,
+      [nombre, tipo, descripcion, empresaId]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /formas_pago", err);
+    res.status(500).json({ ok: false, msg: "Error creando forma de pago" });
+  }
 });
 
-app.put("/formas_pago/:id", requireAuth, async (req, res) => {
-  const { id } = req.params;
-  const { nombre, tipo, descripcion, activo } = req.body;
+app.put("/formas_pago/:id", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const { id } = req.params;
+    const { nombre, tipo, descripcion, activo } = req.body;
 
-  await pool.query(`
-    UPDATE formas_pago SET 
-      nombre = $1, tipo = $2, descripcion = $3, activo = $4
-    WHERE id = $5
-  `, [nombre, tipo, descripcion, activo, id]);
+    const { rowCount } = await pool.query(
+      `
+      UPDATE formas_pago
+      SET 
+        nombre = $1,
+        tipo = $2,
+        descripcion = $3,
+        activo = $4
+      WHERE id = $5
+        AND empresa_id = $6
+      `,
+      [nombre, tipo, descripcion, activo, id, empresaId]
+    );
 
-  res.json({ ok: true });
+    if (!rowCount) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Forma de pago no encontrada o no pertenece a esta empresa"
+      });
+    }
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    console.error("PUT /formas_pago/:id", err);
+    res.status(500).json({ ok: false, msg: "Error actualizando forma de pago" });
+  }
 });
 
 // ================== RESUMEN CAJA (DIA / MES) ==================
 function monthStartISO(fechaISO) {
-  // fechaISO: YYYY-MM-DD
   const m = String(fechaISO || "").slice(0, 7);
   return /^\d{4}-\d{2}$/.test(m) ? `${m}-01` : null;
 }
 
-// GET /caja/resumen-dia?dia=2026-02-11   (o dia=11/02/2026)
-// Helpers (asegurate de tener toISODate(d) que convierte "16/02/2026" -> "2026-02-16")
 function numRow(r) {
   return {
     efectivo: Number(r?.efectivo || 0),
@@ -2975,11 +4811,18 @@ function numRow(r) {
   };
 }
 
-// ✅ Día: acepta ?dia= o ?fecha=
-app.get("/caja/resumen-dia", async (req, res) => {
+// Día: acepta ?dia= o ?fecha=
+app.get("/caja/resumen-dia", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const diaParam = req.query.dia || req.query.fecha;
-    if (!diaParam) return res.status(400).json({ ok: false, msg: "Falta dia o fecha" });
+
+    if (!diaParam) {
+      return res.status(400).json({
+        ok: false,
+        msg: "Falta dia o fecha"
+      });
+    }
 
     const ymd = toISODate(diaParam);
 
@@ -2989,8 +4832,11 @@ app.get("/caja/resumen-dia", async (req, res) => {
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          LEFT JOIN formas_pago fp 
+            ON fp.id = v.forma_pago_id
+           AND fp.empresa_id = $2
           WHERE v.fecha::date = $1::date
+            AND v.empresa_id = $2
             AND lower(fp.tipo) LIKE '%efect%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_efectivo,
@@ -2999,14 +4845,18 @@ app.get("/caja/resumen-dia", async (req, res) => {
           SELECT SUM(c.total)
           FROM compras c
           WHERE c.fecha::date = $1::date
+            AND c.empresa_id = $2
             AND c.tipo_pago = 'efectivo'
         ), 0) AS egreso_efectivo,
 
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          LEFT JOIN formas_pago fp 
+            ON fp.id = v.forma_pago_id
+           AND fp.empresa_id = $2
           WHERE v.fecha::date = $1::date
+            AND v.empresa_id = $2
             AND lower(fp.tipo) LIKE '%transf%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_transferencia,
@@ -3015,10 +4865,11 @@ app.get("/caja/resumen-dia", async (req, res) => {
           SELECT SUM(c.total)
           FROM compras c
           WHERE c.fecha::date = $1::date
+            AND c.empresa_id = $2
             AND c.tipo_pago = 'transferencia'
         ), 0) AS egreso_transferencia
       `,
-      [ymd]
+      [ymd, empresaId]
     );
 
     const r = q.rows[0];
@@ -3042,16 +4893,24 @@ app.get("/caja/resumen-dia", async (req, res) => {
       saldo_transferencia,
       total: saldo_efectivo + saldo_transferencia
     });
+
   } catch (err) {
     console.error("GET /caja/resumen-dia", err);
-    return res.status(500).json({ ok: false, msg: "Error resumen día" });
+    return res.status(500).json({
+      ok: false,
+      msg: "Error resumen día"
+    });
   }
 });
 // ✅ Mes: acepta ?mes= o ?fecha=
-app.get("/caja/resumen-mes", async (req, res) => {
+app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const mesParam = req.query.mes || req.query.fecha;
-    if (!mesParam) return res.status(400).json({ ok: false, msg: "Falta mes o fecha" });
+
+    if (!mesParam) {
+      return res.status(400).json({ ok: false, msg: "Falta mes o fecha" });
+    }
 
     let ymd = String(mesParam).trim();
     if (/^\d{4}-\d{2}$/.test(ymd)) ymd = `${ymd}-01`;
@@ -3063,8 +4922,11 @@ app.get("/caja/resumen-mes", async (req, res) => {
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          LEFT JOIN formas_pago fp 
+            ON fp.id = v.forma_pago_id
+           AND fp.empresa_id = $2
           WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+            AND v.empresa_id = $2
             AND lower(fp.tipo) LIKE '%efect%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_efectivo,
@@ -3073,14 +4935,18 @@ app.get("/caja/resumen-mes", async (req, res) => {
           SELECT SUM(c.total)
           FROM compras c
           WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+            AND c.empresa_id = $2
             AND c.tipo_pago = 'efectivo'
         ), 0) AS egreso_efectivo,
 
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          LEFT JOIN formas_pago fp 
+            ON fp.id = v.forma_pago_id
+           AND fp.empresa_id = $2
           WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+            AND v.empresa_id = $2
             AND lower(fp.tipo) LIKE '%transf%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_transferencia,
@@ -3089,10 +4955,11 @@ app.get("/caja/resumen-mes", async (req, res) => {
           SELECT SUM(c.total)
           FROM compras c
           WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+            AND c.empresa_id = $2
             AND c.tipo_pago = 'transferencia'
         ), 0) AS egreso_transferencia
       `,
-      [ymd]
+      [ymd, empresaId]
     );
 
     const r = q.rows[0];
@@ -3116,32 +4983,36 @@ app.get("/caja/resumen-mes", async (req, res) => {
       saldo_transferencia,
       total: saldo_efectivo + saldo_transferencia
     });
+
   } catch (err) {
     console.error("GET /caja/resumen-mes", err);
     return res.status(500).json({ ok: false, msg: "Error resumen mes" });
   }
 });
+
 // ✅ Único: /caja/resumen?fecha=16/02/2026 ó 2026-02-16
-app.get("/caja/resumen", async (req, res) => {
+app.get("/caja/resumen", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const fechaParam = req.query.fecha || req.query.dia || req.query.mes;
+
     if (!fechaParam) {
       return res.status(400).json({ ok: false, msg: "Falta fecha" });
     }
 
     const ymd = toISODate(fechaParam);
 
-    // =========================
-    // RESUMEN DEL DÍA
-    // =========================
     const diaQ = await pool.query(
       `
       SELECT
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          LEFT JOIN formas_pago fp 
+            ON fp.id = v.forma_pago_id
+           AND fp.empresa_id = $2
           WHERE v.fecha::date = $1::date
+            AND v.empresa_id = $2
             AND lower(COALESCE(fp.tipo, '')) LIKE '%efect%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_efectivo,
@@ -3150,14 +5021,18 @@ app.get("/caja/resumen", async (req, res) => {
           SELECT SUM(c.total)
           FROM compras c
           WHERE c.fecha::date = $1::date
+            AND c.empresa_id = $2
             AND c.tipo_pago = 'efectivo'
         ), 0) AS egreso_compras_efectivo,
 
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          LEFT JOIN formas_pago fp 
+            ON fp.id = v.forma_pago_id
+           AND fp.empresa_id = $2
           WHERE v.fecha::date = $1::date
+            AND v.empresa_id = $2
             AND lower(COALESCE(fp.tipo, '')) LIKE '%transf%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_transferencia,
@@ -3166,23 +5041,24 @@ app.get("/caja/resumen", async (req, res) => {
           SELECT SUM(c.total)
           FROM compras c
           WHERE c.fecha::date = $1::date
+            AND c.empresa_id = $2
             AND c.tipo_pago = 'transferencia'
         ), 0) AS egreso_compras_transferencia
       `,
-      [ymd]
+      [ymd, empresaId]
     );
 
-    // =========================
-    // RESUMEN DEL MES
-    // =========================
     const mesQ = await pool.query(
       `
       SELECT
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          LEFT JOIN formas_pago fp 
+            ON fp.id = v.forma_pago_id
+           AND fp.empresa_id = $2
           WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+            AND v.empresa_id = $2
             AND lower(COALESCE(fp.tipo, '')) LIKE '%efect%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_efectivo,
@@ -3191,14 +5067,18 @@ app.get("/caja/resumen", async (req, res) => {
           SELECT SUM(c.total)
           FROM compras c
           WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+            AND c.empresa_id = $2
             AND c.tipo_pago = 'efectivo'
         ), 0) AS egreso_compras_efectivo,
 
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+          LEFT JOIN formas_pago fp 
+            ON fp.id = v.forma_pago_id
+           AND fp.empresa_id = $2
           WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+            AND v.empresa_id = $2
             AND lower(COALESCE(fp.tipo, '')) LIKE '%transf%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_transferencia,
@@ -3207,10 +5087,11 @@ app.get("/caja/resumen", async (req, res) => {
           SELECT SUM(c.total)
           FROM compras c
           WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+            AND c.empresa_id = $2
             AND c.tipo_pago = 'transferencia'
         ), 0) AS egreso_compras_transferencia
       `,
-      [ymd]
+      [ymd, empresaId]
     );
 
     const dia = diaQ.rows[0] || {};
@@ -3223,24 +5104,28 @@ app.get("/caja/resumen", async (req, res) => {
         ingreso_efectivo: Number(dia.ingreso_efectivo || 0),
         egreso_compras_efectivo: Number(dia.egreso_compras_efectivo || 0),
         ingreso_transferencia: Number(dia.ingreso_transferencia || 0),
-        egreso_compras_transferencia: Number(dia.egreso_compras_transferencia || 0),
+        egreso_compras_transferencia: Number(dia.egreso_compras_transferencia || 0)
       },
       mes: {
         ingreso_efectivo: Number(mes.ingreso_efectivo || 0),
         egreso_compras_efectivo: Number(mes.egreso_compras_efectivo || 0),
         ingreso_transferencia: Number(mes.ingreso_transferencia || 0),
-        egreso_compras_transferencia: Number(mes.egreso_compras_transferencia || 0),
+        egreso_compras_transferencia: Number(mes.egreso_compras_transferencia || 0)
       }
     });
+
   } catch (err) {
     console.error("GET /caja/resumen", err);
     return res.status(500).json({ ok: false, msg: "Error resumen caja" });
   }
 });
-// ✅ APARTADO NUEVO: Movimientos con comprobante (para la pantalla Formas de Pago)
-app.get("/formas-pago/movimientos", async (_req, res) => {
+// APARTADO NUEVO: Movimientos con comprobante (para la pantalla Formas de Pago)
+app.get("/formas-pago/movimientos", requireEmpresa, async (req, res) => {
   try {
-    const q = await pool.query(`
+    const empresaId = getEmpresaId(req);
+
+    const q = await pool.query(
+      `
       SELECT
         v.id,
         v.fecha,
@@ -3250,11 +5135,18 @@ app.get("/formas-pago/movimientos", async (_req, res) => {
         v.nro_comprobante,
         COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente_nombre
       FROM ventas v
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
-      LEFT JOIN clientes c ON c.id = v.cliente_id
+      LEFT JOIN formas_pago fp
+        ON fp.id = v.forma_pago_id
+       AND fp.empresa_id = $1
+      LEFT JOIN clientes c
+        ON c.id = v.cliente_id
+       AND c.empresa_id = $1
+      WHERE v.empresa_id = $1
       ORDER BY v.id DESC
       LIMIT 50
-    `);
+      `,
+      [empresaId]
+    );
 
     res.json(q.rows);
   } catch (err) {
@@ -3263,7 +5155,8 @@ app.get("/formas-pago/movimientos", async (_req, res) => {
   }
 });
 
-app.get("/ventas/:id/pagare", async (req, res) => {
+app.get("/ventas/:id/pagare", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
   const ventaId = Number(req.params.id);
 
   try {
@@ -3282,17 +5175,28 @@ app.get("/ventas/:id/pagare", async (req, res) => {
         COALESCE(v.cajero_nombre, 'Sin usuario') AS cajero_nombre,
         fp.nombre AS forma_pago_nombre,
         COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente_nombre,
-        COALESCE(c.ci, '') AS cliente_ruc
+        COALESCE(c.ci, '') AS cliente_ruc,
+        e.nombre AS empresa_nombre
       FROM ventas v
-      LEFT JOIN clientes c ON c.id = v.cliente_id
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+      LEFT JOIN clientes c
+        ON c.id = v.cliente_id
+       AND c.empresa_id = $2
+      LEFT JOIN formas_pago fp
+        ON fp.id = v.forma_pago_id
+       AND fp.empresa_id = $2
+      LEFT JOIN empresas e
+        ON e.id = v.empresa_id
       WHERE v.id = $1
+        AND v.empresa_id = $2
       LIMIT 1
       `,
-      [ventaId]
+      [ventaId, empresaId]
     );
 
-    if (!v.rows.length) return res.status(404).send("Venta no encontrada");
+    if (!v.rows.length) {
+      return res.status(404).send("Venta no encontrada");
+    }
+
     const venta = v.rows[0];
 
     const itemsQ = await pool.query(
@@ -3303,17 +5207,20 @@ app.get("/ventas/:id/pagare", async (req, res) => {
         vi.subtotal,
         p.nombre AS producto_nombre
       FROM ventas_items vi
-      JOIN productos p ON p.id = vi.producto_id
+      JOIN productos p
+        ON p.id = vi.producto_id
+       AND p.empresa_id = $2
       WHERE vi.venta_id = $1
+        AND vi.empresa_id = $2
       ORDER BY vi.id ASC
       `,
-      [ventaId]
+      [ventaId, empresaId]
     );
 
     const items = itemsQ.rows;
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=recibo_${ventaId}.pdf`);
+    res.setHeader("Content-Disposition", `inline; filename=recibo_${empresaId}_${ventaId}.pdf`);
 
     const doc = new PDFDocument({ size: [595, 300], margin: 28 });
     doc.pipe(res);
@@ -3350,13 +5257,22 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     doc
       .font("Helvetica-Bold")
       .fontSize(9)
-      .text("SPYNET VALENZUELA", boxX + 62, boxY + 8, { width: 150, align: "left" });
+      .text(venta.empresa_nombre || "SPYNET", boxX + 62, boxY + 8, {
+        width: 150,
+        align: "left"
+      });
 
     doc
       .font("Helvetica-Oblique")
       .fontSize(6.8)
-      .text("Teléfono: 0983 399 215", boxX + 62, boxY + 21, { width: 150, align: "left" })
-      .text("info@spynet.com.py", boxX + 62, boxY + 31, { width: 150, align: "left" });
+      .text("Teléfono: 0983 399 215", boxX + 62, boxY + 21, {
+        width: 150,
+        align: "left"
+      })
+      .text("info@spynet.com.py", boxX + 62, boxY + 31, {
+        width: 150,
+        align: "left"
+      });
 
     if (fs.existsSync(logoRight)) {
       doc.image(logoRight, boxX + boxW - 92, boxY + 10, { width: 48 });
@@ -3365,10 +5281,19 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     doc
       .font("Helvetica-Bold")
       .fontSize(8.5)
-      .text("RECIBO DE DINERO", boxX + boxW - 230, boxY + 8, { width: 120, align: "center" })
+      .text("RECIBO DE DINERO", boxX + boxW - 230, boxY + 8, {
+        width: 120,
+        align: "center"
+      })
       .fontSize(7.5)
-      .text(reciboNro, boxX + boxW - 230, boxY + 21, { width: 120, align: "center" })
-      .text(`Gs ${fmtGs(totalPyg)}`, boxX + boxW - 230, boxY + 32, { width: 120, align: "center" });
+      .text(reciboNro, boxX + boxW - 230, boxY + 21, {
+        width: 120,
+        align: "center"
+      })
+      .text(`Gs ${fmtGs(totalPyg)}`, boxX + boxW - 230, boxY + 32, {
+        width: 120,
+        align: "center"
+      });
 
     doc
       .font("Helvetica")
@@ -3382,11 +5307,17 @@ app.get("/ventas/:id/pagare", async (req, res) => {
 
     doc
       .fontSize(7.5)
-      .text(`Fecha: ${fechaStr}`, boxX + 10, boxY + 95, { width: 180, align: "left" });
+      .text(`Fecha: ${fechaStr}`, boxX + 10, boxY + 95, {
+        width: 180,
+        align: "left"
+      });
 
     doc
       .fontSize(7.5)
-      .text(`Cajero: ${cajero}`, boxX + 10, boxY + 107, { width: 220, align: "left" });
+      .text(`Cajero: ${cajero}`, boxX + 10, boxY + 107, {
+        width: 220,
+        align: "left"
+      });
 
     doc
       .fontSize(7.5)
@@ -3394,7 +5325,10 @@ app.get("/ventas/:id/pagare", async (req, res) => {
         day: "2-digit",
         month: "long",
         year: "numeric"
-      }), boxX + boxW - 180, boxY + 95, { width: 145, align: "center" });
+      }), boxX + boxW - 180, boxY + 95, {
+        width: 145,
+        align: "center"
+      });
 
     doc
       .moveTo(boxX + boxW - 200, boxY + 125)
@@ -3414,52 +5348,91 @@ app.get("/ventas/:id/pagare", async (req, res) => {
     res.status(500).send("Error generando recibo");
   }
 });
-app.post("/caja/cerrar", async (req, res) => {
+
+app.post("/caja/cerrar", requireEmpresa, async (req, res) => {
   try {
-    const tipo = req.body?.tipo ? String(req.body.tipo).trim().toLowerCase() : null;
+    const empresaId = getEmpresaId(req);
+    const tipo = req.body?.tipo ? normTipoCaja(req.body.tipo) : null;
     const fecha = req.body?.fecha ? toISODate(req.body.fecha) : null;
 
-    // Si el front no manda nada, igual cerramos la última abierta (de cualquier tipo)
     const r = await pool.query(
       tipo && fecha
-        ? `SELECT id FROM caja
-           WHERE estado='abierta' AND tipo=$1 AND fecha::date=$2::date
-           ORDER BY id DESC LIMIT 1`
+        ? `
+          SELECT id
+          FROM caja
+          WHERE estado = 'abierta'
+            AND tipo = $1
+            AND fecha::date = $2::date
+            AND empresa_id = $3
+          ORDER BY id DESC
+          LIMIT 1
+        `
         : tipo
-        ? `SELECT id FROM caja
-           WHERE estado='abierta' AND tipo=$1
-           ORDER BY id DESC LIMIT 1`
-        : `SELECT id FROM caja
-           WHERE estado='abierta'
-           ORDER BY id DESC LIMIT 1`,
-      tipo && fecha ? [tipo, fecha] : tipo ? [tipo] : []
+        ? `
+          SELECT id
+          FROM caja
+          WHERE estado = 'abierta'
+            AND tipo = $1
+            AND empresa_id = $2
+          ORDER BY id DESC
+          LIMIT 1
+        `
+        : `
+          SELECT id
+          FROM caja
+          WHERE estado = 'abierta'
+            AND empresa_id = $1
+          ORDER BY id DESC
+          LIMIT 1
+        `,
+      tipo && fecha
+        ? [tipo, fecha, empresaId]
+        : tipo
+        ? [tipo, empresaId]
+        : [empresaId]
     );
 
     if (!r.rowCount) {
-      return res.status(400).json({ ok: false, msg: "No hay caja abierta para cerrar" });
+      return res.status(400).json({
+        ok: false,
+        msg: "No hay caja abierta para cerrar"
+      });
     }
 
     const cajaId = r.rows[0].id;
 
     await pool.query(
-      `UPDATE caja
-       SET estado='cerrada',
-           cerrado_en = NOW(),
-           saldo_cierre = (
-             SELECT (COALESCE(c.saldo_inicial,0) + COALESCE(SUM(v.total),0))::numeric
-             FROM caja c
-             LEFT JOIN ventas v ON v.caja_id = c.id
-             WHERE c.id = $1
-             GROUP BY c.id
-           )
-       WHERE id=$1`,
-      [cajaId]
+      `
+      UPDATE caja
+      SET estado = 'cerrada',
+          cerrado_en = NOW(),
+          saldo_cierre = (
+            SELECT (COALESCE(c.saldo_inicial, 0) + COALESCE(SUM(v.total), 0))::numeric
+            FROM caja c
+            LEFT JOIN ventas v
+              ON v.caja_id = c.id
+             AND v.empresa_id = $2
+            WHERE c.id = $1
+              AND c.empresa_id = $2
+            GROUP BY c.id
+          )
+      WHERE id = $1
+        AND empresa_id = $2
+      `,
+      [cajaId, empresaId]
     );
 
-    return res.json({ ok: true, caja_id: cajaId });
+    return res.json({
+      ok: true,
+      caja_id: cajaId
+    });
+
   } catch (err) {
     console.error("POST /caja/cerrar", err);
-    return res.status(500).json({ ok: false, msg: "Error al cerrar caja" });
+    return res.status(500).json({
+      ok: false,
+      msg: "Error al cerrar caja"
+    });
   }
 });
 
@@ -3473,128 +5446,282 @@ app.get("/debug/db", async (_req, res) => {
         inet_server_port() AS port,
         current_user AS "user"
     `);
+
     res.json({ ok: true, ...r.rows[0] });
   } catch (e) {
     console.error("GET /debug/db", e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-app.get("/debug/formas-pago-pool", async (_req, res) => {
-  const r = await pool.query("SELECT id, nombre, tipo FROM formas_pago ORDER BY id");
-  res.json(r.rows);
+
+app.get("/debug/formas-pago-pool", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+
+    const r = await pool.query(
+      `
+      SELECT id, nombre, tipo
+      FROM formas_pago
+      WHERE empresa_id = $1
+      ORDER BY id
+      `,
+      [empresaId]
+    );
+
+    res.json(r.rows);
+  } catch (e) {
+    console.error("GET /debug/formas-pago-pool", e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 app.post("/usuarios/seed-admin", async (_req, res) => {
   try {
+    const empresaQ = await pool.query(
+      `
+      INSERT INTO empresas (nombre, ruc, logo, color_principal)
+      VALUES ('SPYnet', '', 'img/logo.png', '#2563eb')
+      ON CONFLICT DO NOTHING
+      RETURNING id
+      `
+    );
+
+    let empresaId = empresaQ.rows[0]?.id;
+
+    if (!empresaId) {
+      const empresaExiste = await pool.query(
+        `
+        SELECT id
+        FROM empresas
+        WHERE nombre = 'SPYnet'
+        ORDER BY id ASC
+        LIMIT 1
+        `
+      );
+
+      empresaId = empresaExiste.rows[0]?.id || 1;
+    }
+
     const usuario = "admin";
     const nombre = "Juan Perez";
     const password = "1234";
 
     const existe = await pool.query(
-      "SELECT id FROM usuarios WHERE usuario=$1 LIMIT 1",
+      `
+      SELECT id
+      FROM usuarios
+      WHERE usuario = $1
+      LIMIT 1
+      `,
       [usuario]
     );
 
     if (existe.rowCount) {
-      return res.json({ ok: true, msg: "El admin ya existe" });
+      await pool.query(
+        `
+        UPDATE usuarios
+        SET empresa_id = COALESCE(empresa_id, $1)
+        WHERE usuario = $2
+        `,
+        [empresaId, usuario]
+      );
+
+      return res.json({
+        ok: true,
+        msg: "El admin ya existe"
+      });
     }
 
     const hash = await bcrypt.hash(password, 10);
 
     await pool.query(
-      `INSERT INTO usuarios (nombre, usuario, password_hash, rol)
-       VALUES ($1,$2,$3,$4)`,
-      [nombre, usuario, hash, "admin"]
+      `
+      INSERT INTO usuarios (
+        nombre,
+        usuario,
+        password_hash,
+        rol,
+        empresa_id
+      )
+      VALUES ($1,$2,$3,$4,$5)
+      `,
+      [
+        nombre,
+        usuario,
+        hash,
+        "admin",
+        empresaId
+      ]
     );
 
-    res.json({ ok: true, msg: "Admin creado" });
+    res.json({
+      ok: true,
+      msg: "Admin creado"
+    });
+
   } catch (err) {
     console.error("POST /usuarios/seed-admin", err);
-    res.status(500).json({ ok: false, msg: "Error creando admin" });
+    res.status(500).json({
+      ok: false,
+      msg: "Error creando admin"
+    });
   }
 });
 
-app.post("/api/usuarios", requireAuth, async (req, res) => {
+app.post("/api/usuarios", requireEmpresa, async (req, res) => {
   try {
-    const { nombre, usuario, password, rol } = req.body;
+    const empresaId = getEmpresaId(req);
+
+    const {
+      nombre,
+      usuario,
+      password,
+      rol
+    } = req.body;
 
     if (!nombre || !usuario || !password) {
-      return res.status(400).json({ error: "Faltan datos obligatorios" });
+      return res.status(400).json({
+        error: "Faltan datos obligatorios"
+      });
     }
 
     const hash = await bcrypt.hash(password, 10);
 
     const { rows } = await pool.query(
-      `INSERT INTO usuarios (nombre, usuario, password_hash, rol)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, nombre, usuario, rol`,
-      [nombre, usuario, hash, rol || "usuario"]
+      `
+      INSERT INTO usuarios (
+        nombre,
+        usuario,
+        password_hash,
+        rol,
+        empresa_id
+      )
+      VALUES ($1,$2,$3,$4,$5)
+      RETURNING id, nombre, usuario, rol, empresa_id
+      `,
+      [
+        nombre,
+        usuario,
+        hash,
+        rol || "usuario",
+        empresaId
+      ]
     );
 
     res.status(201).json(rows[0]);
+
   } catch (err) {
     console.error("POST /api/usuarios", err);
-    res.status(500).json({ error: "Error al crear usuario" });
+    res.status(500).json({
+      error: "Error al crear usuario"
+    });
   }
 });
 
-app.put("/api/usuarios/:id", requireAuth, async (req, res) => {
+app.put("/api/usuarios/:id", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const id = Number(req.params.id);
-    const { nombre, usuario, password, rol } = req.body;
+
+    const {
+      nombre,
+      usuario,
+      password,
+      rol
+    } = req.body;
 
     if (!id) {
-      return res.status(400).json({ error: "ID inválido" });
+      return res.status(400).json({
+        error: "ID inválido"
+      });
     }
+
+    let rows;
 
     if (password && password.trim() !== "") {
       const hash = await bcrypt.hash(password, 10);
 
-      const { rows } = await pool.query(
-        `UPDATE usuarios
-         SET nombre = $1, usuario = $2, password_hash = $3, rol = $4
-         WHERE id = $5
-         RETURNING id, nombre, usuario, rol`,
-        [nombre, usuario, hash, rol, id]
+      const r = await pool.query(
+        `
+        UPDATE usuarios
+        SET nombre = $1,
+            usuario = $2,
+            password_hash = $3,
+            rol = $4
+        WHERE id = $5
+          AND empresa_id = $6
+        RETURNING id, nombre, usuario, rol, empresa_id
+        `,
+        [
+          nombre,
+          usuario,
+          hash,
+          rol,
+          id,
+          empresaId
+        ]
       );
 
-      if (!rows.length) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
-
-      return res.json(rows[0]);
+      rows = r.rows;
     } else {
-      const { rows } = await pool.query(
-        `UPDATE usuarios
-         SET nombre = $1, usuario = $2, rol = $3
-         WHERE id = $4
-         RETURNING id, nombre, usuario, rol`,
-        [nombre, usuario, rol, id]
+      const r = await pool.query(
+        `
+        UPDATE usuarios
+        SET nombre = $1,
+            usuario = $2,
+            rol = $3
+        WHERE id = $4
+          AND empresa_id = $5
+        RETURNING id, nombre, usuario, rol, empresa_id
+        `,
+        [
+          nombre,
+          usuario,
+          rol,
+          id,
+          empresaId
+        ]
       );
 
-      if (!rows.length) {
-        return res.status(404).json({ error: "Usuario no encontrado" });
-      }
-
-      return res.json(rows[0]);
+      rows = r.rows;
     }
+
+    if (!rows.length) {
+      return res.status(404).json({
+        error: "Usuario no encontrado o no pertenece a esta empresa"
+      });
+    }
+
+    return res.json(rows[0]);
+
   } catch (err) {
     console.error("PUT /api/usuarios/:id", err);
-    res.status(500).json({ error: "Error al actualizar usuario" });
+    res.status(500).json({
+      error: "Error al actualizar usuario"
+    });
   }
 });
-app.get("/api/usuarios", requireAuth, async (req, res) => {
+
+app.get("/api/usuarios", requireEmpresa, async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT id, nombre, usuario, rol
+    const empresaId = getEmpresaId(req);
+
+    const { rows } = await pool.query(
+      `
+      SELECT id, nombre, usuario, rol, empresa_id
       FROM usuarios
+      WHERE empresa_id = $1
       ORDER BY id ASC
-    `);
+      `,
+      [empresaId]
+    );
 
     res.json(rows);
   } catch (err) {
     console.error("GET /api/usuarios", err);
-    res.status(500).json({ error: "Error al listar usuarios" });
+    res.status(500).json({
+      error: "Error al listar usuarios"
+    });
   }
 });
 
@@ -3624,28 +5751,41 @@ function drawSimpleTable(doc, {
   doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(fontSize);
 
   let cx = x;
+
   headers.forEach((h, i) => {
-    doc.text(h, cx + 6, y + 7, { width: colWidths[i] - 12, align: i === headers.length - 1 ? "right" : "left" });
+    doc.text(h, cx + 6, y + 7, {
+      width: colWidths[i] - 12,
+      align: i === headers.length - 1 ? "right" : "left"
+    });
+
     cx += colWidths[i];
   });
 
   let currentY = y + rowHeight;
+
   doc.font("Helvetica").fillColor("#111827");
 
   rows.forEach((row, idx) => {
     const bg = idx % 2 === 0 ? "#f9fafb" : "#ffffff";
+
     doc.rect(x, currentY, tableWidth, rowHeight).fill(bg);
 
     let rx = x;
+
     row.forEach((cell, i) => {
       doc.fillColor("#111827").text(String(cell ?? ""), rx + 6, currentY + 7, {
         width: colWidths[i] - 12,
         align: i === row.length - 1 ? "right" : "left"
       });
+
       rx += colWidths[i];
     });
 
-    doc.strokeColor("#d1d5db").lineWidth(0.5).rect(x, currentY, tableWidth, rowHeight).stroke();
+    doc.strokeColor("#d1d5db")
+      .lineWidth(0.5)
+      .rect(x, currentY, tableWidth, rowHeight)
+      .stroke();
+
     currentY += rowHeight;
   });
 
@@ -3653,8 +5793,9 @@ function drawSimpleTable(doc, {
   return currentY;
 }
 
-app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
+app.get("/caja/informe/pdf", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const fechaParam = req.query.fecha || new Date().toISOString().slice(0, 10);
     const fecha = toISODate(fechaParam);
     const usuarioNombre = req.session?.user?.nombre || req.session?.user?.usuario || "Usuario";
@@ -3668,86 +5809,37 @@ app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
 
     const logoPath = path.join(process.cwd(), "public", "img", "logo2.png");
 
-    // =========================
-    // RESUMEN DÍA
-    // =========================
+    const empresaQ = await pool.query(
+      "SELECT nombre FROM empresas WHERE id=$1 LIMIT 1",
+      [empresaId]
+    );
+
+    const empresaNombre = empresaQ.rows[0]?.nombre || "Empresa";
+
     const diaQ = await pool.query(
       `
       SELECT
-        COALESCE((
-          SELECT SUM(v.total)
-          FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
-          WHERE v.fecha::date = $1::date
-            AND lower(COALESCE(fp.tipo, '')) LIKE '%efect%'
-            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
-        ), 0) AS ingreso_efectivo,
-
-        COALESCE((
-          SELECT SUM(c.total)
-          FROM compras c
-          WHERE c.fecha::date = $1::date
-            AND c.tipo_pago = 'efectivo'
-        ), 0) AS egreso_efectivo,
-
-        COALESCE((
-          SELECT SUM(v.total)
-          FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
-          WHERE v.fecha::date = $1::date
-            AND lower(COALESCE(fp.tipo, '')) LIKE '%transf%'
-            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
-        ), 0) AS ingreso_transferencia,
-
-        COALESCE((
-          SELECT SUM(c.total)
-          FROM compras c
-          WHERE c.fecha::date = $1::date
-            AND c.tipo_pago = 'transferencia'
-        ), 0) AS egreso_transferencia
+        COALESCE((SELECT SUM(v.total) FROM ventas v LEFT JOIN formas_pago fp ON fp.id=v.forma_pago_id AND fp.empresa_id=$2
+          WHERE v.fecha::date=$1::date AND v.empresa_id=$2 AND lower(COALESCE(fp.tipo,'')) LIKE '%efect%' AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')),0) AS ingreso_efectivo,
+        COALESCE((SELECT SUM(c.total) FROM compras c WHERE c.fecha::date=$1::date AND c.empresa_id=$2 AND c.tipo_pago='efectivo'),0) AS egreso_efectivo,
+        COALESCE((SELECT SUM(v.total) FROM ventas v LEFT JOIN formas_pago fp ON fp.id=v.forma_pago_id AND fp.empresa_id=$2
+          WHERE v.fecha::date=$1::date AND v.empresa_id=$2 AND lower(COALESCE(fp.tipo,'')) LIKE '%transf%' AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')),0) AS ingreso_transferencia,
+        COALESCE((SELECT SUM(c.total) FROM compras c WHERE c.fecha::date=$1::date AND c.empresa_id=$2 AND c.tipo_pago='transferencia'),0) AS egreso_transferencia
       `,
-      [fecha]
+      [fecha, empresaId]
     );
 
-    // =========================
-    // RESUMEN MES
-    // =========================
     const mesQ = await pool.query(
       `
       SELECT
-        COALESCE((
-          SELECT SUM(v.total)
-          FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
-          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
-            AND lower(COALESCE(fp.tipo, '')) LIKE '%efect%'
-            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
-        ), 0) AS ingreso_efectivo,
-
-        COALESCE((
-          SELECT SUM(c.total)
-          FROM compras c
-          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
-            AND c.tipo_pago = 'efectivo'
-        ), 0) AS egreso_efectivo,
-
-        COALESCE((
-          SELECT SUM(v.total)
-          FROM ventas v
-          LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
-          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
-            AND lower(COALESCE(fp.tipo, '')) LIKE '%transf%'
-            AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
-        ), 0) AS ingreso_transferencia,
-
-        COALESCE((
-          SELECT SUM(c.total)
-          FROM compras c
-          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
-            AND c.tipo_pago = 'transferencia'
-        ), 0) AS egreso_transferencia
+        COALESCE((SELECT SUM(v.total) FROM ventas v LEFT JOIN formas_pago fp ON fp.id=v.forma_pago_id AND fp.empresa_id=$2
+          WHERE date_trunc('month', v.fecha::date)=date_trunc('month', $1::date) AND v.empresa_id=$2 AND lower(COALESCE(fp.tipo,'')) LIKE '%efect%' AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')),0) AS ingreso_efectivo,
+        COALESCE((SELECT SUM(c.total) FROM compras c WHERE date_trunc('month', c.fecha::date)=date_trunc('month', $1::date) AND c.empresa_id=$2 AND c.tipo_pago='efectivo'),0) AS egreso_efectivo,
+        COALESCE((SELECT SUM(v.total) FROM ventas v LEFT JOIN formas_pago fp ON fp.id=v.forma_pago_id AND fp.empresa_id=$2
+          WHERE date_trunc('month', v.fecha::date)=date_trunc('month', $1::date) AND v.empresa_id=$2 AND lower(COALESCE(fp.tipo,'')) LIKE '%transf%' AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')),0) AS ingreso_transferencia,
+        COALESCE((SELECT SUM(c.total) FROM compras c WHERE date_trunc('month', c.fecha::date)=date_trunc('month', $1::date) AND c.empresa_id=$2 AND c.tipo_pago='transferencia'),0) AS egreso_transferencia
       `,
-      [fecha]
+      [fecha, empresaId]
     );
 
     const dia = diaQ.rows[0];
@@ -3773,9 +5865,6 @@ app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
 
     const saldoMes = mesSaldoEf + mesSaldoTr;
 
-    // =========================
-    // DETALLE VENTAS DEL DÍA
-    // =========================
     const ventasQ = await pool.query(
       `
       SELECT
@@ -3785,28 +5874,22 @@ app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
         COALESCE(fp.nombre, '-') AS forma_pago,
         v.total,
         COALESCE((
-          SELECT STRING_AGG(
-            p.nombre || ' x' || vi.cantidad,
-            ', '
-            ORDER BY vi.id
-          )
+          SELECT STRING_AGG(p.nombre || ' x' || vi.cantidad, ', ' ORDER BY vi.id)
           FROM ventas_items vi
-          JOIN productos p ON p.id = vi.producto_id
-          WHERE vi.venta_id = v.id
+          JOIN productos p ON p.id = vi.producto_id AND p.empresa_id = $2
+          WHERE vi.venta_id = v.id AND vi.empresa_id = $2
         ), '-') AS detalle_productos
       FROM ventas v
-      LEFT JOIN clientes c ON c.id = v.cliente_id
-      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id
+      LEFT JOIN clientes c ON c.id = v.cliente_id AND c.empresa_id = $2
+      LEFT JOIN formas_pago fp ON fp.id = v.forma_pago_id AND fp.empresa_id = $2
       WHERE v.fecha::date = $1::date
+        AND v.empresa_id = $2
         AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
       ORDER BY v.id DESC
       `,
-      [fecha]
+      [fecha, empresaId]
     );
 
-    // =========================
-    // DETALLE COMPRAS DEL DÍA
-    // =========================
     const comprasQ = await pool.query(
       `
       SELECT
@@ -3817,40 +5900,31 @@ app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
         COALESCE(c.tipo_pago, '-') AS tipo_pago,
         c.total,
         COALESCE((
-          SELECT STRING_AGG(
-            pr.nombre || ' x' || ci.cantidad,
-            ', '
-            ORDER BY ci.id
-          )
+          SELECT STRING_AGG(pr.nombre || ' x' || ci.cantidad, ', ' ORDER BY ci.id)
           FROM compras_items ci
-          JOIN productos pr ON pr.id = ci.producto_id
-          WHERE ci.compra_id = c.id
+          JOIN productos pr ON pr.id = ci.producto_id AND pr.empresa_id = $2
+          WHERE ci.compra_id = c.id AND ci.empresa_id = $2
         ), '-') AS detalle_productos
       FROM compras c
-      LEFT JOIN proveedores p ON p.id = c.proveedor_id
+      LEFT JOIN proveedores p ON p.id = c.proveedor_id AND p.empresa_id = $2
       WHERE c.fecha::date = $1::date
+        AND c.empresa_id = $2
       ORDER BY c.id DESC
       `,
-      [fecha]
+      [fecha, empresaId]
     );
 
-    // =========================
-    // DETALLE EGRESOS DEL DÍA
-    // =========================
     let egresosRows = [];
     try {
       const egresosQ = await pool.query(
         `
-        SELECT
-          fecha,
-          COALESCE(concepto, '-') AS concepto,
-          COALESCE(descripcion, '-') AS descripcion,
-          monto
+        SELECT fecha, COALESCE(concepto, '-') AS concepto, COALESCE(descripcion, '-') AS descripcion, monto
         FROM egresos
         WHERE fecha::date = $1::date
+          AND empresa_id = $2
         ORDER BY id DESC
         `,
-        [fecha]
+        [fecha, empresaId]
       );
       egresosRows = egresosQ.rows;
     } catch (e) {
@@ -3858,35 +5932,24 @@ app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
     }
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=informe_caja_${fecha}.pdf`);
+    res.setHeader("Content-Disposition", `inline; filename=informe_caja_${empresaId}_${fecha}.pdf`);
 
     const doc = new PDFDocument({ size: "A4", margin: 40 });
     doc.pipe(res);
 
-    // =========================
-    // ENCABEZADO PROFESIONAL
-    // =========================
     if (fs.existsSync(logoPath)) {
       doc.image(logoPath, 40, 32, { width: 70 });
     }
 
-    doc.font("Helvetica-Bold")
-      .fontSize(24)
-      .fillColor(darkText)
-      .text("Informe de Caja", 120, 40);
+    doc.font("Helvetica-Bold").fontSize(24).fillColor(darkText).text("Informe de Caja", 120, 40);
+    doc.font("Helvetica").fontSize(11).fillColor(mutedText)
+      .text(`Empresa: ${empresaNombre}`, 120, 72)
+      .text(`Fecha de emisión: ${fmtFechaLargaPY(fecha)}`, 120, 88)
+      .text(`Generado por: ${usuarioNombre}`, 120, 104);
 
-    doc.font("Helvetica")
-      .fontSize(11)
-      .fillColor(mutedText)
-      .text(`Fecha de emisión: ${fmtFechaLargaPY(fecha)}`, 120, 72)
-      .text(`Generado por: ${usuarioNombre}`, 120, 88);
+    doc.moveTo(40, 128).lineTo(555, 128).strokeColor(lineColor).lineWidth(1).stroke();
+    doc.y = 145;
 
-    doc.moveTo(40, 118).lineTo(555, 118).strokeColor(lineColor).lineWidth(1).stroke();
-    doc.y = 135;
-
-    // =========================
-    // TABLA RESUMEN DÍA
-    // =========================
     doc.font("Helvetica-Bold").fontSize(14).fillColor(darkText).text("Resumen del Día");
     let y = doc.y + 8;
 
@@ -3907,9 +5970,6 @@ app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
       ]
     });
 
-    // =========================
-    // TABLA RESUMEN MES
-    // =========================
     y += 28;
     doc.font("Helvetica-Bold").fontSize(14).fillColor(darkText).text("Resumen del Mes", 40, y);
     y += 25;
@@ -3931,9 +5991,6 @@ app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
       ]
     });
 
-    // =========================
-    // NUEVA PÁGINA: DETALLE VENTAS
-    // =========================
     doc.addPage();
 
     if (fs.existsSync(logoPath)) {
@@ -3962,9 +6019,6 @@ app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
       rows: rowsVentas
     });
 
-    // =========================
-    // DETALLE COMPRAS
-    // =========================
     y += 30;
     if (y > 680) {
       doc.addPage();
@@ -3993,9 +6047,6 @@ app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
       rows: rowsCompras
     });
 
-    // =========================
-    // DETALLE EGRESOS
-    // =========================
     y += 30;
     if (y > 680) {
       doc.addPage();
@@ -4023,27 +6074,27 @@ app.get("/caja/informe/pdf", requireAuth, async (req, res) => {
       rows: rowsEgresos
     });
 
-    // =========================
-    // PIE
-    // =========================
     doc.fontSize(9).fillColor("#6b7280");
     doc.text(
-      `Documento generado automáticamente por SPYnet • Usuario: ${usuarioNombre}`,
+      `Documento generado automáticamente por ${empresaNombre} • Usuario: ${usuarioNombre}`,
       40,
       780,
       { align: "center", width: 515 }
     );
 
     doc.end();
+
   } catch (err) {
     console.error("GET /caja/informe/pdf", err);
     res.status(500).send("Error generando informe PDF");
   }
 });
-
-app.get("/cuentas-pagar", requireAuth, async (req, res) => {
+app.get("/cuentas-pagar", requireEmpresa, async (req, res) => {
   try {
-    const { rows } = await pool.query(`
+    const empresaId = getEmpresaId(req);
+
+    const { rows } = await pool.query(
+      `
       SELECT
         id,
         proveedor,
@@ -4061,8 +6112,11 @@ app.get("/cuentas-pagar", requireAuth, async (req, res) => {
         caja_tipo,
         caja
       FROM cuentas_pagar
+      WHERE empresa_id = $1
       ORDER BY id DESC
-    `);
+      `,
+      [empresaId]
+    );
 
     res.json(rows);
   } catch (err) {
@@ -4070,128 +6124,72 @@ app.get("/cuentas-pagar", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Error al listar cuentas a pagar" });
   }
 });
-app.put("/api/pedidos/:id/recibir", requireAuth, async (req, res) => {
-  const id = Number(req.params.id);
-  const client = await pool.connect();
 
+app.get("/config/monedas", requireEmpresa, async (req, res) => {
   try {
-    await client.query("BEGIN");
+    const empresaId = getEmpresaId(req);
 
-    const { rows: pedidoRows } = await client.query(
-      `SELECT estado FROM pedidos_prov WHERE id = $1`,
-      [id]
-    );
-
-    if (!pedidoRows.length) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ ok: false, msg: "Pedido no encontrado" });
-    }
-
-    const estadoActual = pedidoRows[0].estado;
-
-    if (estadoActual !== "recibido") {
-      const { rows: items } = await client.query(
-        `SELECT * FROM pedidos_prov_items WHERE pedido_id = $1`,
-        [id]
-      );
-
-      for (const it of items) {
-        const { rows: prd } = await client.query(
-          `SELECT stock, costo FROM productos WHERE id = $1`,
-          [it.producto_id]
-        );
-
-        if (!prd.length) continue;
-
-        const stockAnterior = Number(prd[0].stock || 0);
-        const costoAnterior = Number(prd[0].costo || 0);
-        const nuevoStock = stockAnterior + Number(it.cantidad || 0);
-        const nuevoCosto = costoPromedio(
-          costoAnterior,
-          stockAnterior,
-          Number(it.precio_unit || 0),
-          Number(it.cantidad || 0)
-        );
-
-        await client.query(
-          `UPDATE productos SET stock = $1, costo = $2 WHERE id = $3`,
-          [nuevoStock, nuevoCosto, it.producto_id]
-        );
-      }
-
-      await client.query(`UPDATE productos SET alerta = (stock <= 3)`);
-
-      await client.query(
-        `UPDATE pedidos_prov
-         SET estado = 'recibido',
-             fecha_recepcion = NOW()
-         WHERE id = $1`,
-        [id]
-      );
-    }
-
-    await client.query("COMMIT");
-    res.json({ ok: true });
-  } catch (e) {
-    await client.query("ROLLBACK");
-    console.error("PUT /api/pedidos/:id/recibir", e);
-    res.status(500).json({ ok: false, msg: "No se pudo recibir el pedido" });
-  } finally {
-    client.release();
-  }
-});
-
-function requireAdmin(req, res, next) {
-  const rol = String(req.session?.user?.rol || "").toLowerCase();
-
-  if (rol === "admin" || rol === "administrador") return next();
-
-  return res.status(403).json({
-    ok: false,
-    msg: "Solo el administrador puede cambiar el tipo de cambio"
-  });
-}
-
-app.get("/config/monedas", requireAuth, async (_req, res) => {
-  try {
-    const { rows } = await pool.query(`
+    const { rows } = await pool.query(
+      `
       SELECT moneda, tipo_cambio
       FROM configuracion_monedas
+      WHERE empresa_id = $1
       ORDER BY moneda
-    `);
+      `,
+      [empresaId]
+    );
 
-    res.json({
-      ok: true,
-      monedas: rows
-    });
+    res.json({ ok: true, monedas: rows });
   } catch (err) {
     console.error("GET /config/monedas", err);
     res.status(500).json({ ok: false, msg: "Error obteniendo monedas" });
   }
 });
 
-app.put("/config/monedas", requireAuth, requireAdmin, async (req, res) => {
+
+
+function requireAdmin(req, res, next) {
+  const rol = String(req.session?.user?.rol || "")
+    .toLowerCase()
+    .trim();
+
+  if (
+    rol === "admin" ||
+    rol === "administrador"
+  ) {
+    return next();
+  }
+
+  return res.status(403).json({
+    ok: false,
+    msg: "Solo administradores"
+  });
+}
+
+
+app.put("/config/monedas", requireEmpresa, requireAdmin, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const usd = Number(req.body?.USD || 0);
     const brl = Number(req.body?.BRL || 0);
 
     if (usd <= 0 || brl <= 0) {
-      return res.status(400).json({
-        ok: false,
-        msg: "Tipo de cambio inválido"
-      });
+      return res.status(400).json({ ok: false, msg: "Tipo de cambio inválido" });
     }
 
-    await pool.query(`
-      INSERT INTO configuracion_monedas (moneda, tipo_cambio, actualizado_en)
+    await pool.query(
+      `
+      INSERT INTO configuracion_monedas (moneda, tipo_cambio, actualizado_en, empresa_id)
       VALUES 
-        ('USD', $1, NOW()),
-        ('BRL', $2, NOW())
-      ON CONFLICT (moneda)
+        ('USD', $1, NOW(), $3),
+        ('BRL', $2, NOW(), $3)
+      ON CONFLICT (moneda, empresa_id)
       DO UPDATE SET 
         tipo_cambio = EXCLUDED.tipo_cambio,
         actualizado_en = NOW()
-    `, [usd, brl]);
+      `,
+      [usd, brl, empresaId]
+    );
 
     res.json({ ok: true, msg: "Tipo de cambio actualizado" });
   } catch (err) {
@@ -4200,8 +6198,10 @@ app.put("/config/monedas", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-app.post("/cuentas-pagar", async (req, res) => {
+app.post("/cuentas-pagar", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
+
     const {
       proveedor,
       factura,
@@ -4224,36 +6224,53 @@ app.post("/cuentas-pagar", async (req, res) => {
       monto_moneda || (monedaFinal === "PYG" ? montoPygFinal : montoPygFinal / tipoCambioFinal)
     );
 
-    const { data, error } = await supabase
-      .from("cuentas_pagar")
-      .insert([{
+    const { rows } = await pool.query(
+      `
+      INSERT INTO cuentas_pagar (
         proveedor,
         factura,
         concepto,
-        moneda: monedaFinal,
-        tipo_cambio: tipoCambioFinal,
-        monto: montoPygFinal,
-        monto_pyg: montoPygFinal,
-        monto_moneda: montoMonedaFinal,
+        moneda,
+        tipo_cambio,
+        monto,
+        monto_pyg,
+        monto_moneda,
         vencimiento,
         estado,
         fecha_pago,
-        caja_tipo
-      }])
-      .select()
-      .single();
+        caja_tipo,
+        empresa_id
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      RETURNING *
+      `,
+      [
+        proveedor,
+        factura,
+        concepto,
+        monedaFinal,
+        tipoCambioFinal,
+        montoPygFinal,
+        montoPygFinal,
+        montoMonedaFinal,
+        vencimiento,
+        estado,
+        fecha_pago,
+        caja_tipo,
+        empresaId
+      ]
+    );
 
-    if (error) throw error;
-
-    res.json(data);
+    res.json(rows[0]);
   } catch (err) {
     console.error("Error POST /cuentas-pagar:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.put("/cuentas-pagar/:id", async (req, res) => {
+app.put("/cuentas-pagar/:id", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const { id } = req.params;
 
     const {
@@ -4278,50 +6295,72 @@ app.put("/cuentas-pagar/:id", async (req, res) => {
       monto_moneda || (monedaFinal === "PYG" ? montoPygFinal : montoPygFinal / tipoCambioFinal)
     );
 
-    const { data, error } = await supabase
-      .from("cuentas_pagar")
-      .update({
+    const { rows } = await pool.query(
+      `
+      UPDATE cuentas_pagar
+      SET proveedor = $1,
+          factura = $2,
+          concepto = $3,
+          moneda = $4,
+          tipo_cambio = $5,
+          monto = $6,
+          monto_pyg = $7,
+          monto_moneda = $8,
+          vencimiento = $9,
+          estado = $10,
+          fecha_pago = $11,
+          caja_tipo = $12
+      WHERE id = $13
+        AND empresa_id = $14
+      RETURNING *
+      `,
+      [
         proveedor,
         factura,
         concepto,
-        moneda: monedaFinal,
-        tipo_cambio: tipoCambioFinal,
-        monto: montoPygFinal,
-        monto_pyg: montoPygFinal,
-        monto_moneda: montoMonedaFinal,
+        monedaFinal,
+        tipoCambioFinal,
+        montoPygFinal,
+        montoPygFinal,
+        montoMonedaFinal,
         vencimiento,
         estado,
         fecha_pago,
-        caja_tipo
-      })
-      .eq("id", id)
-      .select()
-      .single();
+        caja_tipo,
+        id,
+        empresaId
+      ]
+    );
 
-    if (error) throw error;
+    if (!rows.length) {
+      return res.status(404).json({ error: "Cuenta no encontrada o no pertenece a esta empresa" });
+    }
 
-    res.json(data);
+    res.json(rows[0]);
   } catch (err) {
     console.error("Error PUT /cuentas-pagar/:id:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.delete("/api/usuarios/:id", requireAuth, async (req, res) => {
+app.delete("/api/usuarios/:id", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const id = Number(req.params.id);
 
-    if (!id) {
-      return res.status(400).json({ error: "ID inválido" });
-    }
+    if (!id) return res.status(400).json({ error: "ID inválido" });
 
     const { rowCount } = await pool.query(
-      "DELETE FROM usuarios WHERE id = $1",
-      [id]
+      `
+      DELETE FROM usuarios
+      WHERE id = $1
+        AND empresa_id = $2
+      `,
+      [id, empresaId]
     );
 
     if (rowCount === 0) {
-      return res.status(404).json({ error: "Usuario no encontrado" });
+      return res.status(404).json({ error: "Usuario no encontrado o no pertenece a esta empresa" });
     }
 
     res.json({ ok: true });
@@ -4331,28 +6370,29 @@ app.delete("/api/usuarios/:id", requireAuth, async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-app.get("/api/notificaciones", requireAuth, async (req, res) => {
+app.get("/api/notificaciones", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
     const alertas = [];
 
-    const stockBajo = await pool.query(`
+    const stockBajo = await pool.query(
+      `
       SELECT 
         p.nombre,
         COALESCE(c.nombre, 'Sin categoría') AS categoria,
         COALESCE(p.stock, 0) AS stock
       FROM productos p
-      LEFT JOIN categorias c ON c.id = p.categoria_id
+      LEFT JOIN categorias c 
+        ON c.id = p.categoria_id
+       AND c.empresa_id = $1
       WHERE COALESCE(p.activo, true) = true
+        AND p.empresa_id = $1
         AND COALESCE(p.stock, 0) <= 2
       ORDER BY COALESCE(p.stock, 0) ASC, p.nombre ASC
       LIMIT 10
-    `);
+      `,
+      [empresaId]
+    );
 
     stockBajo.rows.forEach(p => {
       alertas.push({
@@ -4362,20 +6402,24 @@ app.get("/api/notificaciones", requireAuth, async (req, res) => {
       });
     });
 
-    const cajaAbierta = await pool.query(`
+    const cajaAbierta = await pool.query(
+      `
       SELECT tipo, fecha
       FROM caja
       WHERE estado = 'abierta'
+        AND empresa_id = $1
       ORDER BY id DESC
       LIMIT 1
-    `);
+      `,
+      [empresaId]
+    );
 
     if (cajaAbierta.rowCount) {
       const c = cajaAbierta.rows[0];
       alertas.push({
         tipo: "caja",
         titulo: "Caja abierta",
-        mensaje: `Hay una caja ${c.tipo || ''} abierta`
+        mensaje: `Hay una caja ${c.tipo || ""} abierta`
       });
     }
 
@@ -4386,10 +6430,10 @@ app.get("/api/notificaciones", requireAuth, async (req, res) => {
   }
 });
 
-
-
-app.post("/api/asistente-admin", requireAuth, async (req, res) => {
+app.post("/api/asistente-admin", requireEmpresa, async (req, res) => {
   try {
+    const empresaId = getEmpresaId(req);
+
     const pregunta = String(req.body.pregunta || "")
       .toLowerCase()
       .normalize("NFD")
@@ -4406,304 +6450,223 @@ app.post("/api/asistente-admin", requireAuth, async (req, res) => {
     const fechaPY = (f) =>
       f ? new Date(f).toLocaleDateString("es-PY") : "Pendiente";
 
-    const esHoy = pregunta.includes("hoy") || pregunta.includes("dia");
-    const esAyer = pregunta.includes("ayer");
-    const esMes = pregunta.includes("mes") || pregunta.includes("mensual");
+    // ─── Detección de período ───────────────────────────────────────────────
+    const esHoy  = /\b(hoy|dia|hd)\b/.test(pregunta);
+    const esAyer = /\b(ayer)\b/.test(pregunta);
+    const esMes  = /\b(mes|mensual|este mes)\b/.test(pregunta);
+    const esTodo = !esHoy && !esAyer && !esMes; // sin período = todo
 
-    let textoPeriodo = "actualmente";
-    let filtroVentas = "";
-    let filtroCompras = "";
-    let filtroPedidos = "";
+    let textoPeriodo = "en total";
+    let filtroFecha  = "";        // para ventas/compras (campo: fecha)
+    let filtroPedido = "";        // para pedidos       (campo: fecha_pedido)
 
     if (esHoy) {
       textoPeriodo = "hoy";
-      filtroVentas = "WHERE fecha::date = CURRENT_DATE";
-      filtroCompras = "WHERE fecha::date = CURRENT_DATE";
-      filtroPedidos = "WHERE fecha_pedido::date = CURRENT_DATE";
+      filtroFecha  = " AND fecha::date = CURRENT_DATE";
+      filtroPedido = " AND fecha_pedido::date = CURRENT_DATE";
     } else if (esAyer) {
       textoPeriodo = "ayer";
-      filtroVentas = "WHERE fecha::date = CURRENT_DATE - INTERVAL '1 day'";
-      filtroCompras = "WHERE fecha::date = CURRENT_DATE - INTERVAL '1 day'";
-      filtroPedidos = "WHERE fecha_pedido::date = CURRENT_DATE - INTERVAL '1 day'";
+      filtroFecha  = " AND fecha::date = CURRENT_DATE - INTERVAL '1 day'";
+      filtroPedido = " AND fecha_pedido::date = CURRENT_DATE - INTERVAL '1 day'";
     } else if (esMes) {
       textoPeriodo = "este mes";
-      filtroVentas = "WHERE date_trunc('month', fecha::date) = date_trunc('month', CURRENT_DATE)";
-      filtroCompras = "WHERE date_trunc('month', fecha::date) = date_trunc('month', CURRENT_DATE)";
-      filtroPedidos = "WHERE date_trunc('month', fecha_pedido::date) = date_trunc('month', CURRENT_DATE)";
+      filtroFecha  = " AND date_trunc('month', fecha::date) = date_trunc('month', CURRENT_DATE)";
+      filtroPedido = " AND date_trunc('month', fecha_pedido::date) = date_trunc('month', CURRENT_DATE)";
     }
 
-    let respuesta =
-      "No entendí la consulta. Podés preguntarme sobre ventas, compras, productos, stock, caja, clientes, proveedores, pedidos, cuentas a pagar o margen.";
+    // ─── Detección de tema ──────────────────────────────────────────────────
+    const esVenta    = /venta|vendi|vendido|ingreso|cuanto gane|cobr/.test(pregunta);
+    const esCompra   = /compra|compre|proveedor.*pag|gasto/.test(pregunta);
+    const esEgreso   = /egreso|gasto|salida/.test(pregunta);
+    const esPedido   = /pedido|pedi|orden/.test(pregunta);
+    const esStock    = /stock|inventario|producto|unidad/.test(pregunta);
+    const esStockBajo= /stock bajo|stock critico|poco stock|sin stock|quedan poco/.test(pregunta);
+    const esCaja     = /caja/.test(pregunta);
+    const esCliente  = /cliente/.test(pregunta);
+    const esProveedor= /proveedor/.test(pregunta);
+    const esCuenta   = /cuenta|pagar|deuda|pendiente/.test(pregunta);
+    const esMargen   = /margen|ganancia|rentabilidad|profit|gane/.test(pregunta);
+    const esTodo2    = /todo|resumen|general|dame todo|informe|reporte/.test(pregunta);
+
+    // ─── Helper de query ────────────────────────────────────────────────────
+    const q = (sql, params) => pool.query(sql, params);
+
+    // ════════════════════════════════════════════════════════════════════════
+    // RESUMEN COMPLETO
+    // ════════════════════════════════════════════════════════════════════════
+    if (esTodo2) {
+      const [ventas, compras, egresos, pedidos, stockQ, stockBajoQ, cajaQ, clientesQ, provQ, cuentasQ] =
+        await Promise.all([
+          q(`SELECT COUNT(*) AS c, COALESCE(SUM(COALESCE(total_pyg,total,0)),0) AS t FROM ventas   WHERE empresa_id=$1${filtroFecha}`,  [empresaId]),
+          q(`SELECT COUNT(*) AS c, COALESCE(SUM(total),0) AS t                    FROM compras  WHERE empresa_id=$1${filtroFecha}`,  [empresaId]),
+          q(`SELECT COUNT(*) AS c, COALESCE(SUM(monto),0) AS t                    FROM egresos  WHERE empresa_id=$1${filtroFecha}`,  [empresaId]),
+          q(`SELECT COUNT(*) AS c, COALESCE(SUM(total),0) AS t                    FROM pedidos_prov WHERE empresa_id=$1${filtroPedido}`, [empresaId]),
+          q(`SELECT COUNT(*) AS productos, COALESCE(SUM(stock),0) AS unidades FROM productos WHERE empresa_id=$1 AND COALESCE(activo,true)=true`, [empresaId]),
+          q(`SELECT nombre, COALESCE(stock,0) AS stock FROM productos WHERE empresa_id=$1 AND COALESCE(activo,true)=true AND COALESCE(stock,0)<=2 ORDER BY stock ASC LIMIT 5`, [empresaId]),
+          q(`SELECT tipo, fecha FROM caja WHERE empresa_id=$1 AND estado='abierta' ORDER BY id DESC LIMIT 3`, [empresaId]),
+          q(`SELECT COUNT(*) AS total FROM clientes    WHERE empresa_id=$1`, [empresaId]),
+          q(`SELECT COUNT(*) AS total FROM proveedores WHERE empresa_id=$1`, [empresaId]),
+          q(`SELECT COUNT(*) AS c, COALESCE(SUM(monto),0) AS t FROM cuentas_pagar WHERE empresa_id=$1 AND LOWER(COALESCE(estado,''))='pendiente'`, [empresaId]),
+        ]);
+
+      const vt = ventas.rows[0];
+      const ct = compras.rows[0];
+      const et = egresos.rows[0];
+      const pt = pedidos.rows[0];
+      const st = stockQ.rows[0];
+      const margenVal = Number(vt.t) - Number(ct.t) - Number(et.t);
+
+      const lineasStockBajo = stockBajoQ.rowCount
+        ? stockBajoQ.rows.map(p => `&nbsp;&nbsp;• ${p.nombre}: ${p.stock} uds`).join("<br>")
+        : "&nbsp;&nbsp;• Ninguno";
+
+      const lineasCaja = cajaQ.rowCount
+        ? cajaQ.rows.map(c => `&nbsp;&nbsp;• ${c.tipo} desde ${fechaPY(c.fecha)}`).join("<br>")
+        : "&nbsp;&nbsp;• Sin cajas abiertas";
+
+      const respuesta =
+        `<b>📊 Resumen ${textoPeriodo}:</b><br><br>` +
+
+        `<b>💰 Ventas:</b> ${vt.c} operaciones → ${money(vt.t)}<br>` +
+        `<b>🛒 Compras:</b> ${ct.c} registros → ${money(ct.t)}<br>` +
+        `<b>📤 Egresos:</b> ${et.c} registros → ${money(et.t)}<br>` +
+        `<b>📦 Pedidos a proveedor:</b> ${pt.c} → ${money(pt.t)}<br><br>` +
+
+        `<b>📈 Margen estimado:</b> ${money(margenVal)}<br><br>` +
+
+        `<b>🏪 Inventario:</b> ${st.productos} productos activos, ${st.unidades} unidades<br>` +
+        `<b>⚠️ Stock bajo (≤2 uds):</b><br>${lineasStockBajo}<br><br>` +
+
+        `<b>🗄️ Caja:</b><br>${lineasCaja}<br><br>` +
+
+        `<b>👥 Clientes:</b> ${clientesQ.rows[0].total} registrados<br>` +
+        `<b>🏭 Proveedores:</b> ${provQ.rows[0].total} registrados<br>` +
+        `<b>💳 Cuentas pendientes:</b> ${cuentasQ.rows[0].c} por ${money(cuentasQ.rows[0].t)}`;
+
+      return res.json({ ok: true, respuesta });
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // RESPUESTAS INDIVIDUALES
+    // ════════════════════════════════════════════════════════════════════════
+    let respuesta = "No entendí la consulta. Podés preguntarme sobre ventas, compras, egresos, stock, caja, clientes, proveedores, pedidos, cuentas a pagar o margen. También podés escribir <b>resumen</b> para ver todo.";
 
     // VENTAS
-    if (
-      pregunta.includes("venta") ||
-      pregunta.includes("ventas") ||
-      pregunta.includes("vendi") ||
-      pregunta.includes("vendido") ||
-      pregunta.includes("vendio")
-    ) {
-      const q = await pool.query(`
-        SELECT 
-          COUNT(*) AS cantidad,
-          COALESCE(SUM(COALESCE(total_pyg,total,0)),0) AS total
-        FROM ventas
-        ${filtroVentas}
-      `);
-
-      respuesta = `Ventas ${textoPeriodo}: ${q.rows[0].cantidad} operaciones por un total de ${money(q.rows[0].total)}.`;
+    if (esVenta) {
+      const r = await q(
+        `SELECT COUNT(*) AS c, COALESCE(SUM(COALESCE(total_pyg,total,0)),0) AS t FROM ventas WHERE empresa_id=$1${filtroFecha}`,
+        [empresaId]
+      );
+      respuesta = `💰 <b>Ventas ${textoPeriodo}:</b> ${r.rows[0].c} operaciones por <b>${money(r.rows[0].t)}</b>.`;
     }
 
-    // COMPRAS DETALLADAS
-    else if (
-      pregunta.includes("que compras") ||
-      pregunta.includes("que se compro") ||
-      pregunta.includes("compras se hicieron") ||
-      pregunta.includes("productos comprados") ||
-      pregunta.includes("cosas se compro")
-    ) {
-      const q = await pool.query(`
-        SELECT 
-          c.id,
-          c.fecha,
-          p.nombre AS proveedor,
-          STRING_AGG(pr.nombre || ' x' || ci.cantidad, ', ') AS productos,
-          c.total
-        FROM compras c
-        LEFT JOIN proveedores p ON p.id = c.proveedor_id
-        LEFT JOIN compras_items ci ON ci.compra_id = c.id
-        LEFT JOIN productos pr ON pr.id = ci.producto_id
-        ${filtroCompras}
-        GROUP BY c.id, p.nombre
-        ORDER BY c.id DESC
-        LIMIT 5
-      `);
-
-      respuesta = q.rowCount
-        ? `Compras registradas ${textoPeriodo}:<br><br>` + q.rows.map(c => `
-            <strong>Compra #${c.id}</strong><br>
-            Fecha: ${fechaPY(c.fecha)}<br>
-            Proveedor: ${c.proveedor || "Sin proveedor"}<br>
-            Productos: ${c.productos || "Sin productos"}<br>
-            Total: ${money(c.total)}
-          `).join("<br><br>")
-        : `No hay compras registradas ${textoPeriodo}.`;
+    // COMPRAS
+    else if (esCompra) {
+      const r = await q(
+        `SELECT COUNT(*) AS c, COALESCE(SUM(total),0) AS t FROM compras WHERE empresa_id=$1${filtroFecha}`,
+        [empresaId]
+      );
+      respuesta = `🛒 <b>Compras ${textoPeriodo}:</b> ${r.rows[0].c} registros por <b>${money(r.rows[0].t)}</b>.`;
     }
 
-    // COMPRAS RESUMEN
-    else if (
-      pregunta.includes("compra") ||
-      pregunta.includes("compras") ||
-      pregunta.includes("gasto") ||
-      pregunta.includes("gastos") ||
-      pregunta.includes("egreso") ||
-      pregunta.includes("egresos")
-    ) {
-      const q = await pool.query(`
-        SELECT 
-          COUNT(*) AS cantidad,
-          COALESCE(SUM(total),0) AS total
-        FROM compras
-        ${filtroCompras}
-      `);
-
-      respuesta = `Compras/egresos ${textoPeriodo}: ${q.rows[0].cantidad} registros por ${money(q.rows[0].total)}.`;
+    // EGRESOS
+    else if (esEgreso) {
+      const r = await q(
+        `SELECT COUNT(*) AS c, COALESCE(SUM(monto),0) AS t FROM egresos WHERE empresa_id=$1${filtroFecha}`,
+        [empresaId]
+      );
+      respuesta = `📤 <b>Egresos ${textoPeriodo}:</b> ${r.rows[0].c} registros por <b>${money(r.rows[0].t)}</b>.`;
     }
 
-    // PEDIDOS A PROVEEDOR
-    else if (
-      pregunta.includes("pedido") ||
-      pregunta.includes("pedidos")
-    ) {
-      const resumen = await pool.query(`
-        SELECT COUNT(*) AS cantidad, COALESCE(SUM(total),0) AS total
-        FROM pedidos_prov
-        ${filtroPedidos}
-      `);
-
-      const q = await pool.query(`
-        SELECT 
-          p.id,
-          p.fecha_pedido,
-          p.fecha_recepcion,
-          p.estado,
-          p.total,
-          pr.nombre AS proveedor,
-          COALESCE(SUM(i.cantidad),0) AS cantidad_total,
-          COUNT(i.id) AS items,
-          STRING_AGG(
-            COALESCE(prod.nombre, 'Producto sin nombre') || ' x' || COALESCE(i.cantidad,0),
-            ', '
-            ORDER BY prod.nombre
-          ) AS productos
-        FROM pedidos_prov p
-        LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
-        LEFT JOIN pedidos_prov_items i ON i.pedido_id = p.id
-        LEFT JOIN productos prod ON prod.id = i.producto_id
-        ${filtroPedidos ? filtroPedidos.replace("fecha_pedido", "p.fecha_pedido") : ""}
-        GROUP BY p.id, pr.nombre
-        ORDER BY p.id DESC
-        LIMIT 5
-      `);
-
-      respuesta = q.rowCount
-        ? `Pedidos ${textoPeriodo}: ${resumen.rows[0].cantidad}<br>` +
-          `Total: ${money(resumen.rows[0].total)}<br><br>` +
-          q.rows.map(p => `
-            <strong>Pedido #${p.id}</strong><br>
-            Proveedor: ${p.proveedor || "Sin proveedor"}<br>
-            Fecha pedido: ${fechaPY(p.fecha_pedido)}<br>
-            Estado: ${p.estado || "pendiente"}<br>
-            Productos: ${p.productos || "Sin productos"}<br>
-            Total: ${money(p.total)}
-          `).join("<br><br>")
-        : `No hay pedidos registrados ${textoPeriodo}.`;
+    // PEDIDOS
+    else if (esPedido) {
+      const r = await q(
+        `SELECT COUNT(*) AS c, COALESCE(SUM(total),0) AS t FROM pedidos_prov WHERE empresa_id=$1${filtroPedido}`,
+        [empresaId]
+      );
+      respuesta = `📦 <b>Pedidos ${textoPeriodo}:</b> ${r.rows[0].c} por <b>${money(r.rows[0].t)}</b>.`;
     }
 
     // STOCK BAJO
-    else if (
-      pregunta.includes("stock bajo") ||
-      pregunta.includes("stock critico") ||
-      pregunta.includes("poco stock") ||
-      pregunta.includes("sin stock") ||
-      pregunta.includes("productos bajos")
-    ) {
-      const q = await pool.query(`
-        SELECT p.nombre, COALESCE(p.stock,0) AS stock
-        FROM productos p
-        WHERE COALESCE(p.activo,true)=true
-          AND COALESCE(p.stock,0) <= 2
-        ORDER BY COALESCE(p.stock,0) ASC, p.nombre ASC
-        LIMIT 10
-      `);
-
-      respuesta = q.rowCount
-        ? "Productos con stock bajo:<br>" + q.rows.map(p => `• ${p.nombre}: ${p.stock} unidades`).join("<br>")
-        : "No hay productos con stock bajo actualmente.";
+    else if (esStockBajo) {
+      const r = await q(
+        `SELECT nombre, COALESCE(stock,0) AS stock FROM productos
+         WHERE empresa_id=$1 AND COALESCE(activo,true)=true AND COALESCE(stock,0)<=2
+         ORDER BY stock ASC, nombre ASC LIMIT 10`,
+        [empresaId]
+      );
+      respuesta = r.rowCount
+        ? "⚠️ <b>Productos con stock bajo:</b><br>" + r.rows.map(p => `• ${p.nombre}: ${p.stock} uds`).join("<br>")
+        : "✅ No hay productos con stock bajo.";
     }
 
-    // PRODUCTOS / INVENTARIO
-    else if (
-      pregunta.includes("producto") ||
-      pregunta.includes("productos") ||
-      pregunta.includes("inventario") ||
-      pregunta.includes("stock total")
-    ) {
-      const q = await pool.query(`
-        SELECT COUNT(*) AS productos, COALESCE(SUM(stock),0) AS unidades
-        FROM productos
-        WHERE COALESCE(activo,true)=true
-      `);
-
-      respuesta = `Tenés ${q.rows[0].productos} productos activos y ${q.rows[0].unidades} unidades en stock.`;
+    // STOCK / INVENTARIO
+    else if (esStock) {
+      const r = await q(
+        `SELECT COUNT(*) AS productos, COALESCE(SUM(stock),0) AS unidades FROM productos WHERE empresa_id=$1 AND COALESCE(activo,true)=true`,
+        [empresaId]
+      );
+      respuesta = `🏪 <b>Inventario:</b> ${r.rows[0].productos} productos activos con ${r.rows[0].unidades} unidades en stock.`;
     }
 
-    // CAJA ABIERTA
-    else if (
-      pregunta.includes("caja") ||
-      pregunta.includes("cajas")
-    ) {
-      const q = await pool.query(`
-        SELECT tipo, fecha
-        FROM caja
-        WHERE estado='abierta'
-        ORDER BY id DESC
-        LIMIT 5
-      `);
-
-      respuesta = q.rowCount
-        ? "Cajas abiertas:<br>" + q.rows.map(c => `• ${c.tipo} desde ${fechaPY(c.fecha)}`).join("<br>")
-        : "No hay cajas abiertas actualmente.";
+    // CAJA
+    else if (esCaja) {
+      const r = await q(
+        `SELECT tipo, fecha FROM caja WHERE empresa_id=$1 AND estado='abierta' ORDER BY id DESC LIMIT 5`,
+        [empresaId]
+      );
+      respuesta = r.rowCount
+        ? "🗄️ <b>Cajas abiertas:</b><br>" + r.rows.map(c => `• ${c.tipo} desde ${fechaPY(c.fecha)}`).join("<br>")
+        : "🗄️ No hay cajas abiertas actualmente.";
     }
 
     // CLIENTES
-    else if (
-      pregunta.includes("cliente") ||
-      pregunta.includes("clientes")
-    ) {
-      const q = await pool.query(`SELECT COUNT(*) AS total FROM clientes`);
-      respuesta = `Actualmente tenés ${q.rows[0].total} clientes registrados.`;
+    else if (esCliente) {
+      const r = await q(`SELECT COUNT(*) AS total FROM clientes WHERE empresa_id=$1`, [empresaId]);
+      respuesta = `👥 <b>Clientes:</b> ${r.rows[0].total} registrados.`;
     }
 
     // PROVEEDORES
-    else if (
-      pregunta.includes("proveedor") ||
-      pregunta.includes("proveedores")
-    ) {
-      const q = await pool.query(`SELECT COUNT(*) AS total FROM proveedores`);
-      respuesta = `Actualmente tenés ${q.rows[0].total} proveedores registrados.`;
+    else if (esProveedor) {
+      const r = await q(`SELECT COUNT(*) AS total FROM proveedores WHERE empresa_id=$1`, [empresaId]);
+      respuesta = `🏭 <b>Proveedores:</b> ${r.rows[0].total} registrados.`;
     }
 
-    // CUENTAS PENDIENTES
-    else if (
-      pregunta.includes("cuenta") ||
-      pregunta.includes("cuentas") ||
-      pregunta.includes("pagar") ||
-      pregunta.includes("vencimiento") ||
-      pregunta.includes("deuda") ||
-      pregunta.includes("deudas")
-    ) {
-      const q = await pool.query(`
-        SELECT COUNT(*) AS cantidad, COALESCE(SUM(monto),0) AS total
-        FROM cuentas_pagar
-        WHERE LOWER(COALESCE(estado,'')) = 'pendiente'
-      `);
-
-      respuesta = `Tenés ${q.rows[0].cantidad} cuentas pendientes por ${money(q.rows[0].total)}.`;
+    // CUENTAS A PAGAR
+    else if (esCuenta) {
+      const r = await q(
+        `SELECT COUNT(*) AS c, COALESCE(SUM(monto),0) AS t FROM cuentas_pagar WHERE empresa_id=$1 AND LOWER(COALESCE(estado,''))='pendiente'`,
+        [empresaId]
+      );
+      respuesta = `💳 <b>Cuentas pendientes:</b> ${r.rows[0].c} por <b>${money(r.rows[0].t)}</b>.`;
     }
 
     // MARGEN / GANANCIA
-    else if (
-      pregunta.includes("margen") ||
-      pregunta.includes("ganancia") ||
-      pregunta.includes("ganancias") ||
-      pregunta.includes("rentabilidad")
-    ) {
-      let filtroMargenVentas = "";
-      let filtroMargenCompras = "";
-
-      if (esHoy) {
-        filtroMargenVentas = "WHERE fecha::date = CURRENT_DATE";
-        filtroMargenCompras = "WHERE fecha::date = CURRENT_DATE";
-        textoPeriodo = "hoy";
-      } else if (esAyer) {
-        filtroMargenVentas = "WHERE fecha::date = CURRENT_DATE - INTERVAL '1 day'";
-        filtroMargenCompras = "WHERE fecha::date = CURRENT_DATE - INTERVAL '1 day'";
-        textoPeriodo = "ayer";
-      } else {
-        filtroMargenVentas = "WHERE date_trunc('month', fecha::date)=date_trunc('month', CURRENT_DATE)";
-        filtroMargenCompras = "WHERE date_trunc('month', fecha::date)=date_trunc('month', CURRENT_DATE)";
-        textoPeriodo = "este mes";
-      }
-
-      const q = await pool.query(`
-        SELECT
-          (SELECT COALESCE(SUM(COALESCE(total_pyg,total,0)),0) FROM ventas ${filtroMargenVentas}) AS ventas,
-          (SELECT COALESCE(SUM(total),0) FROM compras ${filtroMargenCompras}) AS compras
-      `);
-
-      const r = q.rows[0];
-      const margen = Number(r.ventas) - Number(r.compras);
-
+    else if (esMargen) {
+      const r = await q(
+        `SELECT
+           (SELECT COALESCE(SUM(COALESCE(total_pyg,total,0)),0) FROM ventas       WHERE empresa_id=$1${filtroFecha}) AS ventas,
+           (SELECT COALESCE(SUM(total),0)                       FROM compras      WHERE empresa_id=$1${filtroFecha}) AS compras,
+           (SELECT COALESCE(SUM(monto),0)                       FROM egresos      WHERE empresa_id=$1${filtroFecha}) AS egresos`,
+        [empresaId]
+      );
+      const { ventas, compras, egresos } = r.rows[0];
+      const margen = Number(ventas) - Number(compras) - Number(egresos);
       respuesta =
-        `Margen estimado ${textoPeriodo}: ${money(margen)}.<br>` +
-        `Ventas: ${money(r.ventas)}<br>` +
-        `Compras/Egresos: ${money(r.compras)}`;
+        `📈 <b>Margen estimado ${textoPeriodo}:</b> <b>${money(margen)}</b><br>` +
+        `💰 Ventas: ${money(ventas)}<br>` +
+        `🛒 Compras: ${money(compras)}<br>` +
+        `📤 Egresos: ${money(egresos)}`;
     }
 
     return res.json({ ok: true, respuesta });
 
   } catch (err) {
     console.error("POST /api/asistente-admin", err);
-    return res.status(500).json({
-      ok: false,
-      respuesta: "Error consultando el sistema."
-    });
+    return res.status(500).json({ ok: false, respuesta: "Error consultando el sistema." });
   }
 });
-app.get("/", (_req, res) => {
-  res.send("SPYnet OK ✅");
-});
+
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });

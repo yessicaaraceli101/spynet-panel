@@ -1,4 +1,4 @@
-let compraItems = [];
+window.compraItems = window.compraItems || [];
 let editCompraItems = [];
 let productoSeleccionado = null;
 let compraAEliminar = null;
@@ -8,9 +8,43 @@ let productosCompraCache = [];
 const MONEDA_BASE_COMPRA = "PYG";
 const MONEDAS_COMPRA = ["PYG", "USD", "BRL"];
 
-/*************************************************
- * HELPERS GENERALES
- *************************************************/
+/* ===============================
+   MULTIEMPRESA
+=============================== */
+const USER_COMPRA = JSON.parse(localStorage.getItem("user") || "{}");
+
+const EMPRESA_NOMBRE_COMPRA =
+  localStorage.getItem("empresa_nombre") ||
+  USER_COMPRA.empresa_nombre ||
+  "Mi Empresa";
+
+const EMPRESA_LOGO_COMPRA =
+  localStorage.getItem("empresa_logo") ||
+  USER_COMPRA.empresa_logo ||
+  "img/logo.png";
+
+const COLOR_PRINCIPAL_COMPRA =
+  localStorage.getItem("color_principal") ||
+  USER_COMPRA.color_principal ||
+  "#2563eb";
+
+document.documentElement.style.setProperty("--primary", COLOR_PRINCIPAL_COMPRA);
+document.documentElement.style.setProperty("--color-principal", COLOR_PRINCIPAL_COMPRA);
+
+function aplicarEmpresaCompras() {
+  const titulo = document.querySelector("#compras h2, #compras h3, .compras-title");
+  if (titulo && !titulo.dataset.empresaAplicada) {
+    titulo.dataset.empresaAplicada = "1";
+    titulo.textContent = `Compras - ${EMPRESA_NOMBRE_COMPRA}`;
+  }
+
+  const logo = document.querySelector("#logoEmpresa, .empresa-logo");
+  if (logo) logo.src = EMPRESA_LOGO_COMPRA;
+}
+
+/* ===============================
+   HELPERS
+=============================== */
 function numberFormat(n) {
   return new Intl.NumberFormat("es-PY").format(Number(n || 0));
 }
@@ -54,7 +88,6 @@ function closeModal(id) {
   document.body.style.overflow = "";
 }
 
-
 function attachMoneyFormatterById(id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -79,9 +112,9 @@ function attachMoneyFormatterById(id) {
   });
 }
 
-/*************************************************
- * MONEDA - NUEVA COMPRA
- *************************************************/
+/* ===============================
+   MONEDA NUEVA COMPRA
+=============================== */
 function getMonedaCompra() {
   const moneda = (document.getElementById("c_moneda")?.value || MONEDA_BASE_COMPRA)
     .trim()
@@ -108,9 +141,7 @@ function parseCostoCompraInput() {
   const moneda = getMonedaCompra();
   const valor = document.getElementById("c_costo")?.value || "0";
 
-  if (moneda === "PYG") {
-    return parsePYMoney(valor);
-  }
+  if (moneda === "PYG") return parsePYMoney(valor);
 
   return Number(String(valor).replace(",", ".") || 0);
 }
@@ -120,7 +151,6 @@ function autocompletarCostoCompraDesdeMoneda() {
   if (!inputCosto || !productoSeleccionado) return;
 
   const costoGs = Number(productoSeleccionado.costo || 0);
-
   inputCosto.value = numberFormat(costoGs);
 }
 
@@ -131,9 +161,7 @@ async function toggleMonedaCompra() {
   const labelCosto = document.getElementById("label_c_costo");
   const costoInput = document.getElementById("c_costo");
 
-  if (labelCosto) {
-    labelCosto.textContent = "Costo (Gs.)";
-  }
+  if (labelCosto) labelCosto.textContent = "Costo (Gs.)";
 
   let usd = 6350;
   let brl = 1250;
@@ -171,15 +199,14 @@ async function toggleMonedaCompra() {
     costoInput.value = numberFormat(n);
   }
 
-  if (productoSeleccionado) {
-    autocompletarCostoCompraDesdeMoneda();
-  }
+  if (productoSeleccionado) autocompletarCostoCompraDesdeMoneda();
 
   renderItemsCompra();
 }
-/*************************************************
- * MONEDA - EDITAR COMPRA
- *************************************************/
+
+/* ===============================
+   MONEDA EDITAR COMPRA
+=============================== */
 function getMonedaEditarCompra() {
   const moneda = (document.getElementById("edit_c_moneda")?.value || "PYG")
     .trim()
@@ -206,9 +233,7 @@ function parseCostoEditarCompraInput() {
   const moneda = getMonedaEditarCompra();
   const valor = document.getElementById("edit_c_costo")?.value || "0";
 
-  if (moneda === "PYG") {
-    return parsePYMoney(valor);
-  }
+  if (moneda === "PYG") return parsePYMoney(valor);
 
   return Number(String(valor).replace(",", ".") || 0);
 }
@@ -220,9 +245,7 @@ async function toggleMonedaEditarCompra() {
   const labelCosto = document.getElementById("label_edit_c_costo");
   const costoInput = document.getElementById("edit_c_costo");
 
-  if (labelCosto) {
-    labelCosto.textContent = "Costo (Gs.)";
-  }
+  if (labelCosto) labelCosto.textContent = "Costo (Gs.)";
 
   let usd = 6350;
   let brl = 1250;
@@ -263,9 +286,10 @@ async function toggleMonedaEditarCompra() {
   onChangeProductoEditarCompra();
   renderItemsEditarCompra();
 }
-/*************************************************
- * TOTALES NUEVA COMPRA
- *************************************************/
+
+/* ===============================
+   TOTALES
+=============================== */
 function calcularTotalesCompra() {
   const moneda = getMonedaCompra();
   const tipoCambio = getTipoCambioCompra();
@@ -280,8 +304,8 @@ function calcularTotalesCompra() {
   let totalMoneda = totalPyg;
 
   if (moneda !== "PYG") {
-    ivaMoneda = tipoCambio > 0 ? (ivaPyg / tipoCambio) : 0;
-    totalMoneda = tipoCambio > 0 ? (totalPyg / tipoCambio) : 0;
+    ivaMoneda = tipoCambio > 0 ? ivaPyg / tipoCambio : 0;
+    totalMoneda = tipoCambio > 0 ? totalPyg / tipoCambio : 0;
   } else {
     subtotalMoneda = subtotalPyg;
   }
@@ -307,13 +331,7 @@ function actualizarResumenCompra() {
   const lblUsd = document.getElementById("c_total_usd");
   const lblBrl = document.getElementById("c_total_brl");
 
-  const {
-    subtotal_pyg,
-    iva_pyg,
-    total_pyg,
-    tipo_cambio,
-    moneda
-  } = calcularTotalesCompra();
+  const { subtotal_pyg, iva_pyg, total_pyg, tipo_cambio, moneda } = calcularTotalesCompra();
 
   if (lblSubtotal) lblSubtotal.textContent = numberFormat(subtotal_pyg);
   if (lblIva) lblIva.textContent = numberFormat(iva_pyg);
@@ -342,14 +360,7 @@ function renderResumenMonedaCompra() {
     return;
   }
 
-  const {
-    moneda,
-    subtotal_moneda,
-    iva_moneda,
-    total_moneda,
-    total_pyg
-  } = calcularTotalesCompra();
-
+  const { moneda, subtotal_moneda, iva_moneda, total_moneda, total_pyg } = calcularTotalesCompra();
   const simbolo = getSimboloMonedaCompra(moneda);
 
   if (moneda === "PYG") {
@@ -367,9 +378,10 @@ function renderResumenMonedaCompra() {
   lblPyg.textContent = `Gs. ${numberFormat(total_pyg)}`;
   actualizarResumenCompra();
 }
-/*************************************************
- * AUTOCOMPLETAR PRÓXIMA FACTURA
- *************************************************/
+
+/* ===============================
+   FACTURA
+=============================== */
 async function setProximaFacturaCompra() {
   const selProv = document.getElementById("c_proveedor");
   const inputFactura = document.getElementById("c_factura");
@@ -401,11 +413,13 @@ async function setProximaFacturaCompra() {
   }
 }
 
-/*************************************************
- * LISTAR COMPRAS
- *************************************************/
+/* ===============================
+   LISTAR COMPRAS
+=============================== */
 async function cargarComprasLista() {
   try {
+    aplicarEmpresaCompras();
+
     const res = await fetch("/compras", { credentials: "include" });
 
     if (res.status === 401) {
@@ -457,15 +471,16 @@ async function cargarComprasLista() {
   }
 }
 
-/*************************************************
- * EDITAR COMPRA
- *************************************************/
+/* ===============================
+   EDITAR COMPRA
+=============================== */
 async function editarCompra(id) {
   try {
     await cargarProductosEditarCompra();
     attachMoneyFormatterById("edit_c_costo");
 
     const res = await fetch(`/compras/${id}`, { credentials: "include" });
+
     if (res.status === 401) {
       alert("Sesión expirada. Inicie sesión de nuevo.");
       location.href = "/login.html";
@@ -498,6 +513,7 @@ async function editarCompra(id) {
     elId.value = id;
 
     const provRes = await fetch("/proveedores", { credentials: "include" });
+
     if (!provRes.ok) {
       console.error("Error /proveedores:", provRes.status, await provRes.text());
       return alert("No se pudieron cargar proveedores");
@@ -560,16 +576,17 @@ async function editarCompra(id) {
 
     openModal("modalEditarCompra");
 
-  requestAnimationFrame(() => {
-  const sidebar = document.querySelector("#modalEditarCompra .ec-sidebar");
-  const tableBox = document.querySelector("#modalEditarCompra .ec-table-wrap");
+    requestAnimationFrame(() => {
+      const sidebar = document.querySelector("#modalEditarCompra .ec-sidebar");
+      const tableBox = document.querySelector("#modalEditarCompra .ec-table-wrap");
 
-  if (sidebar) sidebar.scrollTop = 0;
-  if (tableBox) tableBox.scrollTop = 0;
+      if (sidebar) sidebar.scrollTop = 0;
+      if (tableBox) tableBox.scrollTop = 0;
 
-  toggleMonedaEditarCompra();
-  renderItemsEditarCompra();
-});
+      toggleMonedaEditarCompra();
+      renderItemsEditarCompra();
+    });
+
   } catch (err) {
     console.error("FALLO editarCompra():", err);
     alert("Ocurrió un error al abrir la edición.");
@@ -599,6 +616,7 @@ async function guardarEdicionCompra() {
     if (!tipo_cambio || tipo_cambio <= 0) {
       return alert("Ingrese un tipo de cambio válido.");
     }
+
     ivaMoneda = ivaPyg / tipo_cambio;
     totalMoneda = totalPyg / tipo_cambio;
   } else {
@@ -629,6 +647,7 @@ async function guardarEdicionCompra() {
   });
 
   let data;
+
   try {
     data = await res.json();
   } catch {
@@ -715,6 +734,7 @@ function renderItemsEditarCompra() {
   if (elTotalTop) elTotalTop.textContent = totalMostrar;
   if (elTotalSidebar) elTotalSidebar.textContent = totalMostrar;
 }
+
 function editarItemEditarCompra(idx) {
   const it = editCompraItems[idx];
   if (!it) return;
@@ -745,9 +765,9 @@ function borrarItemEditarCompra(idx) {
   renderItemsEditarCompra();
 }
 
-/*************************************************
- * ELIMINAR COMPRA
- *************************************************/
+/* ===============================
+   ELIMINAR COMPRA
+=============================== */
 async function eliminarCompra(id) {
   if (!confirm("¿Seguro que desea eliminar esta compra?")) return;
 
@@ -757,6 +777,7 @@ async function eliminarCompra(id) {
   });
 
   const data = await res.json();
+
   if (!data.ok) return alert("Error: " + data.msg);
 
   alert("Compra eliminada ✔");
@@ -788,9 +809,9 @@ async function eliminarCompraConfirmada() {
   cargarComprasLista();
 }
 
-/*************************************************
- * CARGAR PROVEEDORES (NUEVA COMPRA)
- *************************************************/
+/* ===============================
+   PROVEEDORES
+=============================== */
 async function cargarProveedoresCompra() {
   try {
     const res = await fetch("/proveedores", { credentials: "include" });
@@ -813,14 +834,15 @@ async function cargarProveedoresCompra() {
   }
 }
 
-/*************************************************
- * NUEVA COMPRA
- *************************************************/
+/* ===============================
+   NUEVA COMPRA
+=============================== */
 async function abrirNuevaCompra() {
   attachMoneyFormatterById("c_costo");
 
   await cargarProveedoresCompra();
   await cargarProductosCompra();
+
   openModal("modalNuevaCompra");
 
   const hoy = new Date().toISOString().slice(0, 10);
@@ -853,16 +875,15 @@ async function abrirNuevaCompra() {
   toggleMonedaCompra();
   renderItemsCompra();
 }
-/*************************************************
- * AGREGAR PRODUCTO NUEVA COMPRA
- *************************************************/
+
+/* ===============================
+   AGREGAR ITEM
+=============================== */
 function agregarItemCompra() {
-  if (!productoSeleccionado) {
-    return alert("Debe seleccionar un producto de la lista.");
-  }
+  if (!productoSeleccionado) return alert("Debe seleccionar un producto de la lista.");
 
   const cantidad = Number(document.getElementById("c_cantidad")?.value || 0);
-  const costoMoneda = parseCostoCompraInput(); // ahora este valor siempre es Gs.
+  const costoMoneda = parseCostoCompraInput();
   const moneda = getMonedaCompra();
   const tipoCambio = getTipoCambioCompra();
 
@@ -982,6 +1003,7 @@ function renderItemsCompra() {
   if (elTotal) elTotal.textContent = numberFormat(total_pyg || 0);
 
   const elTotalPrincipal = document.getElementById("c_total_principal");
+
   if (elTotalPrincipal) {
     if (moneda === "PYG") {
       elTotalPrincipal.textContent = `Gs. ${numberFormat(total_pyg || 0)}`;
@@ -995,9 +1017,9 @@ function renderItemsCompra() {
   renderResumenMonedaCompra();
 }
 
-/*************************************************
- * GUARDAR NUEVA COMPRA
- *************************************************/
+/* ===============================
+   GUARDAR COMPRA
+=============================== */
 async function guardarCompra() {
   const proveedor_id = Number(document.getElementById("c_proveedor")?.value || 0);
   const fecha = document.getElementById("c_fecha")?.value || "";
@@ -1049,6 +1071,7 @@ async function guardarCompra() {
     });
 
     const data = await res.json();
+
     if (!data.ok) return alert("Error: " + data.msg);
 
     alert("Compra registrada ✔");
@@ -1060,9 +1083,9 @@ async function guardarCompra() {
   }
 }
 
-/*************************************************
- * DETALLE DE COMPRA
- *************************************************/
+/* ===============================
+   DETALLE
+=============================== */
 async function verCompraDetalle(id) {
   try {
     const res = await fetch(`/compras/${id}`, { credentials: "include" });
@@ -1085,6 +1108,7 @@ async function verCompraDetalle(id) {
 
     if (tbody) {
       tbody.innerHTML = "";
+
       (data.items || []).forEach((it) => {
         tbody.innerHTML += `
           <tr>
@@ -1102,9 +1126,9 @@ async function verCompraDetalle(id) {
   }
 }
 
-/*************************************************
- * AUTOCOMPLETAR PRODUCTOS NUEVA COMPRA
- *************************************************/
+/* ===============================
+   AUTOCOMPLETAR PRODUCTOS
+=============================== */
 async function autocompletarProductoCompra(texto) {
   const lista = document.getElementById("c_lista_productos");
 
@@ -1120,6 +1144,7 @@ async function autocompletarProductoCompra(texto) {
     const res = await fetch("/productos?buscar=" + encodeURIComponent(texto.trim()), {
       credentials: "include"
     });
+
     if (!res.ok) return;
 
     const data = await res.json();
@@ -1172,9 +1197,9 @@ async function autocompletarProductoCompra(texto) {
   }
 }
 
-/*************************************************
- * FILTRAR / TABLA
- *************************************************/
+/* ===============================
+   FILTROS
+=============================== */
 async function filtrarCompras() {
   const texto = (document.getElementById("f_compra_buscar")?.value || "").toLowerCase();
   const proveedor = document.getElementById("f_compra_proveedor")?.value;
@@ -1209,11 +1234,23 @@ function renderTablaCompras(data) {
 
   tbody.innerHTML = "";
 
+  if (!data.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="11" style="text-align:center; color:#666; padding:20px;">
+          No se encontraron compras para esta empresa.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
   data.forEach((c) => {
     const tr = document.createElement("tr");
     const moneda = (c.moneda || "PYG").toUpperCase();
 
     let totalMostrar = "";
+
     if (moneda === "USD") {
       totalMostrar = `US$ ${numberFormatDecimal(c.total_moneda ?? 0)}`;
     } else if (moneda === "BRL") {
@@ -1250,12 +1287,15 @@ function renderTablaCompras(data) {
   });
 }
 
-
+/* ===============================
+   PRODUCTOS NUEVA COMPRA
+=============================== */
 async function cargarProductosCompra() {
   const sel = document.getElementById("c_producto");
   if (!sel) return;
 
   const res = await fetch("/productos", { credentials: "include" });
+
   if (!res.ok) {
     console.error("No se pudo cargar /productos", res.status, await res.text());
     return;
@@ -1279,7 +1319,7 @@ async function cargarProductosCompra() {
     const op = document.createElement("option");
     op.value = p.id;
     op.textContent = label;
-    op.dataset.nombre = (nombre || codigo || "SIN NOMBRE");
+    op.dataset.nombre = nombre || codigo || "SIN NOMBRE";
     op.dataset.costo = Number(p.costo || p.precio || 0);
     sel.appendChild(op);
   });
@@ -1292,6 +1332,7 @@ function onChangeProductoCompra() {
   if (!sel || !costoInput) return;
 
   const productoId = Number(sel.value);
+
   if (!productoId) {
     productoSeleccionado = null;
     costoInput.value = getMonedaCompra() === "PYG" ? "0" : "0.00";
@@ -1313,14 +1354,15 @@ function onChangeProductoCompra() {
   autocompletarCostoCompraDesdeMoneda();
 }
 
-/*************************************************
- * CARGAR PRODUCTOS (EDITAR COMPRA)
- *************************************************/
+/* ===============================
+   PRODUCTOS EDITAR COMPRA
+=============================== */
 async function cargarProductosEditarCompra() {
   const sel = document.getElementById("edit_c_producto");
   if (!sel) return;
 
   const res = await fetch("/productos", { credentials: "include" });
+
   if (!res.ok) {
     console.error("No se pudo cargar /productos", res.status, await res.text());
     return;
@@ -1344,7 +1386,7 @@ async function cargarProductosEditarCompra() {
     const op = document.createElement("option");
     op.value = p.id;
     op.textContent = label;
-    op.dataset.nombre = (nombre || codigo || "SIN NOMBRE");
+    op.dataset.nombre = nombre || codigo || "SIN NOMBRE";
     op.dataset.costo = Number(p.costo || p.precio || 0);
     sel.appendChild(op);
   });
@@ -1357,6 +1399,7 @@ function onChangeProductoEditarCompra() {
   if (!sel || !costoInput) return;
 
   const productoId = Number(sel.value);
+
   if (!productoId) {
     costoInput.value = getMonedaEditarCompra() === "PYG" ? "0" : "0.00";
     return;
@@ -1376,6 +1419,7 @@ function onChangeProductoEditarCompra() {
       costoInput.value = "0.00";
       return;
     }
+
     costoInput.value = numberFormatDecimal(costoGs / tipoCambio);
   }
 }
@@ -1438,15 +1482,18 @@ function agregarProductoEditarCompra() {
   renderItemsEditarCompra();
 }
 
-/*************************************************
- * AUTO EJECUCIÓN
- *************************************************/
+/* ===============================
+   INIT
+=============================== */
 if (document.getElementById("tabla-compras")) {
   attachMoneyFormatterById("c_costo");
+  aplicarEmpresaCompras();
   cargarComprasLista();
 }
 
-
+/* ===============================
+   EXPORTS
+=============================== */
 window.openModal = openModal;
 window.closeModal = closeModal;
 
@@ -1469,3 +1516,5 @@ window.borrarItemCompra = borrarItemCompra;
 window.toggleMonedaCompra = toggleMonedaCompra;
 window.autocompletarProductoCompra = autocompletarProductoCompra;
 window.filtrarCompras = filtrarCompras;
+window.onChangeProductoCompra = onChangeProductoCompra;
+window.verCompraDetalle = verCompraDetalle;
