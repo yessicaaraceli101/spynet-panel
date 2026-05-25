@@ -191,20 +191,12 @@ function mostrarModalCajaCerrada(msg = "Debe abrir la caja antes de realizar una
   const body = document.getElementById("modalCajaCerradaBody");
   if (body) body.textContent = msg;
 
-  if (typeof bootstrap === "undefined") {
-    alert(msg);
-    return;
-  }
+  const el = document.getElementById("modalCajaCerrada");
+  if (!el) { alert(msg); return; }
 
-  bsHideModal("modalPago");
-  bsHideModal("modalVenta");
-
-  setTimeout(() => {
-    const ok = bsShowModal("modalCajaCerrada", { backdrop: "static", keyboard: false });
-    if (!ok) alert(msg);
-  }, 180);
+  el.style.display = "flex";
+  el.classList.add("show");
 }
-
 
 
 function toggleComprobanteUI(fp) {

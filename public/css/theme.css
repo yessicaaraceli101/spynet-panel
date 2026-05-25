@@ -3064,6 +3064,17 @@ main{ min-width:0; }
 .modal-backdrop.show{
   opacity: .65 !important;
 }
+.modal-backdrop {
+  z-index: 1040 !important;
+}
+
+.modal {
+  z-index: 1055 !important;
+}
+
+#modalCajaCerrada {
+  z-index: 1056 !important;
+}
 
 /* X en rojo (btn-close es un SVG, se cambia con filter) */
 .btn-close.btn-close-red{
@@ -8887,5 +8898,36 @@ thead th {
 
 
 
+html, body {
+  height: 100%;
+}
 
+/* 🔥 rompe stacking contexts del layout (causa real del problema) */
+body, .main-content, .sidebar, .dashboard, .container, section {
+  transform: none !important;
+  filter: none !important;
+  perspective: none !important;
+}
 
+/* 🔥 asegura que Bootstrap modal quede arriba */
+body > .modal {
+  z-index: 999999 !important;
+}
+
+/* 🔥 backdrop SIEMPRE debajo del modal */
+body > .modal-backdrop {
+  z-index: 999998 !important;
+  opacity: 0.6 !important;
+}
+
+/* 🔥 modal centrado correctamente cuando está activo */
+.modal.show {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 🔥 seguridad extra SOLO para tu modal específico */
+#modalCajaCerrada {
+  z-index: 1000000 !important;
+}

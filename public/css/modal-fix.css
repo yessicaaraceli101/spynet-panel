@@ -2409,51 +2409,27 @@ body {
 }
 
 
-
-
-
-/* ===== FIX DEFINITIVO MODAL PAGO - FONDO FULL ===== */
-
-#modalPago {
+/* ===== FIX FORZADO CAJA CERRADA ===== */
+#modalCajaCerrada {
   position: fixed !important;
   inset: 0 !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  margin: 0 !important;
-  padding: 16px !important;
-  box-sizing: border-box !important;
-  background: rgba(15, 23, 42, 0.72) !important;
-  z-index: 999999999 !important;
+  z-index: 2147483647 !important; /* máximo posible */
+  background: rgba(15, 23, 42, 0.7) !important;
   display: none;
   align-items: center !important;
   justify-content: center !important;
-  overflow: hidden !important;
 }
 
-#modalPago.show,
-#modalPago[style*="display: flex"],
-#modalPago[style*="display:flex"],
-#modalPago[style*="display: block"],
-#modalPago[style*="display:block"] {
+#modalCajaCerrada.show {
   display: flex !important;
 }
 
-#modalPago .pago-modal,
-#modalPago .pago-modal-pro,
-#modalPago .sheet,
-#modalPago .modal-content {
-  width: min(980px, calc(100vw - 32px)) !important;
-  max-width: calc(100vw - 32px) !important;
-  max-height: calc(100dvh - 32px) !important;
-  overflow-y: auto !important;
-  border-radius: 20px !important;
-  background: #fff !important;
-  box-shadow: 0 20px 60px rgba(0,0,0,.30) !important;
-  margin: 0 auto !important;
+#modalCajaCerrada .sheet {
   position: relative !important;
-  z-index: 1 !important;
+  z-index: 2147483647 !important;
+  background: #ffffff !important;
+  border-radius: 16px !important;
+  padding: 1.5rem !important;
+  width: min(500px, 90vw) !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3) !important;
 }
