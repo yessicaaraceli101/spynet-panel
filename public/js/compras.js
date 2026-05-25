@@ -75,9 +75,15 @@ function parsePYMoney(v) {
 function openModal(id) {
   const modal = document.getElementById(id);
   if (!modal) return;
+
+  // Mover al body para que fixed funcione bien
+  if (modal.parentElement !== document.body) {
+    document.body.appendChild(modal);
+  }
+
   modal.style.display = "flex";
   modal.classList.add("show");
-  document.body.style.overflow = "hidden";
+  document.body.classList.add("modal-open");
 }
 
 function closeModal(id) {
@@ -85,7 +91,7 @@ function closeModal(id) {
   if (!modal) return;
   modal.classList.remove("show");
   modal.style.display = "none";
-  document.body.style.overflow = "";
+  document.body.classList.remove("modal-open");
 }
 
 function attachMoneyFormatterById(id) {
@@ -382,35 +388,14 @@ function renderResumenMonedaCompra() {
 /* ===============================
    FACTURA
 =============================== */
-async function setProximaFacturaCompra() {
+function setProximaFacturaCompra() {
   const selProv = document.getElementById("c_proveedor");
   const inputFactura = document.getElementById("c_factura");
 
   if (!selProv || !inputFactura) return;
 
-  const proveedorId = selProv.value;
-  if (!proveedorId) return;
-
-  try {
-    const res = await fetch(
-      `/compras/proxima-factura?proveedor_id=${encodeURIComponent(proveedorId)}`,
-      { credentials: "include" }
-    );
-
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error("Error /compras/proxima-factura:", res.status, txt);
-      return;
-    }
-
-    const data = await res.json();
-
-    if (!inputFactura.value.trim()) {
-      inputFactura.value = data.factura || data.proxima_factura || "";
-    }
-  } catch (err) {
-    console.error("Error setProximaFacturaCompra:", err);
-  }
+  const opt = selProv.selectedOptions[0];
+  inputFactura.value = opt?.dataset?.ruc || "";
 }
 
 /* ===============================
@@ -826,7 +811,8 @@ async function cargarProveedoresCompra() {
     data.forEach((p) => {
       const op = document.createElement("option");
       op.value = p.id;
-      op.textContent = `${p.nombre} — ${p.ruc}`;
+      op.textContent = p.nombre;
+      op.dataset.ruc = p.ruc || "";
       sel.appendChild(op);
     });
   } catch (err) {
@@ -1491,6 +1477,29 @@ if (document.getElementById("tabla-compras")) {
   cargarComprasLista();
 }
 
+
+document.addEventListener("DOMContentLoaded", () => {
+  const modalIds = [
+    "modalVenta",
+    "modalPago",
+    "modalNuevaCompra",
+    "modalEditarCompra",
+    "logoutModal",
+    "modalCajaCerrada",
+    "modalEliminarVenta",
+    "modalEliminarCompra",
+    "modalCuentaPagar",
+    "modalEliminarCuentaPagar"
+  ];
+
+  modalIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && el.parentElement !== document.body) {
+      document.body.appendChild(el);
+    }
+  });
+});
+
 /* ===============================
    EXPORTS
 =============================== */
@@ -1518,3 +1527,6 @@ window.autocompletarProductoCompra = autocompletarProductoCompra;
 window.filtrarCompras = filtrarCompras;
 window.onChangeProductoCompra = onChangeProductoCompra;
 window.verCompraDetalle = verCompraDetalle;
+
+
+
