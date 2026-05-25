@@ -2286,52 +2286,174 @@ body {
 }
 
 
-.login-shell {
-  width: 100%;
-  max-width: 460px;
-  background: #ffffff;
-  border-radius: 28px;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, .16);
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
+.efectivo-destacado{
+  border:2px solid #16a34a;
+  background:#f0fdf4;
 }
 
-.form-side {
-  width: 100%;
-  padding: 42px 34px;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.input-efectivo{
+  font-size:22px;
+  font-weight:700;
+  text-align:center;
+  height:55px;
 }
 
-.form-box {
-  width: 100%;
-}
-
-body {
-  min-height: 100vh;
-  font-family: Arial, sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(37,99,235,.10), transparent 30%),
-    linear-gradient(135deg, #f8fbff 0%, #edf4ff 100%);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.vuelto-box-pro {
+  margin-top: 18px;
   padding: 20px;
+  border-radius: 16px;
+  background: #16a34a;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(0,0,0,.15);
+  overflow: hidden !important;
+  word-break: break-word !important;
+
 }
 
-@media (max-width: 520px) {
-  .login-shell {
-    max-width: 100%;
-    border-radius: 24px;
-  }
+.vuelto-label{
+  color:#dcfce7;
+  font-size:15px;
+  margin-bottom:8px;
+}
 
-  .form-side {
-    padding: 30px 22px;
-  }
+.vuelto-valor {
+  color: white !important;
+  font-size: 38px !important;
+  font-weight: 900 !important;
+  letter-spacing: 1px !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+.vuelto-box-pro.insuficiente {
+  background: #dc2626 !important;
+  border: 2px solid #b91c1c !important;
+}
 
-  .form-box h2 {
-    font-size: 28px;
-  }
+
+
+/* ===== FIX DEFINITIVO MODAL PAGO — FONDO FULL PANTALLA ===== */
+
+#modalPago {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  z-index: 99999999 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+#modalPago.show,
+#modalPago[style*="display: flex"],
+#modalPago[style*="display:flex"],
+#modalPago[style*="display: block"],
+#modalPago[style*="display:block"] {
+  display: flex !important;
+}
+
+#modalPago .pago-modal,
+#modalPago .pago-modal-pro,
+#modalPago .sheet,
+#modalPago .modal-content {
+  width: min(980px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: calc(100dvh - 32px) !important;
+  overflow-y: auto !important;
+  border-radius: 20px !important;
+  background: #fff !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25) !important;
+  margin: 0 auto !important;
+}
+
+/* Vuelto en blanco */
+.vuelto-valor {
+  color: white !important;
+}
+
+/* Fondo rojo cuando monto insuficiente */
+.vuelto-box-pro.insuficiente {
+  background: #dc2626 !important;
+  border: 2px solid #b91c1c !important;
+}
+
+/* Texto que no se corte */
+.vuelto-box-pro {
+  overflow: hidden !important;
+  word-break: break-word !important;
+}
+
+#vuelto {
+  word-break: break-word !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* ===== FIX TEXTO MONTO INSUFICIENTE EN UNA LÍNEA ===== */
+
+.vuelto-box-pro.insuficiente .vuelto-valor {
+  font-size: 20px !important;
+  white-space: nowrap !important;
+  letter-spacing: 0 !important;
+}
+
+
+
+
+
+/* ===== FIX DEFINITIVO MODAL PAGO - FONDO FULL ===== */
+
+#modalPago {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  z-index: 999999999 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+#modalPago.show,
+#modalPago[style*="display: flex"],
+#modalPago[style*="display:flex"],
+#modalPago[style*="display: block"],
+#modalPago[style*="display:block"] {
+  display: flex !important;
+}
+
+#modalPago .pago-modal,
+#modalPago .pago-modal-pro,
+#modalPago .sheet,
+#modalPago .modal-content {
+  width: min(980px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: calc(100dvh - 32px) !important;
+  overflow-y: auto !important;
+  border-radius: 20px !important;
+  background: #fff !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.30) !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  z-index: 1 !important;
 }

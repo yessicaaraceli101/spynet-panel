@@ -20,6 +20,34 @@ const CLAVE_EDITAR = "editar123";
 const ID_DEBITO = 1;
 const ID_EFECTIVO = 2;
 
+const FORMAS_PAGO_MAP = {
+  1: "Débito",
+  2: "Efectivo",
+  3: "Crédito",
+  4: "QR",
+  5: "BNF",
+  6: "Continental",
+  7: "Banco Familiar",
+  8: "Ueno Bank",
+  9: "Banco Basa",
+  10: "Mango"
+};
+
+/*
+  Formas que requieren comprobante
+*/
+const FORMAS_CON_COMPROBANTE = new Set([
+  1,  // Débito
+  3,  // Crédito
+  4,  // QR
+  5,  // BNF
+  6,  // Continental
+  7,  // Familiar
+  8,  // Ueno
+  9,  // Basa
+  10  // Mango
+]);
+
 const MONEDA_BASE = "PYG";
 const MONEDAS_SOPORTADAS = ["PYG", "USD", "BRL"];
 
@@ -177,31 +205,57 @@ function mostrarModalCajaCerrada(msg = "Debe abrir la caja antes de realizar una
   }, 180);
 }
 
-const FORMAS_CON_COMPROBANTE = new Set([4, 5, 6, 7, 8, 9, 10]);
 
-function toggleComprobanteUI(formaPagoId) {
-  const wrap = document.getElementById("wrapComprobante");
-  const input = document.getElementById("inputComprobante");
-  if (!wrap || !input) return;
 
-  const necesita = FORMAS_CON_COMPROBANTE.has(Number(formaPagoId));
-  wrap.style.display = necesita ? "block" : "none";
+function toggleComprobanteUI(fp) {
 
-  if (!necesita) input.value = "";
+  console.log("toggleComprobanteUI:", fp);
+
+  const wrap =
+    document.getElementById(
+      "wrapComprobante"
+    );
+
+  if (!wrap) return;
+
+  // SI NO HAY FORMA DE PAGO
+  if (!fp) {
+
+    wrap.style.display = "none";
+
+    return;
+  }
+
+  // NORMALIZAR
+  const tipo =
+    String(fp.tipo || "")
+      .trim()
+      .toLowerCase();
+
+  const nombre =
+    String(fp.nombre || "")
+      .trim()
+      .toLowerCase();
+
+  // EFECTIVO
+  const esEfectivo =
+    tipo === "efectivo" ||
+    nombre === "efectivo";
+
+  // MOSTRAR SOLO SI NO ES EFECTIVO
+  const requiereComprobante =
+    !esEfectivo;
+
+  console.log(
+    "requiereComprobante =",
+    requiereComprobante
+  );
+
+  wrap.style.display =
+    requiereComprobante
+      ? "block"
+      : "none";
 }
-
-const FORMAS_PAGO_MAP = {
-  1: "Débito",
-  2: "Efectivo",
-  3: "Crédito",
-  4: "QR",
-  5: "BNF",
-  6: "Continental",
-  7: "Banco Familiar",
-  8: "Ueno Bank",
-  9: "Banco Basa",
-  10: "Mango"
-};
 
 function detectarFormaPagoDesdeBoton(btn) {
   let id = Number(btn?.dataset?.id || btn?.getAttribute?.("data-id") || 0);
@@ -274,6 +328,94 @@ function iniciarPOS() {
   iniciarScannerVenta();
 }
 
+
+async function cargarFormasPago() {
+  try {
+
+    const res = await fetch("/formas_pago", {
+      credentials: "include"
+    });
+
+    if (!res.ok) {
+      throw new Error("Error cargando formas de pago");
+    }
+
+    const formas = await res.json();
+
+    console.log("Formas recibidas:", formas);
+
+    const cont = document.getElementById("gridFormasPago");
+
+    if (!cont) {
+      console.error("No existe #gridFormasPago");
+      return;
+    }
+
+    cont.innerHTML = "";
+
+    formas.forEach(fp => {
+
+      const btn = document.createElement("button");
+
+      btn.type = "button";
+
+      btn.className = "btn btnFormaPago";
+
+      btn.dataset.id = fp.id;
+      btn.dataset.nombre = fp.nombre;
+
+      let icono = "💳";
+
+      if (fp.nombre.toLowerCase().includes("efectivo")) {
+        icono = "💵";
+      }
+      else if (
+        fp.nombre.toLowerCase().includes("banco") ||
+        fp.nombre.toLowerCase().includes("bnf") ||
+        fp.nombre.toLowerCase().includes("continental") ||
+        fp.nombre.toLowerCase().includes("ueno")
+      ) {
+        icono = "🏦";
+      }
+      else if (
+        fp.nombre.toLowerCase().includes("qr") ||
+        fp.nombre.toLowerCase().includes("mango")
+      ) {
+        icono = "📱";
+      }
+
+      btn.innerHTML = `${icono} ${fp.nombre}`;
+
+      btn.onclick = () => seleccionarFormaPago(fp, btn);
+
+      cont.appendChild(btn);
+    });
+
+  } catch (err) {
+    console.error("❌ Error cargando formas de pago:", err);
+  }
+}
+
+function seleccionarFormaPago(fp, btn) {
+
+  formaPagoSeleccionada = fp;
+
+  formaPagoIdSeleccionada = Number(fp.id);
+
+  window.formaPagoTipoSeleccionada =
+    fp.tipo || "";
+
+  document
+    .querySelectorAll(".btnFormaPago")
+    .forEach(b => b.classList.remove("active"));
+
+  btn.classList.add("active");
+
+  // IMPORTANTE
+  toggleComprobanteUI(fp);
+
+  console.log("Forma seleccionada:", fp);
+}
 async function cargarClientesVenta() {
   const select = document.getElementById("v_cliente");
   if (!select) return;
@@ -313,6 +455,7 @@ document.addEventListener("input", e => {
     actualizarResumenMonedaVenta();
   }
 });
+
 
 function iniciarScannerVenta() {
   const input = document.getElementById("barcodeVenta");
@@ -416,43 +559,120 @@ function abrirPago() {
   actualizarResumenMonedaVenta();
   openModal("modalPago");
 }
-
 function confirmarPago(btn, formaPagoId) {
-  formaPagoId = Number(formaPagoId);
-  formaPagoIdSeleccionada = formaPagoId;
 
-  document.querySelectorAll(".pago-grid .btn, .btnFormaPago")
-    .forEach(b => b.classList.remove("active"));
+  formaPagoId = Number(formaPagoId);
+
+  formaPagoIdSeleccionada =
+    formaPagoId;
+
+  document
+    .querySelectorAll(
+      ".pago-grid .btn, .btnFormaPago"
+    )
+    .forEach(b =>
+      b.classList.remove("active")
+    );
+
   btn.classList.add("active");
 
-  const nombre = FORMAS_PAGO_MAP[formaPagoId] || (btn.textContent || "").trim();
+  // =====================================
+  // DETECTAR FORMA PAGO
+  // =====================================
 
-  const msg = document.getElementById("mensajeFormaPago");
+  const det =
+    detectarFormaPagoDesdeBoton(btn);
+
+  // ✅ GUARDAR GLOBAL
+  window.formaPagoSeleccionada = det;
+
+  window.formaPagoTipoSeleccionada =
+    det?.tipo || null;
+
+  const nombre =
+    det?.nombre ||
+    FORMAS_PAGO_MAP[formaPagoId] ||
+    (btn.textContent || "").trim();
+
+  // =====================================
+  // MENSAJE
+  // =====================================
+
+  const msg =
+    document.getElementById(
+      "mensajeFormaPago"
+    );
+
   if (msg) {
+
     msg.style.display = "block";
-    msg.textContent = `Forma de pago seleccionada: ${nombre}`;
+
+    msg.textContent =
+      `Forma de pago seleccionada: ${nombre}`;
   }
 
-  formaPagoFinal = { id: formaPagoId, nombre };
+  formaPagoFinal = {
+    id: formaPagoId,
+    nombre
+  };
 
-  const bloque = document.getElementById("bloqueEfectivo");
-  const esEfectivo = (formaPagoId === ID_EFECTIVO);
+  // =====================================
+  // EFECTIVO
+  // =====================================
 
-  if (bloque) bloque.style.display = esEfectivo ? "block" : "none";
+  const bloque =
+    document.getElementById(
+      "bloqueEfectivo"
+    );
+
+  const esEfectivo =
+    String(det?.tipo || "")
+      .toLowerCase() === "efectivo"
+    ||
+    String(det?.nombre || "")
+      .toLowerCase() === "efectivo";
+
+  if (bloque) {
+
+    bloque.style.display =
+      esEfectivo
+        ? "block"
+        : "none";
+  }
 
   if (esEfectivo) {
+
     calcularVuelto();
+
   } else {
-    const mr = document.getElementById("montoRecibido");
-    if (mr) mr.value = "";
-    const v = document.getElementById("vuelto");
+
+    const mr =
+      document.getElementById(
+        "montoRecibido"
+      );
+
+    if (mr) {
+      mr.value = "";
+    }
+
+    const v =
+      document.getElementById(
+        "vuelto"
+      );
+
     if (v) {
+
       v.textContent = "0";
+
       v.style.color = "";
     }
   }
 
-  toggleComprobanteUI(formaPagoId);
+  // =====================================
+  // COMPROBANTE
+  // =====================================
+
+  toggleComprobanteUI(det);
 }
 
 function normalizarTipoCaja(tipo) {
@@ -464,111 +684,349 @@ function normalizarTipoCaja(tipo) {
 }
 
 async function confirmarPagoFinal() {
-  const activeBtn = document.querySelector(".pago-grid .btn.active, .btnFormaPago.active");
+
+  const activeBtn = document.querySelector(
+    ".pago-grid .btn.active, .btnFormaPago.active"
+  );
+
   if (activeBtn) {
-    const det = detectarFormaPagoDesdeBoton(activeBtn);
-    if (det.id) formaPagoIdSeleccionada = det.id;
+
+    const det =
+      detectarFormaPagoDesdeBoton(activeBtn);
+
+    if (det.id) {
+      formaPagoIdSeleccionada = Number(det.id);
+    }
+
+    // ✅ GUARDAR OBJETO COMPLETO
+    window.formaPagoSeleccionada = det;
+
+    // ✅ GUARDAR TIPO
+    window.formaPagoTipoSeleccionada =
+      det.tipo || null;
   }
 
-  formaPagoIdSeleccionada = Number(formaPagoIdSeleccionada);
+  formaPagoIdSeleccionada =
+    Number(formaPagoIdSeleccionada);
 
   if (!formaPagoIdSeleccionada) {
+
     alert("Seleccione una forma de pago");
+
     return;
   }
 
   if (!ventaItems || ventaItems.length === 0) {
+
     alert("No hay productos en la venta");
+
     return;
   }
 
-  const { moneda, tipoCambio, total_moneda, total_pyg } = calcularTotalesVenta();
+  const {
+    moneda,
+    tipoCambio,
+    total_moneda,
+    total_pyg
+  } = calcularTotalesVenta();
 
-  if (moneda !== "PYG" && (!tipoCambio || tipoCambio <= 0)) {
-    alert("❌ Ingrese una cotización válida para la moneda seleccionada");
+  if (
+    moneda !== "PYG" &&
+    (!tipoCambio || tipoCambio <= 0)
+  ) {
+
+    alert("❌ Ingrese una cotización válida");
+
     return;
   }
 
-  const clienteRaw = (document.getElementById("v_cliente")?.value || "").trim();
-  const cliente_id = clienteRaw ? Number(clienteRaw) : null;
+  const clienteRaw =
+    (
+      document.getElementById("v_cliente")
+        ?.value || ""
+    ).trim();
 
-  let estado_pago = (document.getElementById("v_estado_pago")?.value || "pagado").trim().toLowerCase();
-  if (!estado_pago) estado_pago = "pagado";
+  const cliente_id =
+    clienteRaw
+      ? Number(clienteRaw)
+      : null;
 
-  const fechaInput = (document.getElementById("v_fecha")?.value || "").trim();
-  const fecha = fechaInput || new Date().toISOString().slice(0, 10);
+  let estado_pago =
+    (
+      document.getElementById("v_estado_pago")
+        ?.value || "pagado"
+    )
+      .trim()
+      .toLowerCase();
 
-  const esEfectivo = (formaPagoIdSeleccionada === ID_EFECTIVO);
+  if (!estado_pago) {
+    estado_pago = "pagado";
+  }
+
+  const fechaInput =
+    (
+      document.getElementById("v_fecha")
+        ?.value || ""
+    ).trim();
+
+  const fecha =
+    fechaInput ||
+    new Date()
+      .toISOString()
+      .slice(0, 10);
+
+  // =========================================
+  // TIPO FORMA PAGO
+  // =========================================
+
+  const tipoFormaPago =
+    String(
+      window.formaPagoTipoSeleccionada || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  const nombreFormaPago =
+    String(
+      window.formaPagoSeleccionada?.nombre || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  // ✅ EFECTIVO
+  const esEfectivo =
+    tipoFormaPago === "efectivo" ||
+    nombreFormaPago === "efectivo";
 
   let vuelto = null;
 
+  // =========================================
+  // EFECTIVO
+  // =========================================
+
   if (esEfectivo) {
-    const input = document.getElementById("montoRecibido");
+
+    const input =
+      document.getElementById(
+        "montoRecibido"
+      );
+
     let montoRecibido = 0;
 
     if (moneda === "PYG") {
-      montoRecibido = Number((input?.value || "").replace(/\D/g, "") || 0);
+
+      montoRecibido = Number(
+        (
+          input?.value || ""
+        ).replace(/\D/g, "") || 0
+      );
+
     } else {
-      montoRecibido = Number(String(input?.value || "0").replace(",", "."));
+
+      montoRecibido = Number(
+        String(
+          input?.value || "0"
+        ).replace(",", ".")
+      );
     }
 
-    const totalComparar = moneda === "PYG" ? total_pyg : total_moneda;
+    const totalComparar =
+      moneda === "PYG"
+        ? total_pyg
+        : total_moneda;
 
     if (montoRecibido < totalComparar) {
-      alert("❌ El monto recibido es menor al total");
+
+      alert(
+        "❌ El monto recibido es menor al total"
+      );
+
       return;
     }
 
-    vuelto = montoRecibido - totalComparar;
+    vuelto =
+      montoRecibido - totalComparar;
   }
 
-  window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
-  const tipoCajaNecesaria = esEfectivo ? "efectivo" : "transferencia";
+  // =========================================
+  // VALIDAR CAJA
+  // =========================================
 
-  if (typeof refrescarCajaAbierta === "function") {
+  window.cajasActuales =
+    window.cajasActuales || {
+      efectivo: null,
+      transferencia: null
+    };
+
+  const tipoCajaNecesaria =
+    esEfectivo
+      ? "efectivo"
+      : "transferencia";
+
+  if (
+    typeof refrescarCajaAbierta ===
+    "function"
+  ) {
+
     try {
-      await refrescarCajaAbierta(tipoCajaNecesaria, fecha);
+
+      await refrescarCajaAbierta(
+        tipoCajaNecesaria,
+        fecha
+      );
+
     } catch (e) {
-      console.error("refrescarCajaAbierta falló:", e);
+
+      console.error(
+        "refrescarCajaAbierta falló:",
+        e
+      );
     }
   }
 
-  let caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
+  let caja_id =
+    Number(
+      window.cajasActuales?.[
+        tipoCajaNecesaria
+      ]?.id
+    ) || null;
 
-  if (!caja_id && typeof refrescarCajaAbierta === "function") {
+  if (
+    !caja_id &&
+    typeof refrescarCajaAbierta ===
+      "function"
+  ) {
+
     try {
-      await refrescarCajaAbierta(tipoCajaNecesaria, fecha);
-      caja_id = Number(window.cajasActuales?.[tipoCajaNecesaria]?.id) || null;
+
+      await refrescarCajaAbierta(
+        tipoCajaNecesaria,
+        fecha
+      );
+
+      caja_id =
+        Number(
+          window.cajasActuales?.[
+            tipoCajaNecesaria
+          ]?.id
+        ) || null;
+
     } catch (e) {
-      console.error("refrescarCajaAbierta reintento falló:", e);
+
+      console.error(
+        "refrescarCajaAbierta reintento falló:",
+        e
+      );
     }
   }
 
   if (!caja_id) {
-    if (typeof closeModal === "function") closeModal("modalPago");
-    if (typeof closeModal === "function") closeModal("modalVenta");
 
-    const msg = esEfectivo
-      ? "Debe abrir la caja de EFECTIVO antes de realizar una venta."
-      : "Debe abrir la caja de TRANSFERENCIAS antes de realizar una venta por banco/QR/transferencia.";
+    if (
+      typeof closeModal === "function"
+    ) {
+      closeModal("modalPago");
+    }
+
+    if (
+      typeof closeModal === "function"
+    ) {
+      closeModal("modalVenta");
+    }
+
+    const msg =
+      esEfectivo
+        ? "Debe abrir la caja de EFECTIVO antes de realizar una venta."
+        : "Debe abrir la caja de TRANSFERENCIAS antes de realizar una venta.";
 
     mostrarModalCajaCerrada(msg);
+
     return;
   }
 
+  // =========================================
+  // VALIDAR COMPROBANTE
+  // =========================================
+
   let nro_comprobante = null;
 
-  if (FORMAS_CON_COMPROBANTE.has(Number(formaPagoIdSeleccionada))) {
-    const inp = document.getElementById("inputComprobante");
-    const comp = (inp?.value || "").trim();
+  const requiereComprobante =
+    !esEfectivo;
+
+  if (requiereComprobante) {
+
+    const inp =
+      document.getElementById(
+        "inputComprobante"
+      );
+
+    const comp =
+      (inp?.value || "").trim();
 
     if (!comp) {
-      alert("❌ Ingrese el número de comprobante para esta forma de pago");
+
+      alert(
+        "❌ Ingrese el número de comprobante"
+      );
+
       return;
     }
 
     nro_comprobante = comp;
+
+    // =========================================
+    // VALIDAR DUPLICADO
+    // =========================================
+
+    let checkData = { existe: false };
+
+try {
+
+  const check = await fetch(
+    `/ventas/comprobante/${encodeURIComponent(nro_comprobante)}`,
+    {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  if (check.ok) {
+
+    checkData = await check.json();
+
+  } else {
+
+    console.warn(
+      "No se pudo verificar comprobante:",
+      check.status
+    );
   }
+
+} catch (err) {
+
+  console.error(
+    "Error verificando comprobante:",
+    err
+  );
+}
+
+if (checkData.existe) {
+
+  alert(
+    "❌ Este número de comprobante ya fue ingresado"
+  );
+
+  return;
+}
+
+  } // ✅ ESTA LLAVE FALTABA
+
+  // =========================================
+  // BODY
+  // =========================================
 
   const body = {
     fecha,
@@ -579,72 +1037,168 @@ async function confirmarPagoFinal() {
     total_moneda,
     moneda,
     tipo_cambio: tipoCambio,
-    forma_pago_id: formaPagoIdSeleccionada,
+    forma_pago_id:
+      formaPagoIdSeleccionada,
     estado_pago,
     nro_comprobante,
     items: ventaItems
   };
 
   try {
-    const res = await fetch("/ventas", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(body)
-    });
 
-    const text = await res.text();
+    const res = await fetch(
+      "/ventas",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(body)
+      }
+    );
+
+    const text =
+      await res.text();
+
     let data = null;
 
-    try { data = JSON.parse(text); } catch {}
+    try {
+
+      data = JSON.parse(text);
+
+    } catch {}
 
     if (!res.ok) {
-      const msg = (data && (data.msg || data.error)) || text || "Error al guardar la venta";
 
-      if (typeof closeModal === "function") closeModal("modalPago");
-      if (typeof closeModal === "function") closeModal("modalVenta");
+      const msg =
+        (
+          data &&
+          (data.msg || data.error)
+        ) ||
+        text ||
+        "Error al guardar la venta";
 
-      if (String(msg).toLowerCase().includes("caja")) mostrarModalCajaCerrada(msg);
-      else alert(msg);
+      if (
+        typeof closeModal ===
+        "function"
+      ) {
+        closeModal("modalPago");
+      }
+
+      if (
+        typeof closeModal ===
+        "function"
+      ) {
+        closeModal("modalVenta");
+      }
+
+      if (
+        String(msg)
+          .toLowerCase()
+          .includes("caja")
+      ) {
+
+        mostrarModalCajaCerrada(msg);
+
+      } else {
+
+        alert(msg);
+      }
+
       return;
     }
 
+    // =========================================
+    // ALERTA FINAL
+    // =========================================
+
     if (esEfectivo) {
+
       let simbolo = "Gs.";
       let vueltoTexto = "0";
 
       if (moneda === "USD") {
+
         simbolo = "US$";
-        vueltoTexto = nfDecimal(vuelto || 0);
-      } else if (moneda === "BRL") {
+
+        vueltoTexto =
+          nfDecimal(vuelto || 0);
+
+      } else if (
+        moneda === "BRL"
+      ) {
+
         simbolo = "R$";
-        vueltoTexto = nfDecimal(vuelto || 0);
+
+        vueltoTexto =
+          nfDecimal(vuelto || 0);
+
       } else {
+
         simbolo = "Gs.";
-        vueltoTexto = nf(vuelto || 0);
+
+        vueltoTexto =
+          nf(vuelto || 0);
       }
 
-      alert(`✅ Venta registrada. Vuelto: ${vueltoTexto} ${simbolo}`);
+      alert(
+        `✅ Venta registrada. Vuelto: ${vueltoTexto} ${simbolo}`
+      );
+
     } else {
-      alert("✅ Venta registrada correctamente");
+
+      alert(
+        "✅ Venta registrada correctamente"
+      );
     }
 
-    if (typeof closeModal === "function") closeModal("modalPago");
-    if (typeof closeModal === "function") closeModal("modalVenta");
+    // =========================================
+    // LIMPIAR
+    // =========================================
 
-    const inp = document.getElementById("inputComprobante");
-    if (inp) inp.value = "";
-    toggleComprobanteUI(null);
+    if (
+      typeof closeModal === "function"
+    ) {
+      closeModal("modalPago");
+    }
+
+    if (
+      typeof closeModal === "function"
+    ) {
+      closeModal("modalVenta");
+    }
+
+    const inp =
+      document.getElementById(
+        "inputComprobante"
+      );
+
+    if (inp) {
+      inp.value = "";
+    }
+
+    if (
+      typeof toggleComprobanteUI ===
+      "function"
+    ) {
+      toggleComprobanteUI(null);
+    }
 
     iniciarPOS();
+
     await cargarVentas();
 
   } catch (err) {
+
     console.error(err);
-    alert("❌ Error al guardar la venta");
+
+    alert(
+      "❌ Error al guardar la venta"
+    );
   }
 }
-
 function formatearMontoRecibido() {
   const input = document.getElementById("montoRecibido");
   if (!input) return;
@@ -685,18 +1239,21 @@ function calcularVuelto() {
   const span = document.getElementById("vuelto");
   if (!span) return;
 
+  const vueltoBox = span.closest(".vuelto-box-pro");
   const totalComparar = moneda === "PYG" ? total_pyg : total_moneda;
   const vuelto = monto - totalComparar;
 
   if (monto <= 0) {
     span.textContent = "0";
     span.style.color = "";
+    vueltoBox?.classList.remove("insuficiente");
     return;
   }
 
   if (vuelto < 0) {
     span.textContent = "Monto insuficiente";
-    span.style.color = "#dc2626";
+    span.style.color = "white";
+    vueltoBox?.classList.add("insuficiente");
   } else {
     if (moneda === "PYG") {
       span.textContent = `${nf(vuelto)} Gs.`;
@@ -707,11 +1264,10 @@ function calcularVuelto() {
     } else {
       span.textContent = `${nfDecimal(vuelto)}`;
     }
-
-    span.style.color = "#065f46";
+    span.style.color = "white";
+    vueltoBox?.classList.remove("insuficiente");
   }
 }
-
 let ventasPaginaActual = 1;
 const ventasPorPagina = 7;
 let ventasCache = [];

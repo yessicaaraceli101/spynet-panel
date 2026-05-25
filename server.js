@@ -91,6 +91,22 @@ app.use(
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
+function requireAdmin(req, res, next) {
+
+  if (
+    !req.session.user ||
+    !req.session.isAdmin
+  ) {
+
+    return res.status(401).json({
+      ok:false,
+      msg:"No autenticado"
+    });
+  }
+
+  next();
+}
+
 /* ----------------------------- PostgreSQL Pool ------------------------------ */
 const sslRequired = String(process.env.PGSSLMODE || "").trim().toLowerCase() === "require";
 
@@ -183,6 +199,56 @@ async function bootstrapUsuarios() {
 }
 bootstrapUsuarios();
 
+// Bootstrap formas de pago para todas las empresas
+async function bootstrapFormasPagoTodasEmpresas() {
+  try {
+    const formasBase = [
+      { nombre: "Efectivo",       tipo: "efectivo" },
+      { nombre: "Débito",         tipo: "transferencia" },
+      { nombre: "Crédito",        tipo: "transferencia" },
+      { nombre: "QR",             tipo: "transferencia" },
+      { nombre: "BNF",            tipo: "transferencia" },
+      { nombre: "Continental",    tipo: "transferencia" },
+      { nombre: "Banco Familiar", tipo: "transferencia" },
+      { nombre: "Ueno Bank",      tipo: "transferencia" },
+      { nombre: "Banco Basa",     tipo: "transferencia" },
+      { nombre: "Mango",          tipo: "transferencia" },
+    ];
+
+    const { rows: empresas } = await pool.query(
+      `SELECT id FROM empresas`
+    );
+
+    for (const emp of empresas) {
+      for (const f of formasBase) {
+        await pool.query(
+          `
+          INSERT INTO formas_pago (nombre, tipo, activo, empresa_id)
+          SELECT 
+            $1::text,
+            $2::text,
+            true,
+            $3::int
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM formas_pago
+            WHERE LOWER(nombre) = LOWER($1::text)
+              AND empresa_id = $3::int
+          )
+          `,
+          [f.nombre, f.tipo, emp.id]
+        );
+      }
+    }
+
+    console.log("✅ Formas de pago sincronizadas para todas las empresas");
+  } catch (e) {
+    console.error("❌ bootstrapFormasPagoTodasEmpresas:", e);
+  }
+}
+
+bootstrapFormasPagoTodasEmpresas();
+
 /* --------------------------------- Auth/Sesión ------------------------------ */
 function requireAuth(req, res, next) {
   if (req.session && req.session.user) return next();
@@ -209,6 +275,10 @@ function requireEmpresa(req, res, next) {
   next();
 }
 
+
+/* =========================================
+   MIDDLEWARE ADMIN
+========================================= */
 
 app.get("/supabase-test", async (req, res) => {
   const table = String(req.query.table || "productos").trim();
@@ -324,9 +394,14 @@ app.get("/me", (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
+
   req.session.destroy(() => {
+
     res.clearCookie("sid");
-    res.json({ ok: true });
+
+    res.json({
+      ok: true
+    });
   });
 });
 
@@ -2305,6 +2380,34 @@ app.put("/api/pedidos/:id/estado", requireEmpresa, async (req, res) => {
   }
 });
 
+
+app.get("/api/formas-pago", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+
+    const { rows } = await pool.query(
+      `
+      SELECT id, nombre, tipo
+      FROM formas_pago
+      WHERE empresa_id = $1
+      ORDER BY id
+      `,
+      [empresaId]
+    );
+
+    res.json(rows);
+
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      error: "Error cargando formas de pago"
+    });
+  }
+});
+
+
+
 /* ---------- PDF ---------- */
 app.get("/api/pedidos/:id/pdf", requireEmpresa, async (req, res) => {
   const empresaId = getEmpresaId(req);
@@ -3313,8 +3416,14 @@ app.get("/ventas", requireEmpresa, async (req, res) => {
         v.tipo_cambio,
         v.estado_pago,
         v.nro_comprobante,
+
         fp.nombre AS forma_pago_nombre,
-        COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente_nombre,
+
+        COALESCE(
+          c.nombre || ' ' || c.apellido,
+          'Consumidor Final'
+        ) AS cliente_nombre,
+
         COALESCE((
           SELECT STRING_AGG(
             p.nombre || ' x' || vi.cantidad,
@@ -3322,20 +3431,22 @@ app.get("/ventas", requireEmpresa, async (req, res) => {
             ORDER BY vi.id
           )
           FROM ventas_items vi
-          JOIN productos p 
+          JOIN productos p
             ON p.id = vi.producto_id
-           AND p.empresa_id = $1
           WHERE vi.venta_id = v.id
             AND vi.empresa_id = $1
         ), '-') AS productos
+
       FROM ventas v
-      LEFT JOIN clientes c 
+
+      LEFT JOIN clientes c
         ON c.id = v.cliente_id
-       AND c.empresa_id = $1
-      LEFT JOIN formas_pago fp 
+
+      LEFT JOIN formas_pago fp
         ON fp.id = v.forma_pago_id
-       AND fp.empresa_id = $1
+
       WHERE v.empresa_id = $1
+
       ORDER BY v.id DESC
       `,
       [empresaId]
@@ -3352,7 +3463,6 @@ app.get("/ventas", requireEmpresa, async (req, res) => {
     });
   }
 });
-
 app.post("/ventas", requireEmpresa, async (req, res) => {
   const empresaId = getEmpresaId(req);
 
@@ -3387,7 +3497,6 @@ app.post("/ventas", requireEmpresa, async (req, res) => {
       });
     }
 
-    const EFECTIVO_ID = 2;
     const fpId = Number(forma_pago_id);
 
     const monedaFinal = String(moneda || "PYG").trim().toUpperCase();
@@ -3424,36 +3533,70 @@ app.post("/ventas", requireEmpresa, async (req, res) => {
       });
     }
 
+
+    console.log("=================================");
+console.log("FORMA PAGO RECIBIDA:");
+console.log("forma_pago_id:", forma_pago_id);
+console.log("fpId:", fpId);
+console.log("empresaId:", empresaId);
+
+const debugFormas = await client.query(`
+  SELECT id, nombre, empresa_id
+  FROM formas_pago
+  ORDER BY id
+`);
+
+console.table(debugFormas.rows);
+console.log("=================================");
+
     const formaPagoQ = await client.query(
-      `
-      SELECT id
-      FROM formas_pago
-      WHERE id = $1
-        AND empresa_id = $2
-      LIMIT 1
-      `,
-      [fpId, empresaId]
-    );
+  `
+  SELECT id, nombre, tipo
+  FROM formas_pago
+  WHERE id = $1
+    AND empresa_id = $2
+  LIMIT 1
+  `,
+  [fpId, empresaId]
+);
 
-    if (!formaPagoQ.rowCount) {
-      return res.status(404).json({
-        ok: false,
-        msg: "Forma de pago no encontrada o no pertenece a esta empresa"
-      });
-    }
+if (!formaPagoQ.rowCount) {
+  return res.status(404).json({
+    ok: false,
+    msg: "Forma de pago no encontrada o no pertenece a esta empresa"
+  });
+}
 
-    const FORMAS_CON_COMPROBANTE = new Set([4, 5, 6, 7, 8, 9, 10]);
-    const compStr = (nro_comprobante || "").toString().trim();
+const formaPago = formaPagoQ.rows[0];
 
-    if (FORMAS_CON_COMPROBANTE.has(fpId) && !compStr) {
-      return res.status(400).json({
-        ok: false,
-        msg: "Falta nro_comprobante"
-      });
-    }
+const REQUIERE_COMPROBANTE = [
+  "QR",
+  "BNF",
+  "Continental",
+  "Banco Familiar",
+  "Ueno Bank",
+  "Banco Basa",
+  "Mango",
+  "Débito",
+  "Crédito"
+];
 
-    const tipoCajaNecesaria = fpId === EFECTIVO_ID ? "efectivo" : "transferencia";
+const compStr = (nro_comprobante || "").toString().trim();
 
+if (
+  REQUIERE_COMPROBANTE.includes(formaPago.nombre) &&
+  !compStr
+) {
+  return res.status(400).json({
+    ok: false,
+    msg: "Falta nro_comprobante"
+  });
+}
+
+const tipoCajaNecesaria =
+  formaPago.tipo === "efectivo"
+    ? "efectivo"
+    : "transferencia";
     await client.query("BEGIN");
 
     const fechaFinal = fecha || new Date().toLocaleDateString("en-CA", {
@@ -3516,7 +3659,7 @@ app.post("/ventas", requireEmpresa, async (req, res) => {
       req.session?.user?.usuario ||
       "Sin usuario";
 
-    const compFinal = FORMAS_CON_COMPROBANTE.has(fpId) ? compStr : null;
+    const compFinal = REQUIERE_COMPROBANTE.includes(formaPago.nombre) ? compStr : null;
 
     const v = await client.query(
       `
@@ -4811,7 +4954,6 @@ function numRow(r) {
   };
 }
 
-// Día: acepta ?dia= o ?fecha=
 app.get("/caja/resumen-dia", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
@@ -4882,38 +5024,56 @@ app.get("/caja/resumen-dia", requireEmpresa, async (req, res) => {
     const egreso_transferencia = Number(r.egreso_transferencia || 0);
     const saldo_transferencia = ingreso_transferencia - egreso_transferencia;
 
+    const saldo_total =
+      saldo_efectivo + saldo_transferencia;
+
     return res.json({
       ok: true,
       dia: ymd,
+
       ingreso_efectivo,
       egreso_efectivo,
       saldo_efectivo,
+
       ingreso_transferencia,
       egreso_transferencia,
       saldo_transferencia,
-      total: saldo_efectivo + saldo_transferencia
+
+      saldo_total
     });
 
   } catch (err) {
     console.error("GET /caja/resumen-dia", err);
+
     return res.status(500).json({
       ok: false,
       msg: "Error resumen día"
     });
   }
 });
-// ✅ Mes: acepta ?mes= o ?fecha=
+
+
+// ===============================
+// RESUMEN DEL MES
+// ===============================
 app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
     const mesParam = req.query.mes || req.query.fecha;
 
     if (!mesParam) {
-      return res.status(400).json({ ok: false, msg: "Falta mes o fecha" });
+      return res.status(400).json({
+        ok: false,
+        msg: "Falta mes o fecha"
+      });
     }
 
     let ymd = String(mesParam).trim();
-    if (/^\d{4}-\d{2}$/.test(ymd)) ymd = `${ymd}-01`;
+
+    if (/^\\d{4}-\\d{2}$/.test(ymd)) {
+      ymd = `${ymd}-01`;
+    }
+
     ymd = toISODate(ymd);
 
     const q = await pool.query(
@@ -4925,7 +5085,8 @@ app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
           LEFT JOIN formas_pago fp 
             ON fp.id = v.forma_pago_id
            AND fp.empresa_id = $2
-          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+          WHERE date_trunc('month', v.fecha::date)
+              = date_trunc('month', $1::date)
             AND v.empresa_id = $2
             AND lower(fp.tipo) LIKE '%efect%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
@@ -4934,7 +5095,8 @@ app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
         COALESCE((
           SELECT SUM(c.total)
           FROM compras c
-          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+          WHERE date_trunc('month', c.fecha::date)
+              = date_trunc('month', $1::date)
             AND c.empresa_id = $2
             AND c.tipo_pago = 'efectivo'
         ), 0) AS egreso_efectivo,
@@ -4945,7 +5107,8 @@ app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
           LEFT JOIN formas_pago fp 
             ON fp.id = v.forma_pago_id
            AND fp.empresa_id = $2
-          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
+          WHERE date_trunc('month', v.fecha::date)
+              = date_trunc('month', $1::date)
             AND v.empresa_id = $2
             AND lower(fp.tipo) LIKE '%transf%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
@@ -4954,7 +5117,8 @@ app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
         COALESCE((
           SELECT SUM(c.total)
           FROM compras c
-          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
+          WHERE date_trunc('month', c.fecha::date)
+              = date_trunc('month', $1::date)
             AND c.empresa_id = $2
             AND c.tipo_pago = 'transferencia'
         ), 0) AS egreso_transferencia
@@ -4972,21 +5136,31 @@ app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
     const egreso_transferencia = Number(r.egreso_transferencia || 0);
     const saldo_transferencia = ingreso_transferencia - egreso_transferencia;
 
+    const saldo_total =
+      saldo_efectivo + saldo_transferencia;
+
     return res.json({
       ok: true,
       mes: ymd.slice(0, 7),
+
       ingreso_efectivo,
       egreso_efectivo,
       saldo_efectivo,
+
       ingreso_transferencia,
       egreso_transferencia,
       saldo_transferencia,
-      total: saldo_efectivo + saldo_transferencia
+
+      saldo_total
     });
 
   } catch (err) {
     console.error("GET /caja/resumen-mes", err);
-    return res.status(500).json({ ok: false, msg: "Error resumen mes" });
+
+    return res.status(500).json({
+      ok: false,
+      msg: "Error resumen mes"
+    });
   }
 });
 
@@ -5703,12 +5877,39 @@ app.put("/api/usuarios/:id", requireEmpresa, async (req, res) => {
 });
 
 app.get("/api/usuarios", requireEmpresa, async (req, res) => {
+
   try {
+
+    // DEBUG
+    console.log("=================================");
+    console.log("REQ.USER:");
+    console.log(req.user);
+
+    console.log("REQ.SESSION:");
+    console.log(req.session);
+
     const empresaId = getEmpresaId(req);
 
+    console.log("EMPRESA ID:", empresaId);
+    console.log("=================================");
+
+    // VALIDAR EMPRESA
+    if (!empresaId) {
+
+      return res.status(401).json({
+        error: "Empresa no identificada"
+      });
+    }
+
+    // CONSULTAR SOLO USUARIOS DE ESA EMPRESA
     const { rows } = await pool.query(
       `
-      SELECT id, nombre, usuario, rol, empresa_id
+      SELECT
+        id,
+        nombre,
+        usuario,
+        rol,
+        empresa_id
       FROM usuarios
       WHERE empresa_id = $1
       ORDER BY id ASC
@@ -5716,15 +5917,20 @@ app.get("/api/usuarios", requireEmpresa, async (req, res) => {
       [empresaId]
     );
 
+    console.log("USUARIOS ENCONTRADOS:");
+    console.log(rows);
+
     res.json(rows);
+
   } catch (err) {
+
     console.error("GET /api/usuarios", err);
+
     res.status(500).json({
       error: "Error al listar usuarios"
     });
   }
 });
-
 function fmtGs(n) {
   return `Gs. ${Number(n || 0).toLocaleString("es-PY")}`;
 }
@@ -6145,26 +6351,6 @@ app.get("/config/monedas", requireEmpresa, async (req, res) => {
     res.status(500).json({ ok: false, msg: "Error obteniendo monedas" });
   }
 });
-
-
-
-function requireAdmin(req, res, next) {
-  const rol = String(req.session?.user?.rol || "")
-    .toLowerCase()
-    .trim();
-
-  if (
-    rol === "admin" ||
-    rol === "administrador"
-  ) {
-    return next();
-  }
-
-  return res.status(403).json({
-    ok: false,
-    msg: "Solo administradores"
-  });
-}
 
 
 app.put("/config/monedas", requireEmpresa, requireAdmin, async (req, res) => {
@@ -6667,6 +6853,306 @@ app.post("/api/asistente-admin", requireEmpresa, async (req, res) => {
   }
 });
 
+
+app.get("/ventas/comprobante/:nro", async (req, res) => {
+
+  try {
+
+    const { nro } = req.params;
+
+    const { data, error } = await supabase
+      .from("ventas")
+      .select("id")
+      .eq("nro_comprobante", nro)
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({
+      existe: data.length > 0
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      error: "Error verificando comprobante"
+    });
+  }
+});
+
+app.post("/api/login", async (req, res) => {
+
+  const { usuario, password } = req.body || {};
+
+  if (!usuario || !password) {
+    return res.status(400).json({
+      ok: false,
+      msg: "Faltan credenciales"
+    });
+  }
+
+  try {
+
+    const { rows } = await pool.query(
+      `
+      SELECT 
+        u.id,
+        u.usuario,
+        u.nombre,
+        u.password_hash,
+        u.rol,
+        u.activo,
+        u.empresa_id,
+        e.nombre AS empresa_nombre,
+        e.logo AS empresa_logo,
+        e.color_principal
+      FROM usuarios u
+      LEFT JOIN empresas e
+        ON e.id = u.empresa_id
+      WHERE lower(u.usuario)=lower($1)
+      LIMIT 1
+      `,
+      [usuario.trim()]
+    );
+
+    if (!rows.length) {
+      return res.status(401).json({
+        ok:false,
+        msg:"Usuario incorrecto"
+      });
+    }
+
+    const u = rows[0];
+
+    let ok = false;
+
+    if (u.password_hash?.startsWith("$2")) {
+      ok = await bcrypt.compare(
+        password,
+        u.password_hash
+      );
+    } else {
+      ok = password === u.password_hash;
+    }
+
+    if (!ok) {
+      return res.status(401).json({
+        ok:false,
+        msg:"Contraseña incorrecta"
+      });
+    }
+
+    // ✅ SOLO ADMINS
+    if (
+      u.rol !== "admin" &&
+      u.rol !== "superadmin"
+    ) {
+      return res.status(403).json({
+        ok:false,
+        msg:"Acceso denegado"
+      });
+    }
+
+    req.session.user = {
+
+  id: u.id,
+  usuario: u.usuario,
+  nombre: u.nombre,
+  rol: u.rol,
+  empresa_id: u.empresa_id,
+  empresa_nombre: u.empresa_nombre,
+  empresa_logo: u.empresa_logo,
+  color_principal: u.color_principal
+};
+
+req.session.save(err => {
+
+  if (err) {
+
+    console.error("ERROR SESSION:", err);
+
+    return res.status(500).json({
+      ok:false,
+      msg:"Error guardando sesión"
+    });
+  }
+
+  console.log("SESSION USER:");
+console.log(req.session.user);
+
+return res.json({
+  ok:true,
+  user:req.session.user
+});
+});
+  } catch(err) {
+
+    console.error("POST /api/login", err);
+
+    return res.status(500).json({
+      ok:false,
+      msg:"Error servidor"
+    });
+  }
+});
+
+/* =========================================
+   LOGOUT ADMIN
+========================================= */
+
+app.post("/admin/logout", (req, res) => {
+  req.session.admin = null;
+  req.session.isAdmin = false;
+  // session.user queda intacto para el sistema principal
+  req.session.save((err) => {
+    if (err) console.error(err);
+    res.json({ ok: true });
+  });
+});
+/* =========================================
+   VERIFICAR ADMIN
+========================================= */
+
+app.get("/admin/check", (req, res) => {
+  // Solo acepta si fue al panel admin específicamente
+  if (!req.session.admin || req.session.isAdmin !== true) {
+    return res.status(401).json({ ok: false, msg: "No autenticado" });
+  }
+
+  const user = req.session.admin;
+
+  if (user.rol !== "admin" && user.rol !== "superadmin") {
+    return res.status(403).json({ ok: false, msg: "Sin permisos" });
+  }
+
+  return res.json({ ok: true, user });
+});
+app.post("/admin/login", async (req, res) => {
+
+  const { usuario, password } = req.body || {};
+
+  if (!usuario || !password) {
+    return res.status(400).json({
+      ok:false,
+      msg:"Faltan credenciales"
+    });
+  }
+
+  try {
+
+    const { rows } = await pool.query(
+      `
+      SELECT 
+        u.id,
+        u.usuario,
+        u.nombre,
+        u.password_hash,
+        u.rol,
+        u.empresa_id,
+        e.nombre AS empresa_nombre,
+        e.logo AS empresa_logo,
+        e.color_principal
+      FROM usuarios u
+      LEFT JOIN empresas e
+        ON e.id = u.empresa_id
+      WHERE lower(u.usuario)=lower($1)
+      LIMIT 1
+      `,
+      [usuario.trim()]
+    );
+
+    if (!rows.length) {
+      return res.status(401).json({
+        ok:false,
+        msg:"Usuario incorrecto"
+      });
+    }
+
+    const u = rows[0];
+
+    let ok = false;
+
+    if (u.password_hash?.startsWith("$2")) {
+
+      ok = await bcrypt.compare(
+        password,
+        u.password_hash
+      );
+
+    } else {
+
+      ok = password === u.password_hash;
+    }
+
+    if (!ok) {
+
+      return res.status(401).json({
+        ok:false,
+        msg:"Contraseña incorrecta"
+      });
+    }
+
+    // SOLO ADMIN
+    if (
+      u.rol !== "admin" &&
+      u.rol !== "superadmin"
+    ) {
+
+      return res.status(403).json({
+        ok:false,
+        msg:"Acceso denegado"
+      });
+    }
+
+    req.session.admin = {
+  id: u.id,
+  usuario: u.usuario,
+  nombre: u.nombre,
+  rol: u.rol,
+  empresa_id: u.empresa_id,
+  empresa_nombre: u.empresa_nombre,
+  empresa_logo: u.empresa_logo,
+  color_principal: u.color_principal
+};
+
+req.session.user = req.session.admin;
+req.session.isAdmin = true;
+
+    req.session.save(err => {
+
+      if (err) {
+
+        console.error(err);
+
+        return res.status(500).json({
+          ok:false,
+          msg:"Error guardando sesión"
+        });
+      }
+
+     console.log("SESSION ADMIN:");
+console.log(req.session.admin);
+
+return res.json({
+  ok:true,
+  user:req.session.admin
+});
+    });
+
+  } catch(err) {
+
+    console.error(err);
+
+    return res.status(500).json({
+      ok:false,
+      msg:"Error servidor"
+    });
+  }
+});
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });

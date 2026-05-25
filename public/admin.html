@@ -6,11 +6,33 @@
   <title>Panel Administrativo</title>
 
   <script>
-    if (localStorage.getItem("adminAuth") !== "yes" && localStorage.getItem("auth") !== "ok") {
-      window.location.href = "admin_login.html";
-    }
-  </script>
 
+
+function getEmpresas() {
+  return JSON.parse(
+    localStorage.getItem("empresas") || "[]"
+  );
+}
+
+function getEmpresaActivaId() {
+  return localStorage.getItem(
+    "empresa_activa"
+  );
+}
+
+function getEmpresaActual() {
+
+  const empresas = getEmpresas();
+
+  const empresaId =
+    getEmpresaActivaId();
+
+  return empresas.find(
+    e => String(e.id) === String(empresaId)
+  );
+}
+
+  </script>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
@@ -94,26 +116,26 @@
       font-weight:800;
       border:1px solid #dc2626;
     }
-body{
-  margin:0;
-  min-height:100vh;
-  background:#f3f4f6;
-  font-family:Arial,sans-serif;
-  color:#111827;
-  overflow-x:hidden;
-}
 
-main{
-  width:100%;
-}
+    body{
+      margin:0;
+      min-height:100vh;
+      background:#f3f4f6;
+      font-family:Arial,sans-serif;
+      color:#111827;
+      overflow-x:hidden;
+    }
 
- .admin-container {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 !important;
-  padding: 24px !important;
-}
+    main{
+      width:100%;
+    }
 
+    .admin-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 24px !important;
+    }
 
     .section-title{
       margin:0 0 16px 0;
@@ -121,17 +143,18 @@ main{
       font-weight:800;
       color:#111827;
     }
-.dashboard-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 18px;
-  margin-bottom: 22px;
-  align-items: stretch;
-}
 
-.card{
-  width:100%;
-}
+    .dashboard-grid {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 18px;
+      margin-bottom: 22px;
+      align-items: stretch;
+    }
+
+    .card{
+      width:100%;
+    }
 
     .mini-grid{
       display:grid;
@@ -602,26 +625,27 @@ main{
         height:520px;
       }
     }
- /* FIX ADMIN - sin sidebar */
-body.admin-page,
-body.admin-page * {
-  margin-left: 0 !important;
-}
 
-body.admin-page .topbar {
-  position: sticky !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  z-index: 100 !important;
-}
+    /* FIX ADMIN - sin sidebar */
+    body.admin-page,
+    body.admin-page * {
+      margin-left: 0 !important;
+    }
 
-body.admin-page .admin-container {
-  width: 100% !important;
-  max-width: 1450px !important;
-  margin: 0 auto !important;
-  padding: 24px !important;
-}
+    body.admin-page .topbar {
+      position: sticky !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      z-index: 100 !important;
+    }
+
+    body.admin-page .admin-container {
+      width: 100% !important;
+      max-width: 1450px !important;
+      margin: 0 auto !important;
+      padding: 24px !important;
+    }
   </style>
 </head>
 
@@ -629,7 +653,7 @@ body.admin-page .admin-container {
 
   <div class="topbar">
     <div class="topbar-left">
-      <img id="empresaLogoTop" class="empresa-logo" src="img/logo.png" alt="Logo empresa">
+      <img id="empresaLogoTop" class="empresa-logo" alt="Logo empresa">
       <div>
         <h2 id="empresaNombreTop">Panel Administrativo</h2>
         <small id="empresaSubtitulo">Resumen general del sistema</small>
@@ -638,9 +662,12 @@ body.admin-page .admin-container {
 
     <div class="topbar-buttons">
       <a href="index.html" class="volver-btn">← Volver</a>
-      <button type="button" class="logout-btn" id="btnLogoutAdminPanel" onclick="openLogoutModalAdmin()">
-        Cerrar sesión
-      </button>
+      <button
+  type="button"
+  class="logout-btn"
+  onclick="openLogoutModal()">
+  Cerrar sesión
+</button>
     </div>
   </div>
 
@@ -813,18 +840,40 @@ body.admin-page .admin-container {
     </section>
   </div>
 
-  <div id="modalCerrarSesionAdmin" class="modal-overlay">
-    <div class="modal-box">
-      <h3>Cerrar sesión</h3>
-      <p>¿Estás seguro de que deseas cerrar sesión del panel administrativo?</p>
+<!-- Modal logout -->
+<div id="modalCerrarSesionAdmin" class="modal-overlay">
+  <div class="modal-box">
 
-      <div class="modal-actions">
-        <button class="btn-cancel" type="button" onclick="closeLogoutModalAdmin()">Cancelar</button>
-        <button class="btn-danger" type="button" onclick="cerrarAdmin()">Sí, cerrar sesión</button>
-      </div>
+    <h3>Cerrar sesión</h3>
+
+    <p>
+      ¿Estás seguro de que deseas cerrar sesión del panel administrativo?
+    </p>
+
+    <div class="modal-actions">
+
+      <button
+        class="btn-cancel"
+        type="button"
+        onclick="closeLogoutModal()"
+      >
+        Cancelar
+      </button>
+
+      <button
+        class="btn-danger"
+        type="button"
+        onclick="cerrarAdmin()"
+      >
+        Sí, cerrar sesión
+      </button>
+
     </div>
-  </div>
 
+  </div>
+</div>
+
+  <!-- Modal stock bajo -->
   <div id="modalStockBajo" class="modal-overlay">
     <div class="modal-box" style="max-width:520px;">
       <h3>📦 Productos con stock bajo</h3>
@@ -837,6 +886,7 @@ body.admin-page .admin-container {
     </div>
   </div>
 
+  <!-- Asistente flotante -->
   <div id="assistantFloatBtn">
     <i class="fa-solid fa-robot"></i>
   </div>
@@ -884,67 +934,126 @@ body.admin-page .admin-container {
     </div>
   </div>
 
+  <!-- ── Scripts ─────────────────────────────────────────────────────────── -->
   <script>
-    function aplicarEmpresaPanel() {
-      const empresaNombre =
-        localStorage.getItem("empresa_nombre") ||
-        JSON.parse(localStorage.getItem("user") || "{}")?.empresa_nombre ||
-        "Panel Administrativo";
+    // ── Personalización visual ────────────────────────────────────────────
+ function aplicarEmpresaPanel() {
 
-      const empresaLogo =
-        localStorage.getItem("empresa_logo") ||
-        JSON.parse(localStorage.getItem("user") || "{}")?.empresa_logo ||
-        "img/logo.png";
+  const empresa =
+  getEmpresaActual() || {};
 
-      const colorPrincipal =
-        localStorage.getItem("color_principal") ||
-        JSON.parse(localStorage.getItem("user") || "{}")?.color_principal ||
-        "#2563eb";
+  const empresaNombre =
+    empresa.empresa_nombre || "Empresa";
 
-      document.documentElement.style.setProperty("--color-principal", colorPrincipal);
-      document.documentElement.style.setProperty("--color-principal-dark", colorPrincipal);
+  const empresaLogo =
+    empresa.empresa_logo || "img/logo.png";
 
-      document.title = `${empresaNombre} • Panel`;
+  const colorPrincipal =
+    empresa.color_principal || "#2563eb";
 
-      const topTitle = document.getElementById("empresaNombreTop");
-      if (topTitle) topTitle.textContent = empresaNombre;
+  document.documentElement.style.setProperty(
+    "--color-principal",
+    colorPrincipal
+  );
 
-      const subtitulo = document.getElementById("empresaSubtitulo");
-      if (subtitulo) subtitulo.textContent = "Panel administrativo";
+  document.documentElement.style.setProperty(
+    "--color-principal-dark",
+    colorPrincipal
+  );
 
-      const logo = document.getElementById("empresaLogoTop");
-      if (logo) logo.src = empresaLogo;
+  document.title =
+    empresaNombre + " • Panel";
 
-      const assistantTitle = document.getElementById("assistantTitle");
-      if (assistantTitle) assistantTitle.textContent = `${empresaNombre} Asistente`;
-    }
+  const topTitle =
+    document.getElementById(
+      "empresaNombreTop"
+    );
 
+  if (topTitle) {
+    topTitle.textContent =
+      empresaNombre;
+  }
+
+  const subtitulo =
+    document.getElementById(
+      "empresaSubtitulo"
+    );
+
+  if (subtitulo) {
+    subtitulo.textContent =
+      "Panel administrativo";
+  }
+
+  const logo =
+    document.getElementById(
+      "empresaLogoTop"
+    );
+
+  if (logo) {
+    logo.src = empresaLogo;
+  }
+
+  const assistantTitle =
+    document.getElementById(
+      "assistantTitle"
+    );
+
+  if (assistantTitle) {
+
+    assistantTitle.textContent =
+      empresaNombre + " Asistente";
+  }
+
+  const resumen =
+    document.getElementById(
+      "tituloResumen"
+    );
+
+  if (resumen) {
+
+    resumen.textContent =
+      "Resumen general - " +
+      empresaNombre;
+  }
+}
     aplicarEmpresaPanel();
 
+    // ── Navegación ────────────────────────────────────────────────────────
     window.irA = function(seccion) {
       window.location.href = `index.html#${seccion}`;
     };
 
-    window.openLogoutModalAdmin = function() {
-      const modal = document.getElementById("modalCerrarSesionAdmin");
-      if (modal) {
-        modal.classList.add("show");
-        modal.style.display = "flex";
-      }
-    };
+    // ── Modal logout ──────────────────────────────────────────────────────
+    function openLogoutModal() {
 
-    window.closeLogoutModalAdmin = function() {
-      const modal = document.getElementById("modalCerrarSesionAdmin");
-      if (modal) {
-        modal.classList.remove("show");
-        modal.style.display = "none";
-      }
-    };
+  const modal = document.getElementById("modalCerrarSesionAdmin");
 
+  if (modal) {
+
+    modal.classList.add("show");
+
+    modal.style.display = "flex";
+  }
+}
+
+function closeLogoutModal() {
+
+  const modal = document.getElementById("modalCerrarSesionAdmin");
+
+  if (modal) {
+
+    modal.classList.remove("show");
+
+    modal.style.display = "none";
+  }
+}
+
+
+    // ── Modal stock bajo ──────────────────────────────────────────────────
     window.mostrarStockBajo = function() {
-      const lista = document.getElementById("listaStockCritico");
+      const lista    = document.getElementById("listaStockCritico");
       const contenido = document.getElementById("stockBajoContenido");
-      const modal = document.getElementById("modalStockBajo");
+      const modal    = document.getElementById("modalStockBajo");
 
       if (!lista || !contenido || !modal) return;
 
@@ -955,12 +1064,11 @@ body.admin-page .admin-container {
         contenido.innerHTML = `
           <div style="padding:12px; border:1px solid #e5e7eb; border-radius:12px; background:#f9fafb; color:#64748b;">
             No hay productos con stock bajo.
-          </div>
-        `;
+          </div>`;
       } else {
         items.forEach(item => {
-          const nombre = item.querySelector(".stock-item-left strong")?.textContent?.trim() || "Sin nombre";
-          const detalle = item.querySelector(".stock-item-left span")?.textContent?.trim() || "";
+          const nombre   = item.querySelector(".stock-item-left strong")?.textContent?.trim() || "Sin nombre";
+          const detalle  = item.querySelector(".stock-item-left span")?.textContent?.trim() || "";
           const cantidad = item.querySelector(".stock-badge")?.textContent?.trim() || "0";
 
           contenido.innerHTML += `
@@ -972,8 +1080,7 @@ body.admin-page .admin-container {
               <div style="min-width:70px; text-align:center; padding:8px 10px; border-radius:999px; font-size:12px; font-weight:800; color:#fff; background:#f59e0b;">
                 ${cantidad}
               </div>
-            </div>
-          `;
+            </div>`;
         });
       }
 
@@ -983,51 +1090,65 @@ body.admin-page .admin-container {
 
     window.cerrarModalStockBajo = function() {
       const modal = document.getElementById("modalStockBajo");
-      if (modal) {
-        modal.classList.remove("show");
-        modal.style.display = "none";
-      }
+      if (modal) { modal.classList.remove("show"); modal.style.display = "none"; }
     };
 
-    window.cerrarAdmin = function() {
-      localStorage.removeItem("adminAuth");
-      sessionStorage.removeItem("adminAuth");
-      localStorage.removeItem("auth");
-      window.location.href = "admin_login.html";
-    };
-
+    // ── Init ──────────────────────────────────────────────────────────────
     document.addEventListener("DOMContentLoaded", function() {
-      aplicarEmpresaPanel();
 
-      const modalLogout = document.getElementById("modalCerrarSesionAdmin");
-      if (modalLogout) {
-        modalLogout.style.display = "none";
-        modalLogout.addEventListener("click", function(e) {
-          if (e.target === modalLogout) closeLogoutModalAdmin();
-        });
-      }
+  aplicarEmpresaPanel();
 
-      const modalStock = document.getElementById("modalStockBajo");
-      if (modalStock) {
-        modalStock.style.display = "none";
-        modalStock.addEventListener("click", function(e) {
-          if (e.target === modalStock) cerrarModalStockBajo();
-        });
+  const modalLogout = document.getElementById(
+    "modalCerrarSesionAdmin"
+  );
+
+  if (modalLogout) {
+
+    modalLogout.style.display = "none";
+
+    modalLogout.addEventListener("click", function(e) {
+
+      if (e.target === modalLogout) {
+
+        closeLogoutModal();
       }
     });
+  }
 
-    document.addEventListener("keydown", function(e) {
-      if (e.key === "Escape") {
-        closeLogoutModalAdmin();
+  const modalStock = document.getElementById(
+    "modalStockBajo"
+  );
+
+  if (modalStock) {
+
+    modalStock.style.display = "none";
+
+    modalStock.addEventListener("click", function(e) {
+
+      if (e.target === modalStock) {
+
         cerrarModalStockBajo();
       }
     });
+  }
+});
+
+document.addEventListener("keydown", function(e) {
+
+  if (e.key === "Escape") {
+
+    closeLogoutModal();
+
+    cerrarModalStockBajo();
+  }
+});
   </script>
 
+  <!-- Tipo de cambio -->
   <script>
     async function cargarTipoCambioAdmin() {
       try {
-        const res = await fetch("/config/monedas", { credentials: "include" });
+        const res  = await fetch("/config/monedas", { credentials: "include" });
         const data = await res.json();
 
         const usd = data.monedas?.find(m => m.moneda === "USD");
@@ -1065,7 +1186,6 @@ body.admin-page .admin-container {
         }
 
         alert("Tipo de cambio actualizado correctamente ✅");
-
       } catch (err) {
         console.error(err);
         alert("Error de conexión con el servidor");
@@ -1089,12 +1209,13 @@ body.admin-page .admin-container {
     });
   </script>
 
+  <!-- Asistente -->
   <script>
     const assistantFloatBtn = document.getElementById("assistantFloatBtn");
-    const assistantBox = document.getElementById("assistantBox");
-    const assistantClose = document.getElementById("assistantClose");
-    const assistantSend = document.getElementById("assistantSend");
-    const assistantInput = document.getElementById("assistantInput");
+    const assistantBox      = document.getElementById("assistantBox");
+    const assistantClose    = document.getElementById("assistantClose");
+    const assistantSend     = document.getElementById("assistantSend");
+    const assistantInput    = document.getElementById("assistantInput");
     const assistantMessages = document.getElementById("assistantMessages");
 
     assistantFloatBtn.addEventListener("click", () => {
@@ -1108,23 +1229,28 @@ body.admin-page .admin-container {
     assistantSend.addEventListener("click", responderAsistente);
 
     assistantInput.addEventListener("keypress", (e) => {
-      if(e.key === "Enter"){
-        responderAsistente();
-      }
+      if (e.key === "Enter") responderAsistente();
     });
 
-    function agregarMensaje(tipo, texto){
-      assistantMessages.innerHTML += `
-        <div class="assistant-msg ${tipo}">
-          ${texto}
-        </div>
-      `;
-      assistantMessages.scrollTop = assistantMessages.scrollHeight;
-    }
+    function agregarMensaje(tipo, texto) {
 
-    async function responderAsistente(){
+  const div =
+    document.createElement("div");
+
+  div.className =
+    "assistant-msg " + tipo;
+
+  div.innerHTML = texto; 
+
+  assistantMessages.appendChild(div);
+
+  assistantMessages.scrollTop =
+    assistantMessages.scrollHeight;
+}
+
+    async function responderAsistente() {
       const texto = assistantInput.value.trim();
-      if(!texto) return;
+      if (!texto) return;
 
       agregarMensaje("user", texto);
       assistantInput.value = "";
@@ -1141,7 +1267,7 @@ body.admin-page .admin-container {
         const data = await res.json();
 
         const mensajesBot = assistantMessages.querySelectorAll(".assistant-msg.bot");
-        const ultimoBot = mensajesBot[mensajesBot.length - 1];
+        const ultimoBot   = mensajesBot[mensajesBot.length - 1];
 
         if (ultimoBot) {
           ultimoBot.innerHTML = data.respuesta || "No pude obtener una respuesta.";
@@ -1155,6 +1281,201 @@ body.admin-page .admin-container {
       }
     }
   </script>
+
+  <script>
+
+/* =========================================
+   CARGAR DATOS EMPRESA
+========================================= */
+
+function cargarEmpresaAdmin() {
+
+  const empresa = getEmpresaActual();
+
+  console.log("EMPRESA ADMIN:", empresa);
+
+  if (!empresa) return;
+
+  /*
+  =========================================
+  NOMBRE
+  =========================================
+  */
+
+  const nombreTop = document.getElementById("empresaNombreTop");
+
+  if (nombreTop) {
+    nombreTop.textContent = empresa.nombre || "Empresa";
+  }
+
+  /*
+  =========================================
+  SUBTITULO
+  =========================================
+  */
+
+  const subtitulo = document.getElementById("empresaSubtitulo");
+
+  if (subtitulo) {
+    subtitulo.textContent = "Panel administrativo";
+  }
+
+  /*
+  =========================================
+  TITULO RESUMEN
+  =========================================
+  */
+
+  const resumen = document.getElementById("tituloResumen");
+
+  if (resumen) {
+    resumen.textContent =
+      "Resumen general - " + (empresa.nombre || "Empresa");
+  }
+
+  /*
+  =========================================
+  LOGO
+  =========================================
+  */
+
+  const logo = document.getElementById("empresaLogoTop");
+
+  if (logo) {
+
+    if (empresa.logo) {
+
+      logo.src = empresa.logo;
+
+    } else {
+
+      logo.src = "img/logo.png";
+    }
+  }
+
+  /*
+  =========================================
+  COLOR
+  =========================================
+  */
+
+  if (empresa.color_principal) {
+
+    document.documentElement.style.setProperty(
+      "--color-principal",
+      empresa.color_principal
+    );
+  }
+}
+
+/* =========================================
+   INIT
+========================================= */
+
+cargarEmpresaAdmin();
+
+/* =========================================
+   CERRAR PANEL ADMIN
+========================================= */
+
+async function cerrarAdmin() {
+
+  try {
+
+    await fetch("/admin/logout", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store"
+    });
+
+  } catch(err) {
+
+    console.error(err);
+  }
+
+  closeLogoutModal();
+
+  window.location.replace(
+    "admin_login.html"
+  );
+}
+/* =========================================
+   ABRIR MODAL
+========================================= */
+
+function openLogoutModal() {
+
+  const modal = document.getElementById(
+    "modalCerrarSesionAdmin"
+  );
+
+  if (!modal) return;
+
+  modal.style.display = "flex";
+
+  modal.classList.add("show");
+}
+
+/* =========================================
+   CERRAR MODAL
+========================================= */
+
+function closeLogoutModal() {
+
+  const modal = document.getElementById(
+    "modalCerrarSesionAdmin"
+  );
+
+  if (!modal) return;
+
+  modal.classList.remove("show");
+
+  modal.style.display = "none";
+}
+
+async function verificarAdmin() {
+
+  try {
+
+    const res = await fetch("/admin/check", {
+      credentials: "include",
+      cache: "no-store"
+    });
+
+    if (!res.ok) {
+
+      window.location.href =
+        "admin_login.html";
+
+      return;
+    }
+
+    const data = await res.json();
+
+    if (!data.ok) {
+
+      window.location.href =
+        "admin_login.html";
+
+      return;
+    }
+
+    console.log("ADMIN OK", data.user);
+
+  } catch(err) {
+
+    console.error(err);
+
+    window.location.href =
+      "admin_login.html";
+  }
+}
+
+document.addEventListener(
+  "DOMContentLoaded",
+  verificarAdmin
+);
+</script>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>

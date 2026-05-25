@@ -109,18 +109,25 @@ let totalCompra = 0;
 let pp_item_edit_index = -1;
 let PP_PRODUCTO_ACTUAL = null;
 let pp_items = [];
-
 /* =========================================
    AUTENTICACIÓN
 ========================================= */
+
 function mustAuth() {
-  if (localStorage.getItem("auth") !== "ok") {
-    location.href = "login.html";
+
+  const auth = localStorage.getItem("auth");
+
+  if (auth !== "ok") {
+
+    window.location.href = "login.html";
+
+    return;
   }
 }
 
 mustAuth();
 
+mustAuth();
 /* =========================================
    FECHAS / CAJA
 ========================================= */
@@ -5759,48 +5766,123 @@ function sameMonth(dateStr, yyyy_mm) {
 
 async function cargarRecaudacionFecha() {
   try {
+
     const fecha =
       (document.getElementById("fechaCajaEfectivo")?.value || "").trim() ||
       (document.getElementById("fechaCajaTransferencia")?.value || "").trim() ||
       hoyISO();
 
-    const data = await jget(
-      `/caja/resumen?fecha=${encodeURIComponent(fecha)}`
+    // =========================
+    // RESUMEN DÍA
+    // =========================
+    const dia = await jget(
+      `/caja/resumen-dia?fecha=${encodeURIComponent(fecha)}`
     );
 
-    const dia = data.dia || {};
-    const mes = data.mes || {};
+    // =========================
+    // RESUMEN MES
+    // =========================
+    const mes = await jget(
+      `/caja/resumen-mes?fecha=${encodeURIComponent(fecha)}`
+    );
 
     const setText = (id, val) => {
       const el = document.getElementById(id);
-      if (el) el.textContent = "Gs. " + money(Number(val || 0));
+
+      if (el) {
+        el.textContent =
+          "Gs. " + money(Number(val || 0));
+      }
     };
 
-    setText("dia-ingreso-efectivo", dia.ingreso_efectivo);
-    setText("dia-egreso-efectivo", dia.egreso_efectivo);
-    setText("dia-efectivo", dia.saldo_efectivo);
+    // =========================
+    // DÍA
+    // =========================
+    setText(
+      "dia-ingreso-efectivo",
+      dia.ingreso_efectivo
+    );
 
-    setText("dia-ingreso-transferencia", dia.ingreso_transferencia);
-    setText("dia-egreso-transferencia", dia.egreso_transferencia);
-    setText("dia-transferencia", dia.saldo_transferencia);
+    setText(
+      "dia-egreso-efectivo",
+      dia.egreso_efectivo
+    );
 
-    setText("dia-total", dia.saldo_total);
+    setText(
+      "dia-efectivo",
+      dia.saldo_efectivo
+    );
 
-    setText("mes-ingreso-efectivo", mes.ingreso_efectivo);
-    setText("mes-egreso-efectivo", mes.egreso_efectivo);
-    setText("mes-efectivo", mes.saldo_efectivo);
+    setText(
+      "dia-ingreso-transferencia",
+      dia.ingreso_transferencia
+    );
 
-    setText("mes-ingreso-transferencia", mes.ingreso_transferencia);
-    setText("mes-egreso-transferencia", mes.egreso_transferencia);
-    setText("mes-transferencia", mes.saldo_transferencia);
+    setText(
+      "dia-egreso-transferencia",
+      dia.egreso_transferencia
+    );
 
-    setText("mes-total", mes.saldo_total);
+    setText(
+      "dia-transferencia",
+      dia.saldo_transferencia
+    );
+
+    setText(
+      "dia-total",
+      dia.saldo_total
+    );
+
+    // =========================
+    // MES
+    // =========================
+    setText(
+      "mes-ingreso-efectivo",
+      mes.ingreso_efectivo
+    );
+
+    setText(
+      "mes-egreso-efectivo",
+      mes.egreso_efectivo
+    );
+
+    setText(
+      "mes-efectivo",
+      mes.saldo_efectivo
+    );
+
+    setText(
+      "mes-ingreso-transferencia",
+      mes.ingreso_transferencia
+    );
+
+    setText(
+      "mes-egreso-transferencia",
+      mes.egreso_transferencia
+    );
+
+    setText(
+      "mes-transferencia",
+      mes.saldo_transferencia
+    );
+
+    setText(
+      "mes-total",
+      mes.saldo_total
+    );
+
+    console.log("RESUMEN DIA:", dia);
+    console.log("RESUMEN MES:", mes);
 
   } catch (e) {
-    console.error("Error recaudación:", e);
+
+    console.error(
+      "Error recaudación:",
+      e
+    );
+
   }
 }
-
 async function cargarFormasPagoResumen() {
   try {
     const ventas = await jget("/ventas");
@@ -5872,19 +5954,42 @@ function _getVal(id) {
 }
 
 async function verificarCaja() {
+
   try {
+
+    console.log("➡️ verificarCaja ejecutándose");
+
     const fecha =
       document.getElementById("fechaCajaEfectivo")?.value ||
       document.getElementById("fechaCajaTransferencia")?.value ||
       hoyISO();
 
+    console.log("fecha:", fecha);
+
+    // =====================================
+    // FETCH
+    // =====================================
+
     const [eData, tData] = await Promise.all([
-      jget(`/caja/abierta?tipo=efectivo&fecha=${encodeURIComponent(fecha)}`),
-      jget(`/caja/abierta?tipo=transferencia&fecha=${encodeURIComponent(fecha)}`)
+
+      jget(
+        `/caja/abierta?tipo=efectivo&fecha=${encodeURIComponent(fecha)}`
+      ),
+
+      jget(
+        `/caja/abierta?tipo=transferencia&fecha=${encodeURIComponent(fecha)}`
+      )
     ]);
+
+    console.log("eData:", eData);
+    console.log("tData:", tData);
 
     const cajaE = eData?.caja || null;
     const cajaT = tData?.caja || null;
+
+    // =====================================
+    // VARIABLES GLOBALES
+    // =====================================
 
     window.cajasActuales = {
       efectivo: cajaE,
@@ -5892,30 +5997,92 @@ async function verificarCaja() {
     };
 
     if (cajaE?.id) {
+
       window.cajaActual = cajaE;
+
     } else if (cajaT?.id) {
+
       window.cajaActual = cajaT;
+
     } else {
+
       window.cajaActual = null;
     }
 
-    pintarEstadoCaja("estadoCajaEfectivo", "Efectivo", cajaE);
-    pintarEstadoCaja("estadoCajaTransferencia", "Transferencia", cajaT);
+    console.log(
+      "window.cajasActuales:",
+      window.cajasActuales
+    );
 
-    const estadoCajaViejo = document.getElementById("estadoCaja");
+    // =====================================
+    // PINTAR
+    // =====================================
+
+    if (typeof pintarEstadoCaja === "function") {
+
+      pintarEstadoCaja(
+        "estadoCajaEfectivo",
+        "Efectivo",
+        cajaE
+      );
+
+      pintarEstadoCaja(
+        "estadoCajaTransferencia",
+        "Transferencia",
+        cajaT
+      );
+
+    } else {
+
+      console.error(
+        "❌ pintarEstadoCaja no existe"
+      );
+    }
+
+    // =====================================
+    // RESUMEN TOTAL
+    // =====================================
+
+    const estadoCajaViejo =
+      document.getElementById("estadoCaja");
 
     if (estadoCajaViejo) {
+
       const totalGs =
-        obtenerSaldoCaja(cajaE, "saldo_actual_gs", "saldo_gs") +
-        obtenerSaldoCaja(cajaT, "saldo_actual_gs", "saldo_gs");
+        obtenerSaldoCaja(
+          cajaE,
+          "saldo_actual_gs",
+          "saldo_gs"
+        ) +
+        obtenerSaldoCaja(
+          cajaT,
+          "saldo_actual_gs",
+          "saldo_gs"
+        );
 
       const totalUs =
-        obtenerSaldoCaja(cajaE, "saldo_actual_us", "saldo_us") +
-        obtenerSaldoCaja(cajaT, "saldo_actual_us", "saldo_us");
+        obtenerSaldoCaja(
+          cajaE,
+          "saldo_actual_us",
+          "saldo_us"
+        ) +
+        obtenerSaldoCaja(
+          cajaT,
+          "saldo_actual_us",
+          "saldo_us"
+        );
 
       const totalRs =
-        obtenerSaldoCaja(cajaE, "saldo_actual_rs", "saldo_rs") +
-        obtenerSaldoCaja(cajaT, "saldo_actual_rs", "saldo_rs");
+        obtenerSaldoCaja(
+          cajaE,
+          "saldo_actual_rs",
+          "saldo_rs"
+        ) +
+        obtenerSaldoCaja(
+          cajaT,
+          "saldo_actual_rs",
+          "saldo_rs"
+        );
 
       estadoCajaViejo.innerHTML = `
         Saldo total del día<br>
@@ -5925,11 +6092,16 @@ async function verificarCaja() {
       `;
     }
 
+    console.log("✅ verificarCaja OK");
+
   } catch (e) {
-    console.error("Error verificando caja:", e);
+
+    console.error(
+      "❌ Error verificando caja:",
+      e
+    );
   }
 }
-
 (function bindCajaEventos() {
   const bind = (el) => {
     if (!el) return;

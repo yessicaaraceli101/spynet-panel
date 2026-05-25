@@ -11,7 +11,7 @@
     }
   </script>
 
-  <link rel="stylesheet" href="css/theme.css" />
+  
 
   <style>
     * { box-sizing: border-box; }
@@ -571,7 +571,6 @@
   <div class="topbar">
     <div class="topbar-inner">
       <div class="brand-box">
-        <img id="empresaLogo" class="empresa-logo" src="img/logo.png" alt="Logo empresa">
         <div class="title-wrap">
           <h2 id="tituloEmpresa">Gestión de Usuarios</h2>
           <span id="subtituloEmpresa">Panel administrativo</span>
@@ -709,22 +708,14 @@
 
     function aplicarEmpresaUsuarios() {
       const user = getUserStorage();
-
       const empresaNombre =
-        localStorage.getItem("empresa_nombre") ||
-        user.empresa_nombre ||
-        "Mi Empresa";
+  user.empresa_nombre || "Mi Empresa";
 
-      const empresaLogo =
-        localStorage.getItem("empresa_logo") ||
-        user.empresa_logo ||
-        "img/logo.png";
+const empresaLogo =
+  user.empresa_logo || "img/logo.png";
 
-      const colorPrincipal =
-        localStorage.getItem("color_principal") ||
-        user.color_principal ||
-        "#2563eb";
-
+const colorPrincipal =
+  user.color_principal || "#2563eb";
       document.documentElement.style.setProperty("--primary", colorPrincipal);
       document.documentElement.style.setProperty("--primary-hover", colorPrincipal);
 
@@ -737,7 +728,7 @@
       if (tituloEmpresa) tituloEmpresa.textContent = `Usuarios - ${empresaNombre}`;
 
       const subtituloEmpresa = document.getElementById("subtituloEmpresa");
-      if (subtituloEmpresa) subtituloEmpresa.textContent = "Panel administrativo multiempresa";
+      if (subtituloEmpresa) subtituloEmpresa.textContent = "Panel administrativo";
 
       const pageTitle = document.getElementById("pageTitle");
       if (pageTitle) pageTitle.textContent = "Usuarios del sistema";

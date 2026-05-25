@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SPYnet • Panel</title>
   <link rel="icon" type="image/png" href="img/logo.png">
@@ -9,264 +10,265 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="css/theme.css?v=1007">
   <link rel="stylesheet" href="css/modal-fix.css?v=5">
-  
-  
+
+
 </head>
+
 <body>
 
-<button class="menu-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Menú" type="button">
-  <i class="fa-solid fa-bars"></i>
-</button>
+  <button class="menu-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Menú" type="button">
+    <i class="fa-solid fa-bars"></i>
+  </button>
 
-<div class="layout">
-  <aside class="sidebar">
+  <div class="layout">
+    <aside class="sidebar">
 
- <div class="sidebar-user-card" id="usuarioSidebar">
-  <div class="sidebar-user-avatar">
-    <i class="fa-solid fa-user"></i>
-  </div>
-
-  <div class="sidebar-user-info">
-    <span class="sidebar-user-label">Usuario activo</span>
-    <strong class="sidebar-user-name" id="usuarioSidebarNombre">Cargando...</strong>
-  </div>
-</div>
-
-  <div class="brand">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" stroke="#2563eb" stroke-width="2"/>
-        <path d="M7 13l3 3 7-7" stroke="#2563eb" stroke-width="2" fill="none"/>
-      </svg>
-      SPYnet productos
-    </div>
-    <nav class="sidebar-nav">
-  <a href="#dashboard" data-link class="active">
-    <i class="fa-solid fa-gauge"></i>
-    Dashboard
-  </a>
-
-  <a href="#clientes" data-link>
-    <i class="fa-solid fa-users"></i>
-    Clientes
-  </a>
-
-   <a href="#caja" data-link>
-  <i class="fa-solid fa-cash-register"></i>
-  Caja
-</a>
-
- <a href="#ventas" data-link>
-    <i class="fa-solid fa-basket-shopping"></i>
-    Ventas
-  </a>
-
-  <a href="#proveedores" data-link>
-    <i class="fa-solid fa-truck-field"></i>
-    Proveedores
-  </a>
-
-  <a href="#pedidos" data-link>
-    <i class="fa-solid fa-file-invoice"></i>
-    Pedido a Proveedor
-  </a>
-
-  <a href="#lista_pedidos" data-link>
-    <i class="fa-solid fa-list-check"></i>
-    Lista de Pedidos
-  </a>
-
-  <a href="#productos" data-link>
-    <i class="fa-solid fa-box"></i>
-    Productos
-  </a>
-
-  <a href="#categorias" data-link>
-    <i class="fa-solid fa-tags"></i>
-    Categorías
-  </a>
-
-  <a href="#compras" data-link>
-    <i class="fa-solid fa-cart-shopping"></i>
-    Compras
-  </a>
-
-  <a href="#cuentas-pagar" data-link>
-  <i class="fas fa-file-invoice-dollar"></i>
-  <span>Cuentas a Pagar</span>
-</a>
-
-  <a href="#formas-pago" data-link>
-  <i class="fa fa-credit-card"></i>
-  <span>Formas de Pago</span>
-</a>
-
-  <a href="admin.html">
-  <i class="fa-solid fa-user-gear"></i>
-  Panel Administrativo
-</a>
-
-<a href="#" class="logout-link" onclick="logout(event); return false;">
-  <i class="fa-solid fa-right-from-bracket"></i>
-  Cerrar sesión
-</a>
-</nav>
-  </aside>
-
-  <main>
-
-  <section id="dashboard" class="view active">
-  <div class="dashboard-header">
-
-  <div class="header-top">
-
-  <h1 class="page-title">Dashboard</h1>
-
-  <div class="top-right-actions">
-
-    <button id="btnNotificaciones" class="btn-notif" type="button">
-      <i class="fa-solid fa-bell"></i>
-      <span id="notifCount">3</span>
-    </button>
-
-    <div id="notifDropdown" class="notif-dropdown hidden">
-
-      <h4>Notificaciones</h4>
-
-    </div>
-
-    <img src="img/IMG-20260413-WA0026.jpg" class="logo-top">
-
-  </div>
-
-</div>
-
-  <p class="page-subtitle">
-    Resumen general del sistema y accesos principales
-  </p>
-
-</div>
-  <div class="dashboard-kpis">
-    <div class="kpi-card modern">
-      <div class="kpi-top">
-        <div class="kpi-icon blue-soft">
-          <i class="fa-solid fa-coins"></i>
+      <div class="sidebar-user-card" id="usuarioSidebar">
+        <div class="sidebar-user-avatar">
+          <i class="fa-solid fa-user"></i>
         </div>
-        <span class="kpi-label">Ventas Hoy</span>
-      </div>
-      <p id="dash-ventas-hoy" class="kpi-value">Gs. 0</p>
-      <small class="kpi-foot">Ingreso acumulado del día</small>
-    </div>
 
-    <div class="kpi-card modern">
-      <div class="kpi-top">
-        <div class="kpi-icon green-soft">
-          <i class="fa-solid fa-chart-line"></i>
-        </div>
-        <span class="kpi-label">Ventas del Mes</span>
-      </div>
-      <p id="dash-ventas-mes" class="kpi-value">Gs. 0</p>
-      <small class="kpi-foot">Total acumulado mensual</small>
-    </div>
-
-    <div class="kpi-card modern filter-card">
-      <div class="kpi-top">
-        <div class="kpi-icon orange-soft">
-          <i class="fa-solid fa-calendar-days"></i>
-        </div>
-        <span class="kpi-label">Filtrar por día</span>
-      </div>
-      <input type="date" id="filtro-dia" class="date-input" onchange="filtrarVentasPorDia()">
-      <p id="resultado-filtro" class="kpi-value-small">Seleccione una fecha para ver el resultado</p>
-    </div>
-  </div>
-
-  <div class="dashboard-grid dashboard-grid-2">
-    <div class="card modern-card quick-card">
-      <div class="card-head">
-        <div class="card-head-left">
-          <div class="section-icon">
-            <i class="fa-solid fa-bolt"></i>
-          </div>
-          <div>
-            <h3>Accesos rápidos</h3>
-            <p>Acciones principales del panel</p>
-          </div>
+        <div class="sidebar-user-info">
+          <span class="sidebar-user-label">Usuario activo</span>
+          <strong class="sidebar-user-name" id="usuarioSidebarNombre">Cargando...</strong>
         </div>
       </div>
 
-      <div class="quick-actions-grid">
-        <button class="quick-btn primary" onclick="nav('#ventas')">
-          <div class="quick-btn-icon">
-            <i class="fa-solid fa-cart-shopping"></i>
-          </div>
-          <div class="quick-btn-text">
-            <span>Nueva Venta</span>
-            <small>Registrar una venta</small>
-          </div>
-          <i class="fa-solid fa-arrow-right"></i>
-        </button>
-
-        <button class="quick-btn success" onclick="nav('#compras')">
-          <div class="quick-btn-icon">
-            <i class="fa-solid fa-receipt"></i>
-          </div>
-          <div class="quick-btn-text">
-            <span>Nueva Compra</span>
-            <small>Registrar una compra</small>
-          </div>
-          <i class="fa-solid fa-arrow-right"></i>
-        </button>
-
-        <button class="quick-btn warning" onclick="nav('#productos')">
-          <div class="quick-btn-icon">
-            <i class="fa-solid fa-box"></i>
-          </div>
-          <div class="quick-btn-text">
-            <span>Gestionar Productos</span>
-            <small>Editar y controlar stock</small>
-          </div>
-          <i class="fa-solid fa-arrow-right"></i>
-        </button>
+      <div class="brand">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="#2563eb" stroke-width="2" />
+          <path d="M7 13l3 3 7-7" stroke="#2563eb" stroke-width="2" fill="none" />
+        </svg>
+     
       </div>
-    </div>
+      <nav class="sidebar-nav">
+        <a href="#dashboard" data-link class="active">
+          <i class="fa-solid fa-gauge"></i>
+          Dashboard
+        </a>
 
-    <div class="card modern-card sales-chart-card">
-      <div class="card-head">
-        <div class="card-head-left">
-          <div class="section-icon">
-            <i class="fa-solid fa-chart-column"></i>
+        <a href="#clientes" data-link>
+          <i class="fa-solid fa-users"></i>
+          Clientes
+        </a>
+
+        <a href="#caja" data-link>
+          <i class="fa-solid fa-cash-register"></i>
+          Caja
+        </a>
+
+        <a href="#ventas" data-link>
+          <i class="fa-solid fa-basket-shopping"></i>
+          Ventas
+        </a>
+
+        <a href="#proveedores" data-link>
+          <i class="fa-solid fa-truck-field"></i>
+          Proveedores
+        </a>
+
+        <a href="#pedidos" data-link>
+          <i class="fa-solid fa-file-invoice"></i>
+          Pedido a Proveedor
+        </a>
+
+        <a href="#lista_pedidos" data-link>
+          <i class="fa-solid fa-list-check"></i>
+          Lista de Pedidos
+        </a>
+
+        <a href="#productos" data-link>
+          <i class="fa-solid fa-box"></i>
+          Productos
+        </a>
+
+        <a href="#categorias" data-link>
+          <i class="fa-solid fa-tags"></i>
+          Categorías
+        </a>
+
+        <a href="#compras" data-link>
+          <i class="fa-solid fa-cart-shopping"></i>
+          Compras
+        </a>
+
+        <a href="#cuentas-pagar" data-link>
+          <i class="fas fa-file-invoice-dollar"></i>
+          <span>Cuentas a Pagar</span>
+        </a>
+
+        <a href="#formas-pago" data-link>
+          <i class="fa fa-credit-card"></i>
+          <span>Formas de Pago</span>
+        </a>
+
+        <a href="admin.html">
+          <i class="fa-solid fa-user-gear"></i>
+          Panel Administrativo
+        </a>
+
+        <a href="#" class="logout-link" onclick="logout(event); return false;">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Cerrar sesión
+        </a>
+      </nav>
+    </aside>
+
+    <main>
+
+      <section id="dashboard" class="view active">
+        <div class="dashboard-header">
+
+          <div class="header-top">
+
+            <h1 class="page-title">Dashboard</h1>
+
+            <div class="top-right-actions">
+
+              <button id="btnNotificaciones" class="btn-notif" type="button">
+                <i class="fa-solid fa-bell"></i>
+                <span id="notifCount">3</span>
+              </button>
+
+              <div id="notifDropdown" class="notif-dropdown hidden">
+
+                <h4>Notificaciones</h4>
+
+              </div>
+
+              <img src="img/IMG-20260413-WA0026.jpg" class="logo-top">
+
+            </div>
+
           </div>
-          <div>
-            <h3>Ventas comparadas</h3>
-            <p>Ayer vs Hoy</p>
+
+          <p class="page-subtitle">
+            Resumen general del sistema y accesos principales
+          </p>
+
+        </div>
+        <div class="dashboard-kpis">
+          <div class="kpi-card modern">
+            <div class="kpi-top">
+              <div class="kpi-icon blue-soft">
+                <i class="fa-solid fa-coins"></i>
+              </div>
+              <span class="kpi-label">Ventas Hoy</span>
+            </div>
+            <p id="dash-ventas-hoy" class="kpi-value">Gs. 0</p>
+            <small class="kpi-foot">Ingreso acumulado del día</small>
+          </div>
+
+          <div class="kpi-card modern">
+            <div class="kpi-top">
+              <div class="kpi-icon green-soft">
+                <i class="fa-solid fa-chart-line"></i>
+              </div>
+              <span class="kpi-label">Ventas del Mes</span>
+            </div>
+            <p id="dash-ventas-mes" class="kpi-value">Gs. 0</p>
+            <small class="kpi-foot">Total acumulado mensual</small>
+          </div>
+
+          <div class="kpi-card modern filter-card">
+            <div class="kpi-top">
+              <div class="kpi-icon orange-soft">
+                <i class="fa-solid fa-calendar-days"></i>
+              </div>
+              <span class="kpi-label">Filtrar por día</span>
+            </div>
+            <input type="date" id="filtro-dia" class="date-input" onchange="filtrarVentasPorDia()">
+            <p id="resultado-filtro" class="kpi-value-small">Seleccione una fecha para ver el resultado</p>
           </div>
         </div>
-      </div>
 
-      <div class="sales-bars-wrap">
-        <div class="sales-bar-item">
-          <div class="sales-bar-label">
-            <span>Ayer</span>
-            <strong id="ayer-texto">Gs. 0</strong>
+        <div class="dashboard-grid dashboard-grid-2">
+          <div class="card modern-card quick-card">
+            <div class="card-head">
+              <div class="card-head-left">
+                <div class="section-icon">
+                  <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div>
+                  <h3>Accesos rápidos</h3>
+                  <p>Acciones principales del panel</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="quick-actions-grid">
+              <button class="quick-btn primary" onclick="nav('#ventas')">
+                <div class="quick-btn-icon">
+                  <i class="fa-solid fa-cart-shopping"></i>
+                </div>
+                <div class="quick-btn-text">
+                  <span>Nueva Venta</span>
+                  <small>Registrar una venta</small>
+                </div>
+                <i class="fa-solid fa-arrow-right"></i>
+              </button>
+
+              <button class="quick-btn success" onclick="nav('#compras')">
+                <div class="quick-btn-icon">
+                  <i class="fa-solid fa-receipt"></i>
+                </div>
+                <div class="quick-btn-text">
+                  <span>Nueva Compra</span>
+                  <small>Registrar una compra</small>
+                </div>
+                <i class="fa-solid fa-arrow-right"></i>
+              </button>
+
+              <button class="quick-btn warning" onclick="nav('#productos')">
+                <div class="quick-btn-icon">
+                  <i class="fa-solid fa-box"></i>
+                </div>
+                <div class="quick-btn-text">
+                  <span>Gestionar Productos</span>
+                  <small>Editar y controlar stock</small>
+                </div>
+                <i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
           </div>
-          <div class="sales-bar-track">
-            <div id="bar-ayer" class="sales-bar-fill ayer"></div>
+
+          <div class="card modern-card sales-chart-card">
+            <div class="card-head">
+              <div class="card-head-left">
+                <div class="section-icon">
+                  <i class="fa-solid fa-chart-column"></i>
+                </div>
+                <div>
+                  <h3>Ventas comparadas</h3>
+                  <p>Ayer vs Hoy</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="sales-bars-wrap">
+              <div class="sales-bar-item">
+                <div class="sales-bar-label">
+                  <span>Ayer</span>
+                  <strong id="ayer-texto">Gs. 0</strong>
+                </div>
+                <div class="sales-bar-track">
+                  <div id="bar-ayer" class="sales-bar-fill ayer"></div>
+                </div>
+              </div>
+
+              <div class="sales-bar-item">
+                <div class="sales-bar-label">
+                  <span>Hoy</span>
+                  <strong id="hoy-texto">Gs. 0</strong>
+                </div>
+                <div class="sales-bar-track">
+                  <div id="bar-hoy" class="sales-bar-fill hoy"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div class="sales-bar-item">
-          <div class="sales-bar-label">
-            <span>Hoy</span>
-            <strong id="hoy-texto">Gs. 0</strong>
-          </div>
-          <div class="sales-bar-track">
-            <div id="bar-hoy" class="sales-bar-fill hoy"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
 
       <!-- CLIENTES -->
       <section id="clientes" class="view hidden">
@@ -275,76 +277,76 @@
             <div><b>Clientes</b><span class="tag">Listado</span></div>
             <div class="actions">
               <div class="search">
-                <input id="cliSearch" placeholder="Buscar cliente..." oninput="filtrarClientes(this.value)"/>
+                <input id="cliSearch" placeholder="Buscar cliente..." oninput="filtrarClientes(this.value)" />
               </div>
               <div class="btns-right">
-              <a href="index.html" class="volver-btn">← Volver</a>
-             <button class="btn btn-blue" onclick="openModal('modalCliente')">+ Nuevo</button>
-             </div>
+                <a href="index.html" class="volver-btn">← Volver</a>
+                <button class="btn btn-blue" onclick="openModal('modalCliente')">+ Nuevo</button>
+              </div>
             </div>
           </div>
           <div class="table-responsive mt-3">
-  <table class="table table-striped table-hover">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Nombre</th>
-        <th>CI</th>
-        <th>Teléfono</th>
-        <th>País</th>
-        <th>Ciudad</th>
-        <th>Dirección</th>
-        <th>Estado</th>
-        <th>Acción</th>
-      </tr>
-    </thead>
-    <tbody id="tabla-clientes"></tbody>
-  </table>
-</div>
+            <table class="table table-striped table-hover">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>CI</th>
+                  <th>Teléfono</th>
+                  <th>País</th>
+                  <th>Ciudad</th>
+                  <th>Dirección</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-clientes"></tbody>
+            </table>
+          </div>
 
-<div id="clientes-paginacion" class="tabla-paginacion"></div>
+          <div id="clientes-paginacion" class="tabla-paginacion"></div>
       </section>
 
       <!-- PROVEEDORES -->
       <section id="proveedores" class="view hidden">
-  <div class="card">
-    <div class="actions" style="justify-content:space-between;align-items:center">
-      <div><b>Proveedores</b> <span class="tag">Listado</span></div>
-      <div class="actions">
-        <div class="search">
-          <input id="provSearch" placeholder="Buscar proveedor..." oninput="filtrarProveedores(this.value)"/>
+        <div class="card">
+          <div class="actions" style="justify-content:space-between;align-items:center">
+            <div><b>Proveedores</b> <span class="tag">Listado</span></div>
+            <div class="actions">
+              <div class="search">
+                <input id="provSearch" placeholder="Buscar proveedor..." oninput="filtrarProveedores(this.value)" />
+              </div>
+              <a href="index.html" class="volver-btn">← Volver</a>
+              <button class="btn btn-blue" onclick="openModal('modalProveedor')">+ Nuevo</button>
+            </div>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="table table-striped table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>RUC</th>
+                  <th>Contacto</th>
+                  <th>Teléfono</th>
+                  <th>País</th>
+                  <th>Ciudad</th>
+                  <th>Dirección</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-proveedores"></tbody>
+            </table>
+          </div>
+
+          <div id="proveedores-paginacion" class="tabla-paginacion"></div>
         </div>
-        <a href="index.html" class="volver-btn">← Volver</a>
-        <button class="btn btn-blue" onclick="openModal('modalProveedor')">+ Nuevo</button>
-      </div>
-    </div>
-
-    <div class="table-responsive mt-3">
-      <table class="table table-striped table-hover">
-        <thead class="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>RUC</th>
-            <th>Contacto</th>
-            <th>Teléfono</th>
-            <th>País</th>
-            <th>Ciudad</th>
-            <th>Dirección</th>
-            <th>Estado</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody id="tabla-proveedores"></tbody>
-      </table>
-    </div>
-
-    <div id="proveedores-paginacion" class="tabla-paginacion"></div>
-  </div>
-</section>
+      </section>
 
       <!-- PRODUCTOS -->
-     <section id="productos" class="view hidden">
+      <section id="productos" class="view hidden">
         <div class="card">
           <div class="actions" style="justify-content:space-between;align-items:center">
             <div>
@@ -353,419 +355,400 @@
             </div>
             <div class="actions">
               <div class="search">
-                <input id="prodSearch" placeholder="Buscar producto..." oninput="filtrarProductos(this.value)"/>
+                <input id="prodSearch" placeholder="Buscar producto..." oninput="filtrarProductos(this.value)" />
               </div>
               <a href="index.html" class="volver-btn">← Volver</a>
               <button class="btn btn-agregar" onclick="openModal('modalProducto')">+ Agregar</button>
             </div>
           </div>
           <div class="table-responsive mt-3">
-         <div id="tabla-productos"></div>
-        </div>
-        <div id="productos-paginacion" class="tabla-paginacion"></div>
+            <div id="tabla-productos"></div>
+          </div>
+          <div id="productos-paginacion" class="tabla-paginacion"></div>
         </div>
       </section>
 
       <!-- PEDIDOS -->
-     <!-- SECCIÓN ACTUALIZADA: Pedido a Proveedor -->
-<!-- SECCIÓN: PEDIDO A PROVEEDOR -->
-<!-- ================================================================= -->
-<section id="pedidos" class="view hidden">
-  <div class="container-fluid py-3">
-    <div class="card shadow-sm border-0">
-      <div class="card-body p-4">
+      <!-- SECCIÓN ACTUALIZADA: Pedido a Proveedor -->
+      <!-- SECCIÓN: PEDIDO A PROVEEDOR -->
+      <!-- ================================================================= -->
+      <section id="pedidos" class="view hidden">
+        <div class="container-fluid py-3">
+          <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
 
-        <!-- Header -->
-        <div class="d-flex align-items-center justify-content-between mb-4">
-          <div>
-            <h3 class="mb-0 fw-semibold">
-              Pedido a Proveedor <span id="pp_id" class="text-muted"></span>
-            </h3>
-            <small class="text-muted">Cargá proveedor, fechas e ítems del pedido</small>
-          
+              <!-- Header -->
+              <div class="d-flex align-items-center justify-content-between mb-4">
+                <div>
+                  <h3 class="mb-0 fw-semibold">
+                    Pedido a Proveedor <span id="pp_id" class="text-muted"></span>
+                  </h3>
+                  <small class="text-muted">Cargá proveedor, fechas e ítems del pedido</small>
+
+                </div>
+                <div class="header-actions">
+                  <a href="index.html" class="volver-btn">← Volver</a>
+                  <button type="button" class="btn btn-outline-secondary" onclick="location.hash='#lista_pedidos'">
+                    Lista de Pedidos
+                  </button>
+                </div>
+              </div>
+
+              <!-- Form grid -->
+              <div class="row g-3">
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Proveedor</label>
+                  <select id="pp_proveedor" class="form-select"></select>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Productos del Pedido</label>
+                  <div>
+                    <button class="btn" style="background:#2563eb;color:#fff;border:1px solid #2563eb"
+                      onclick="abrirModalSelProducto()">+ Añadir productos</button>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Fecha del Pedido</label>
+                  <input id="pp_fecha" class="form-control" type="date">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Fecha de Recepción</label>
+                  <input id="pp_fecha_recepcion" class="form-control" type="date">
+                </div>
+
+              </div>
+
+              <!-- Tabla -->
+              <div class="table-responsive mt-4">
+                <table class="table table-striped align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width:35%">ID</th>
+                      <th style="width:15%">Cantidad</th>
+                      <th style="width:20%">Precio de Compra</th>
+                      <th style="width:20%">Subtotal</th>
+                      <th style="width:10%" class="text-center">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pp_items"></tbody>
+                </table>
+              </div>
+
+              <!-- Totales -->
+              <div class="d-flex justify-content-end mt-3">
+                <div class="text-end">
+                  <div><span class="fw-semibold">Subtotal:</span> <span id="pp_subtotal">0</span></div>
+                  <div><span class="fw-semibold">Total:</span> <span id="pp_total">0</span></div>
+                  <div><span class="fw-semibold">IVA:</span> <span id="pp_iva">0</span></div>
+                </div>
+              </div>
+
+              <!-- Footer actions -->
+              <div class="d-flex justify-content-end gap-2 mt-4">
+                <button type="button" class="btn btn-success" onclick="guardarPedido()">Guardar</button>
+                <button type="button" class="btn btn-danger" onclick="cancelarPedido()">Cancelar</button>
+              </div>
+
             </div>
-           <div class="header-actions">
-           <a href="index.html" class="volver-btn">← Volver</a>
-           <button type="button"
-          class="btn btn-outline-secondary"
-          onclick="location.hash='#lista_pedidos'">
-           Lista de Pedidos
-           </button>
           </div>
-         </div>
-
-        <!-- Form grid -->
-        <div class="row g-3">
-
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Proveedor</label>
-            <select id="pp_proveedor" class="form-select"></select>
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Productos del Pedido</label>
+        </div>
+      </section>
+      <!-- ================================================================= -->
+      <!-- SECCIÓN: LISTA DE PEDIDOS -->
+      <!-- ================================================================= -->
+      <section id="lista_pedidos" class="view hidden">
+        <div class="card">
+          <div class="actions" style="justify-content:space-between;align-items:center">
             <div>
-              <button class="btn" style="background:#2563eb;color:#fff;border:1px solid #2563eb"
-        onclick="abrirModalSelProducto()">+ Añadir productos</button>
+              <b>Lista de Pedidos a Proveedor</b>
+              <span class="tag">Listado</span>
+            </div>
+
+            <div class="actions" style="gap:.5rem">
+              <a href="index.html" class="volver-btn">← Volver</a>
+              <button class="btn btn-primary" onclick="exportarPDF_Listado()">
+                <i class="fa-solid fa-file-pdf"></i> Descargar PDF
+              </button>
             </div>
           </div>
 
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Fecha del Pedido</label>
-            <input id="pp_fecha" class="form-control" type="date">
-          </div>
+          <div class="table-responsive mt-3">
+            <table class="table table-striped table-hover align-middle">
+              <thead class="table-dark">
+                <tr>
+                  <th style="width:70px">ID</th>
+                  <th>Proveedor</th>
+                  <th>Productos</th>
+                  <th>Categorías</th>
+                  <th style="width:130px">Fecha Pedido</th>
+                  <th style="width:140px">Fecha Recepción</th>
+                  <th class="text-center" style="width:100px">Ítems</th>
+                  <th class="text-end" style="width:120px">Subtotal</th>
+                  <th class="text-end" style="width:100px">IVA</th>
+                  <th class="text-end" style="width:120px">Total</th>
+                  <th class="text-center" style="width:110px">Acciones</th>
+                </tr>
+              </thead>
 
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Fecha de Recepción</label>
-            <input id="pp_fecha_recepcion" class="form-control" type="date">
-          </div>
-
-        </div>
-
-        <!-- Tabla -->
-        <div class="table-responsive mt-4">
-          <table class="table table-striped align-middle">
-            <thead class="table-light">
-              <tr>
-                <th style="width:35%">ID</th>
-                <th style="width:15%">Cantidad</th>
-                <th style="width:20%">Precio de Compra</th>
-                <th style="width:20%">Subtotal</th>
-                <th style="width:10%" class="text-center">Acción</th>
-              </tr>
-            </thead>
-            <tbody id="pp_items"></tbody>
-          </table>
-        </div>
-
-        <!-- Totales -->
-        <div class="d-flex justify-content-end mt-3">
-          <div class="text-end">
-            <div><span class="fw-semibold">Subtotal:</span> <span id="pp_subtotal">0</span></div>
-            <div><span class="fw-semibold">Total:</span> <span id="pp_total">0</span></div>
-            <div><span class="fw-semibold">IVA:</span> <span id="pp_iva">0</span></div>
+              <tbody id="tabla_pedidos"></tbody>
+            </table>
           </div>
         </div>
+      </section>
 
-        <!-- Footer actions -->
-        <div class="d-flex justify-content-end gap-2 mt-4">
-          <button type="button" class="btn btn-success" onclick="guardarPedido()">Guardar</button>
-          <button type="button" class="btn btn-danger" onclick="cancelarPedido()">Cancelar</button>
-        </div>
+      <!-- Acordeón donde se incrustarán los detalles -->
+      <div id="detalles_pedido_container" class="mt-3"></div>
 
-      </div>
-    </div>
-  </div>
-</section>
-<!-- ================================================================= -->
-<!-- SECCIÓN: LISTA DE PEDIDOS -->
-<!-- ================================================================= -->
-<section id="lista_pedidos" class="view hidden">
-  <div class="card">
-    <div class="actions" style="justify-content:space-between;align-items:center">
-      <div>
-        <b>Lista de Pedidos a Proveedor</b>
-        <span class="tag">Listado</span>
-      </div>
-
-      <div class="actions" style="gap:.5rem">
-        <a href="index.html" class="volver-btn">← Volver</a>
-        <button class="btn btn-primary" onclick="exportarPDF_Listado()">
-          <i class="fa-solid fa-file-pdf"></i> Descargar PDF
-        </button>
-      </div>
-    </div>
-
-    <div class="table-responsive mt-3">
-      <table class="table table-striped table-hover align-middle">
-        <thead class="table-dark">
-          <tr>
-            <th style="width:70px">ID</th>
-            <th>Proveedor</th>
-            <th>Productos</th>
-            <th>Categorías</th>
-            <th style="width:130px">Fecha Pedido</th>
-            <th style="width:140px">Fecha Recepción</th>
-            <th class="text-center" style="width:100px">Ítems</th>
-            <th class="text-end" style="width:120px">Subtotal</th>
-            <th class="text-end" style="width:100px">IVA</th>
-            <th class="text-end" style="width:120px">Total</th>
-            <th class="text-center" style="width:110px">Acciones</th>
-          </tr>
-        </thead>
-
-        <tbody id="tabla_pedidos"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- Acordeón donde se incrustarán los detalles -->
-<div id="detalles_pedido_container" class="mt-3"></div>
-
-<!-- ================================================================= -->
-<!--  MODAL EDITAR ÍTEM -->
-<!-- ================================================================= -->
-<div id="modalEditPP" class="modal"
-     style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+      <!-- ================================================================= -->
+      <!--  MODAL EDITAR ÍTEM -->
+      <!-- ================================================================= -->
+      <div id="modalEditPP" class="modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
      background:rgba(0,0,0,.4);align-items:center;justify-content:center">
 
-  <div class="sheet" style="background:white;padding:1rem;border-radius:.75rem;
+        <div class="sheet" style="background:white;padding:1rem;border-radius:.75rem;
        max-width:360px;width:90%">
 
-    <h3>Editar Ítem</h3>
+          <h3>Editar Ítem</h3>
 
-    <label class="label">Producto</label>
-    <input id="m_pp_producto" class="input">
+          <label class="label">Producto</label>
+          <input id="m_pp_producto" class="input">
 
-    <label class="label">Cantidad</label>
-    <input id="m_pp_cantidad" class="input" type="number">
+          <label class="label">Cantidad</label>
+          <input id="m_pp_cantidad" class="input" type="number">
 
-    <label class="label">Precio Compra</label>
-    <input id="m_pp_precio" class="input" type="number" step="0.01">
+          <label class="label">Precio Compra</label>
+          <input id="m_pp_precio" class="input" type="number" step="0.01">
 
-    <div class="actions" style="justify-content:flex-end;margin-top:1rem;gap:.5rem">
-      <button class="btn secondary" onclick="cerrarEditPP()">Cerrar</button>
-      <button class="btn" style="background:#2563eb;color:white" onclick="guardarEditPP()">Guardar</button>
-    </div>
+          <div class="actions" style="justify-content:flex-end;margin-top:1rem;gap:.5rem">
+            <button class="btn secondary" onclick="cerrarEditPP()">Cerrar</button>
+            <button class="btn" style="background:#2563eb;color:white" onclick="guardarEditPP()">Guardar</button>
+          </div>
 
-  </div>
-</div>
-
-<!-- ================================================================= -->
-<!-- 🟦 MODAL SELECCIONAR PRODUCTO -->
-<!-- ================================================================= -->
-<section id="compras" class="view hidden">
-
-  <div class="card">
-
-    <!-- ENCABEZADO -->
-    <div class="actions" style="justify-content:space-between;align-items:center">
-      <div>
-        <h2 style="margin:0; font-weight:600;">Compras</h2>
+        </div>
       </div>
 
-      <div class="actions" style="gap:.5rem">
-        <a href="index.html" class="volver-btn">← Volver</a>
-        <button class="btn primary" onclick="abrirNuevaCompra()">+ Nueva Compra</button>
-      </div>
-    </div>
+      <!-- ================================================================= -->
+      <!-- 🟦 MODAL SELECCIONAR PRODUCTO -->
+      <!-- ================================================================= -->
+      <section id="compras" class="view hidden">
 
-    <!-- FILTROS -->
-    <div class="filters-box" style="
+        <div class="card">
+
+          <!-- ENCABEZADO -->
+          <div class="actions" style="justify-content:space-between;align-items:center">
+            <div>
+              <h2 style="margin:0; font-weight:600;">Compras</h2>
+            </div>
+
+            <div class="actions" style="gap:.5rem">
+              <a href="index.html" class="volver-btn">← Volver</a>
+              <button class="btn primary" onclick="abrirNuevaCompra()">+ Nueva Compra</button>
+            </div>
+          </div>
+
+          <!-- FILTROS -->
+          <div class="filters-box" style="
       display:flex;gap:1rem;margin-top:1rem;
       padding:1rem;background:#f9fafb;border-radius:.5rem;
       border:1px solid #e5e7eb;
     ">
 
-      <input id="f_compra_buscar" class="input"
-             placeholder="Buscar por proveedor, factura o producto..."
-             oninput="filtrarCompras()">
+            <input id="f_compra_buscar" class="input" placeholder="Buscar por proveedor, factura o producto..."
+              oninput="filtrarCompras()">
 
-      <input type="date" id="f_compra_desde" class="input" onchange="filtrarCompras()">
-      <input type="date" id="f_compra_hasta" class="input" onchange="filtrarCompras()">
+            <input type="date" id="f_compra_desde" class="input" onchange="filtrarCompras()">
+            <input type="date" id="f_compra_hasta" class="input" onchange="filtrarCompras()">
 
-    </div>
+          </div>
 
-    <!-- TABLA -->
-    <div class="table-responsive" style="margin-top:1rem">
-      <div id="tabla-compras"></div>
-    </div>
+          <!-- TABLA -->
+          <div class="table-responsive" style="margin-top:1rem">
+            <div id="tabla-compras"></div>
+          </div>
 
-  </div>
+        </div>
 
-</section>
-<!-- ============================
+      </section>
+      <!-- ============================
       MODAL — SELECCIONAR PRODUCTO
 ============================ -->
-<div class="modal" id="modalSelProductoCompra">
-  <div class="sheet" style="max-width:800px;padding:1.5rem">
+      <div class="modal" id="modalSelProductoCompra">
+        <div class="sheet" style="max-width:800px;padding:1.5rem">
 
-    <h3>Seleccionar Producto</h3>
+          <h3>Seleccionar Producto</h3>
 
-    <div class="search" style="margin-bottom:1rem">
-      <input id="buscarProdCompra" class="input"
-             placeholder="Buscar producto..." oninput="filtrarProductosCompra()">
-    </div>
+          <div class="search" style="margin-bottom:1rem">
+            <input id="buscarProdCompra" class="input" placeholder="Buscar producto..."
+              oninput="filtrarProductosCompra()">
+          </div>
 
-    <table style="width:100%;border-collapse:collapse">
-      <thead>
-        <tr>
-          <th>Producto</th>
-          <th>Marca</th>
-          <th>Categoría</th>
-          <th>Costo Actual</th>
-          <th>Stock</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="tablaSelProductosCompra"></tbody>
-    </table>
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Marca</th>
+                <th>Categoría</th>
+                <th>Costo Actual</th>
+                <th>Stock</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tablaSelProductosCompra"></tbody>
+          </table>
 
-    <div class="actions" style="margin-top:1rem;justify-content:flex-end">
-      <button class="btn secondary" onclick="closeModal('modalSelProductoCompra')">Cerrar</button>
-    </div>
+          <div class="actions" style="margin-top:1rem;justify-content:flex-end">
+            <button class="btn secondary" onclick="closeModal('modalSelProductoCompra')">Cerrar</button>
+          </div>
 
-  </div>
-</div>
-
-
-
-
-<section id="cuentas-pagar" class="view hidden">
-  <div class="card">
-    <div class="actions" style="justify-content:space-between;align-items:center">
-      <div>
-        <b>Cuentas a Pagar</b>
-      </div>
-
-      <div class="actions">
-        <div class="search">
-          <input
-            id="cpSearch"
-            placeholder="Buscar proveedor o concepto..."
-            oninput="filtrarCuentasPagar(this.value)"
-          />
         </div>
-
-        <a href="index.html" class="volver-btn">← Volver</a>
-        <button class="btn btn-blue" onclick="abrirNuevaCuentaPagar()">+ Agregar</button>
-      </div>
-    </div>
-
-    <div class="table-responsive mt-3">
-      <table class="table table-striped table-hover">
-        <thead class="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Proveedor</th>
-            <th>Concepto</th>
-            <th>Monto</th>
-            <th>Vencimiento</th>
-            <th>Estado</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody id="tabla-cuentas-pagar"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<div class="modal" id="modalCuentaPagar">
-  <div class="sheet">
-    <input type="hidden" id="cp_id">
-
-    <h3 id="cp_titulo_modal">Nueva Cuenta a Pagar</h3>
-
-    <div class="grid cols-2">
-      <div>
-        <label class="label">Proveedor</label>
-        <input id="cp_proveedor" class="input" placeholder="Nombre del proveedor">
       </div>
 
-      <div>
-        <label class="label">Factura</label>
-        <input id="cp_factura" class="input" placeholder="Ej: 0008">
-      </div>
 
-      <div style="grid-column:1/-1">
-        <label class="label">Concepto</label>
-        <input id="cp_concepto" class="input" placeholder="Ej: Pago por agua">
-      </div>
 
-      <div>
-        <label class="label">Moneda</label>
-        <select id="cp_moneda" class="input" onchange="toggleMonedaCuentaPagar()">
-          <option value="PYG">Guaraníes (Gs.)</option>
-          <option value="USD">Dólar (US$)</option>
-          <option value="BRL">Real (R$)</option>
-        </select>
-      </div>
 
-      <div id="wrap_cp_tipo_cambio" style="display:none;">
-        <label class="label">Tipo de cambio a guaraníes</label>
-        <input
-          id="cp_tipo_cambio"
-          class="input"
-          type="text"
-          value="1"
-          readonly
-          tabindex="-1"
-          style="background:#f1f5f9; cursor:not-allowed; color:#475569; opacity:1;"
-        >
-        <small style="display:block; margin-top:4px; color:#64748b;">
-          Se toma automáticamente desde Configuración de monedas del Panel Administrativo.
-        </small>
-      </div>
+      <section id="cuentas-pagar" class="view hidden">
+        <div class="card">
+          <div class="actions" style="justify-content:space-between;align-items:center">
+            <div>
+              <b>Cuentas a Pagar</b>
+            </div>
 
-      <div>
-        <label class="label">Monto base (Gs.)</label>
-        <input
-          id="cp_monto_gs"
-          class="input"
-          type="text"
-          inputmode="numeric"
-          placeholder="0"
-          oninput="formatearMilesPY(this); actualizarResumenCuentaPagar()"
-        >
-      </div>
+            <div class="actions">
+              <div class="search">
+                <input id="cpSearch" placeholder="Buscar proveedor o concepto..."
+                  oninput="filtrarCuentasPagar(this.value)" />
+              </div>
 
-      <div>
-        <label class="label">Vencimiento</label>
-        <input id="cp_vencimiento" class="input" type="date">
-      </div>
-
-      <div>
-        <label class="label">Estado</label>
-        <select id="cp_estado" class="input">
-          <option value="pendiente">Pendiente</option>
-          <option value="pagado">Pagado</option>
-        </select>
-      </div>
-
-      <div style="grid-column:1/-1">
-        <div style="margin-top:8px; padding:.85rem; border:1px solid #dbeafe; background:#eff6ff; border-radius:10px;">
-          <div style="font-weight:700; color:#1d4ed8; margin-bottom:6px;">
-            Resumen de moneda
+              <a href="index.html" class="volver-btn">← Volver</a>
+              <button class="btn btn-blue" onclick="abrirNuevaCuentaPagar()">+ Agregar</button>
+            </div>
           </div>
 
-          <div style="color:#374151;">
-            Monto base en guaraníes:
-            <strong id="cp_resumen_pyg">Gs. 0</strong>
+          <div class="table-responsive mt-3">
+            <table class="table table-striped table-hover">
+              <thead class="table-dark">
+                <tr>
+                  <th>ID</th>
+                  <th>Proveedor</th>
+                  <th>Concepto</th>
+                  <th>Monto</th>
+                  <th>Vencimiento</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-cuentas-pagar"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <div class="modal" id="modalCuentaPagar">
+        <div class="sheet">
+          <input type="hidden" id="cp_id">
+
+          <h3 id="cp_titulo_modal">Nueva Cuenta a Pagar</h3>
+
+          <div class="grid cols-2">
+            <div>
+              <label class="label">Proveedor</label>
+              <input id="cp_proveedor" class="input" placeholder="Nombre del proveedor">
+            </div>
+
+            <div>
+              <label class="label">Factura</label>
+              <input id="cp_factura" class="input" placeholder="Ej: 0008">
+            </div>
+
+            <div style="grid-column:1/-1">
+              <label class="label">Concepto</label>
+              <input id="cp_concepto" class="input" placeholder="Ej: Pago por agua">
+            </div>
+
+            <div>
+              <label class="label">Moneda</label>
+              <select id="cp_moneda" class="input" onchange="toggleMonedaCuentaPagar()">
+                <option value="PYG">Guaraníes (Gs.)</option>
+                <option value="USD">Dólar (US$)</option>
+                <option value="BRL">Real (R$)</option>
+              </select>
+            </div>
+
+            <div id="wrap_cp_tipo_cambio" style="display:none;">
+              <label class="label">Tipo de cambio a guaraníes</label>
+              <input id="cp_tipo_cambio" class="input" type="text" value="1" readonly tabindex="-1"
+                style="background:#f1f5f9; cursor:not-allowed; color:#475569; opacity:1;">
+              <small style="display:block; margin-top:4px; color:#64748b;">
+                Se toma automáticamente desde Configuración de monedas del Panel Administrativo.
+              </small>
+            </div>
+
+            <div>
+              <label class="label">Monto base (Gs.)</label>
+              <input id="cp_monto_gs" class="input" type="text" inputmode="numeric" placeholder="0"
+                oninput="formatearMilesPY(this); actualizarResumenCuentaPagar()">
+            </div>
+
+            <div>
+              <label class="label">Vencimiento</label>
+              <input id="cp_vencimiento" class="input" type="date">
+            </div>
+
+            <div>
+              <label class="label">Estado</label>
+              <select id="cp_estado" class="input">
+                <option value="pendiente">Pendiente</option>
+                <option value="pagado">Pagado</option>
+              </select>
+            </div>
+
+            <div style="grid-column:1/-1">
+              <div
+                style="margin-top:8px; padding:.85rem; border:1px solid #dbeafe; background:#eff6ff; border-radius:10px;">
+                <div style="font-weight:700; color:#1d4ed8; margin-bottom:6px;">
+                  Resumen de moneda
+                </div>
+
+                <div style="color:#374151;">
+                  Monto base en guaraníes:
+                  <strong id="cp_resumen_pyg">Gs. 0</strong>
+                </div>
+
+                <div style="color:#374151; margin-top:4px;">
+                  Monto convertido:
+                  <strong id="cp_resumen_moneda">Gs. 0</strong>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div style="color:#374151; margin-top:4px;">
-            Monto convertido:
-            <strong id="cp_resumen_moneda">Gs. 0</strong>
+          <div class="actions" style="margin-top:1rem">
+            <button class="btn btn-green" onclick="guardarCuentaPagar()">Guardar</button>
+            <button class="btn btn-red" onclick="closeModal('modalCuentaPagar')">Cerrar</button>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="actions" style="margin-top:1rem">
-      <button class="btn btn-green" onclick="guardarCuentaPagar()">Guardar</button>
-      <button class="btn btn-red" onclick="closeModal('modalCuentaPagar')">Cerrar</button>
-    </div>
-  </div>
-</div>
+      <div id="modalEliminarCuentaPagar" class="modal-overlay" style="display:none;">
+        <div class="modal-box danger">
+          <h3>Eliminar cuenta a pagar</h3>
+          <p>¿Está seguro de eliminar esta cuenta a pagar?</p>
 
-<div id="modalEliminarCuentaPagar" class="modal-overlay" style="display:none;">
-  <div class="modal-box danger">
-    <h3>Eliminar cuenta a pagar</h3>
-    <p>¿Está seguro de eliminar esta cuenta a pagar?</p>
+          <div class="modal-actions">
+            <button class="btn secondary" onclick="closeModal('modalEliminarCuentaPagar')">
+              Cancelar
+            </button>
+            <button class="btn btn-danger" onclick="confirmarEliminarCuentaPagar()">
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
 
-    <div class="modal-actions">
-      <button class="btn secondary" onclick="closeModal('modalEliminarCuentaPagar')">
-        Cancelar
-      </button>
-      <button class="btn btn-danger" onclick="confirmarEliminarCuentaPagar()">
-        Eliminar
-      </button>
-    </div>
-  </div>
-</div>
-    
 
       <!-- CATEGORÍAS -->
       <section id="categorias" class="view hidden">
@@ -774,1614 +757,1496 @@
             <div><b>Categorías</b> <span class="tag">Lista, imagen y código</span></div>
             <div class="actions">
               <div class="search">
-                <input id="catSearch" placeholder="Buscar categoría..." oninput="filtrarCategorias(this.value)"/>
+                <input id="catSearch" placeholder="Buscar categoría..." oninput="filtrarCategorias(this.value)" />
               </div>
               <a href="index.html" class="volver-btn">← Volver</a>
               <button class="btn btn-blue" onclick="openModal('modalCategoria')">+ Agregar</button>
             </div>
           </div>
           <div class="table-responsive mt-3 mobile-scroll">
-          <div id="tabla-categorias"></div>
+            <div id="tabla-categorias"></div>
           </div>
           <div id="categorias-paginacion" class="tabla-paginacion"></div>
         </div>
       </section>
 
 
-<!-- ===== Modales ===== -->
+      <!-- ===== Modales ===== -->
 
-<!-- Cliente: NUEVO -->
-<div class="modal" id="modalCliente"><div class="sheet">
-  <h3>Nuevo Cliente</h3>
-  <div class="grid cols-2">
-    <div><label class="label">Nombre</label><input id="c_nombre" class="input"></div>
-    <div><label class="label">Apellido</label><input id="c_apellido" class="input"></div>
-    <div><label class="label">CI</label><input id="c_ci" class="input" inputmode="numeric"/></div>
-    <div><label class="label">Teléfono</label><input id="c_tel" class="input"></div>
-    <div><label class="label">País</label><input id="c_country" class="input" placeholder="Paraguay"></div>
-    <div><label class="label">Ciudad</label><input id="c_city" class="input" placeholder="Asunción"></div>
-    <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="c_dir" class="input"></div>
-    <div><label class="label">Estado</label>
-      <select id="c_status" class="input">
-        <option value="pagado">Pagado</option>
-        <option value="pendiente">Pendiente de pago</option>
-      </select>
-    </div>
-    </div>
-  <div class="actions" style="margin-top:1rem">
-  <button class="btn btn-green" onclick="guardarCliente()">Guardar</button>
-  <button class="btn btn-red" onclick="closeModal('modalCliente')">Cerrar</button>
-</div>
-</div></div>
-
-<!-- Cliente: EDITAR -->
-<div class="modal" id="modalClienteEdit"><div class="sheet">
-  <h3>Editar Cliente</h3>
-  <input type="hidden" id="cli_edit_id"/>
-  <div class="grid cols-2">
-    <div><label class="label">Nombre</label><input id="ce_nombre" class="input"></div>
-    <div><label class="label">Apellido</label><input id="ce_apellido" class="input"></div>
-    <div><label class="label">CI</label><input id="ce_ci" class="input" inputmode="numeric"/></div>
-    <div><label class="label">Teléfono</label><input id="ce_tel" class="input"></div>
-    <div><label class="label">País</label><input id="ce_country" class="input"></div>
-    <div><label class="label">Ciudad</label><input id="ce_city" class="input"></div>
-    <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="ce_dir" class="input"></div>
-    <div><label class="label">Estado</label>
-      <select id="ce_status" class="input">
-        <option value="pagado">Pagado</option>
-        <option value="pendiente">Pendiente de pago</option>
-      </select>
-    </div>
-  </div>
-  <div class="actions" style="margin-top:1rem">
-  <button class="btn btn-success" onclick="actualizarCliente()">Guardar cambios</button>
-  <button class="btn btn-danger" onclick="closeModal('modalClienteEdit')">Cerrar</button>
-</div>
-</div></div>
-
-<!-- Proveedor: NUEVO -->
-<div class="modal" id="modalProveedor">
-  <div class="sheet">
-    <h3>Nuevo Proveedor</h3>
-    <div class="grid cols-2">
-      <div><label class="label">Nombre</label><input id="p_nombre" class="input" placeholder="Nombre del proveedor"></div>
-      <div><label class="label">RUC</label><input id="p_ruc" class="input" placeholder="Ej: 1234567-8"></div>
-      <div><label class="label">Contacto</label><input id="p_contacto" class="input" placeholder="Nombre de contacto"></div>
-      <div><label class="label">Teléfono</label><input id="p_tel" class="input" placeholder="Ej: 0981 123 456"></div>
-      <div><label class="label">País</label><input id="p_pais" class="input" value="Paraguay"></div>
-      <div><label class="label">Ciudad</label><input id="p_ciudad" class="input" placeholder="Asunción"></div>
-      <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="p_dir" class="input" placeholder="Dirección completa"></div>
-      <div><label class="label">Estado</label>
-        <select id="p_estado" class="input">
-          <option>Activo</option>
-          <option>Inactivo</option>
-        </select>
-      </div>
-    </div>
-   <div class="actions" style="margin-top:1rem">
-  <button class="btn btn-green" onclick="guardarProveedor()">Guardar</button>
-  <button class="btn btn-red" onclick="closeModal('modalProveedor')">Cerrar</button>
-</div>
-  </div>
-</div>
-
-<!-- Proveedor: EDITAR -->
-<div class="modal" id="modalProveedorEdit">
-  <div class="sheet">
-    <h3>Editar Proveedor</h3>
-    <input type="hidden" id="prov_edit_id"/>
-    <div class="grid cols-2">
-      <div><label class="label">Nombre</label><input id="pe_nombre" class="input"></div>
-      <div><label class="label">RUC</label><input id="pe_ruc" class="input"></div>
-      <div><label class="label">Contacto</label><input id="pe_contacto" class="input"></div>
-      <div><label class="label">Teléfono</label><input id="pe_tel" class="input"></div>
-      <div><label class="label">País</label><input id="pe_pais" class="input"></div>
-      <div><label class="label">Ciudad</label><input id="pe_ciudad" class="input"></div>
-      <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="pe_dir" class="input"></div>
-      <div><label class="label">Estado</label>
-        <select id="pe_estado" class="input">
-          <option>Activo</option>
-          <option>Inactivo</option>
-        </select>
-      </div>
-    </div>
-    <div class="actions">
-  <button class="btn btn-success" onclick="actualizarProveedor()">Guardar cambios</button>
-  <button class="btn btn-danger" onclick="closeModal('modalProveedorEdit')">Cerrar</button>
-</div>
-  </div>
-</div>
-
-<div id="modalClaveEditar" class="modal">
-  <div class="sheet modal-clave">
-
-    <h3 class="modal-title">
-      🔒 Confirmación requerida
-    </h3>
-
-    <p class="modal-subtitle">
-      Ingrese la contraseña para editar esta venta
-    </p>
-
-    <div class="password-wrapper">
-      <input type="password"
-             id="claveEditar"
-             class="input"
-             placeholder="Contraseña">
-
-      <span class="toggle-password"
-            onclick="togglePasswordEditar()"
-            title="Mostrar / ocultar">
-        👁️
-      </span>
-    </div>
-
-    <!-- ❌ error -->
-    <div id="errorClaveEditar" class="error-msg"></div>
-
-    <div class="actions spaced">
-      <button class="btn secondary"
-              onclick="closeModal('modalClaveEditar')">
-        Cancelar
-      </button>
-
-      <button class="btn primary"
-              id="btnConfirmarClave"
-              onclick="verificarClaveEditar()">
-        Confirmar
-      </button>
-    </div>
-
-  </div>
-</div>
-
-<section id="ventas" class="view hidden">
-
-  <!-- ===== HEADER ===== -->
-  <div class="ventas-header">
-    <h2><i class="fa-solid fa-basket-shopping"></i>Ventas</h2>
-    <div class="header-actions">
-      <a href="javascript:history.back()" class="volver-btn">← Volver</a>
-      <button class="btn btn-blue" onclick="nuevaVenta()">+ Nueva Venta</button>
-    </div>
-  </div>
-
-<!-- ===== LISTADO DE VENTAS ===== -->
-<div class="card ventas-tabla">
-  <div class="table-responsive">
-    <table class="table table-striped table-hover align-middle">
-      <thead class="table-dark">
-        <tr>
-          <th style="width:70px">ID</th>
-          <th style="width:130px">Fecha</th>
-          <th>Cliente</th>
-          <th>Productos</th>
-          <th style="width:140px">Método</th>
-          <th class="text-end" style="width:140px">Total</th>
-          <th style="width:120px">Estado</th>
-          <th style="width:180px">Acciones</th>
-        </tr>
-      </thead>
-
-      <tbody id="tablaVentas"></tbody>
-    </table>
-  </div>
-
-  <div id="ventas-paginacion" class="tabla-paginacion"></div>
-</div>
-</section>
-
-<!-- ===== MODAL ELIMINAR ===== -->
-<div id="modalEliminarVenta" class="modal-overlay" style="display:none">
-  <div class="modal-box danger">
-    <h3>Eliminar venta</h3>
-    <p>¿Está seguro de eliminar esta venta?</p>
-
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeModal('modalEliminarVenta')">
-        Cancelar
-      </button>
-      <button class="btn-danger" onclick="eliminarVentaConfirmada()">
-        Eliminar
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== MODAL EDITAR ===== -->
-<div class="modal" id="modalEditarVenta">
-  <div class="modal-content modal-editar-venta">
-    <h3>Editar Venta</h3>
-
-    <input type="hidden" id="edit_venta_id">
-
-    <label>Fecha</label>
-    <input type="date" id="edit_fecha" class="input">
-
-    <label>Forma de pago</label>
-    <select id="edit_forma_pago" class="input">
-      <option value="2">Efectivo</option>
-      <option value="6">Banco Continental</option>
-      <option value="7">Banco Familiar</option>
-      <option value="8">Ueno Bank</option>
-    </select>
-
-    <label>Estado</label>
-    <select id="edit_estado" class="input">
-      <option value="pagado">Pagado</option>
-      <option value="pendiente">Pendiente</option>
-    </select>
-
-    <div class="edit-venta-table-wrap">
-      <table class="table table-striped align-middle edit-venta-table">
-        <thead>
-          <tr>
-            <th>Producto</th>
-            <th style="width:110px">Cant.</th>
-            <th style="width:160px">Precio</th>
-            <th style="width:160px">Subtotal</th>
-            <th style="width:70px"></th>
-          </tr>
-        </thead>
-        <tbody id="edit_items"></tbody>
-      </table>
-    </div>
-
-    <div style="margin-top:.5rem;display:flex;justify-content:flex-end;font-weight:700">
-      Total: <span id="edit_total" style="margin-left:.5rem">0</span> Gs.
-    </div>
-
-    <div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:.5rem">
-      <button class="btn secondary" onclick="closeModal('modalEditarVenta')">
-        Cancelar
-      </button>
-      <button class="btn primary" onclick="guardarEdicionVenta()">
-        Guardar
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== MODAL NUEVA VENTA ===== -->
-<div id="modalVenta" class="modal-overlay" style="display:none;">
-  <div class="ec-modal">
-
-    <div class="ec-header">
-      <div>
-        <h2><i class="fa-solid fa-receipt"></i> Nueva Venta</h2>
-        <p>Registre productos por escáner o de forma manual</p>
-      </div>
-
-      <button
-        class="ec-close"
-        type="button"
-        onclick="closeModal('modalVenta')"
-      >
-        ×
-      </button>
-    </div>
-
-    <div class="ec-body">
-
-      <div class="ec-main">
-
-        <div class="ec-card">
-          <h3>Datos de la Venta</h3>
-
-          <div class="grid cols-2" style="gap:16px;">
-            <div class="ec-field">
-              <label>Cliente</label>
-              <select id="v_cliente" class="input">
-                <option value="">Consumidor Final</option>
-              </select>
-            </div>
-
-            <div class="ec-field">
-              <label>RUC / CI</label>
-              <input id="v_ruc" class="input" readonly>
-            </div>
-
-            <div class="ec-field">
-              <label>Fecha</label>
-              <input type="date" id="v_fecha" class="input">
-            </div>
-
-            <div class="ec-field">
-              <label>Estado</label>
-              <select id="v_estado_pago" class="input">
+      <!-- Cliente: NUEVO -->
+      <div class="modal" id="modalCliente">
+        <div class="sheet">
+          <h3>Nuevo Cliente</h3>
+          <div class="grid cols-2">
+            <div><label class="label">Nombre</label><input id="c_nombre" class="input"></div>
+            <div><label class="label">Apellido</label><input id="c_apellido" class="input"></div>
+            <div><label class="label">CI</label><input id="c_ci" class="input" inputmode="numeric" /></div>
+            <div><label class="label">Teléfono</label><input id="c_tel" class="input"></div>
+            <div><label class="label">País</label><input id="c_country" class="input" placeholder="Paraguay"></div>
+            <div><label class="label">Ciudad</label><input id="c_city" class="input" placeholder="Asunción"></div>
+            <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="c_dir" class="input"></div>
+            <div><label class="label">Estado</label>
+              <select id="c_status" class="input">
                 <option value="pagado">Pagado</option>
-                <option value="pendiente">Pendiente</option>
+                <option value="pendiente">Pendiente de pago</option>
               </select>
             </div>
           </div>
-        </div>
-
-        <div class="ec-card">
-          <h3>Escáner</h3>
-
-          <div class="ec-field">
-            <label>Código de barras</label>
-            <input
-              id="barcodeVenta"
-              class="input"
-              placeholder="Escanee el código de barras"
-            >
+          <div class="actions" style="margin-top:1rem">
+            <button class="btn btn-green" onclick="guardarCliente()">Guardar</button>
+            <button class="btn btn-red" onclick="closeModal('modalCliente')">Cerrar</button>
           </div>
         </div>
+      </div>
 
-        <div class="ec-card">
-          <h3>Agregar manualmente</h3>
-
-          <div class="ec-field">
-            <label>Buscar producto</label>
-            <input
-              id="buscarProductoManual"
-              class="input"
-              placeholder="Buscar por nombre o código..."
-              oninput="buscarProductosManual(this.value)"
-              autocomplete="off"
-            >
-          </div>
-
-          <div
-            id="listaProductosManual"
-            style="display:none; margin-top:10px;"
-          ></div>
-
-          <div class="grid cols-2" style="gap:16px; margin-top:14px;">
-            <div class="ec-field">
-              <label>Cantidad</label>
-              <input
-                id="cantidadManualVenta"
-                type="number"
-                min="1"
-                value="1"
-                class="input"
-              >
-            </div>
-
-            <div class="ec-field">
-              <label>Precio</label>
-              <input
-                id="precioManualVenta"
-                type="text"
-                class="input"
-                readonly
-              >
+      <!-- Cliente: EDITAR -->
+      <div class="modal" id="modalClienteEdit">
+        <div class="sheet">
+          <h3>Editar Cliente</h3>
+          <input type="hidden" id="cli_edit_id" />
+          <div class="grid cols-2">
+            <div><label class="label">Nombre</label><input id="ce_nombre" class="input"></div>
+            <div><label class="label">Apellido</label><input id="ce_apellido" class="input"></div>
+            <div><label class="label">CI</label><input id="ce_ci" class="input" inputmode="numeric" /></div>
+            <div><label class="label">Teléfono</label><input id="ce_tel" class="input"></div>
+            <div><label class="label">País</label><input id="ce_country" class="input"></div>
+            <div><label class="label">Ciudad</label><input id="ce_city" class="input"></div>
+            <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="ce_dir" class="input"></div>
+            <div><label class="label">Estado</label>
+              <select id="ce_status" class="input">
+                <option value="pagado">Pagado</option>
+                <option value="pendiente">Pendiente de pago</option>
+              </select>
             </div>
           </div>
+          <div class="actions" style="margin-top:1rem">
+            <button class="btn btn-success" onclick="actualizarCliente()">Guardar cambios</button>
+            <button class="btn btn-danger" onclick="closeModal('modalClienteEdit')">Cerrar</button>
+          </div>
+        </div>
+      </div>
 
-          <div style="margin-top:16px;">
-            <button
-              class="btn btn-primary"
-              type="button"
-              onclick="agregarProductoManualVenta()"
-            >
-              + Agregar producto
+      <!-- Proveedor: NUEVO -->
+      <div class="modal" id="modalProveedor">
+        <div class="sheet">
+          <h3>Nuevo Proveedor</h3>
+          <div class="grid cols-2">
+            <div><label class="label">Nombre</label><input id="p_nombre" class="input"
+                placeholder="Nombre del proveedor"></div>
+            <div><label class="label">RUC</label><input id="p_ruc" class="input" placeholder="Ej: 1234567-8"></div>
+            <div><label class="label">Contacto</label><input id="p_contacto" class="input"
+                placeholder="Nombre de contacto"></div>
+            <div><label class="label">Teléfono</label><input id="p_tel" class="input" placeholder="Ej: 0981 123 456">
+            </div>
+            <div><label class="label">País</label><input id="p_pais" class="input" value="Paraguay"></div>
+            <div><label class="label">Ciudad</label><input id="p_ciudad" class="input" placeholder="Asunción"></div>
+            <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="p_dir" class="input"
+                placeholder="Dirección completa"></div>
+            <div><label class="label">Estado</label>
+              <select id="p_estado" class="input">
+                <option>Activo</option>
+                <option>Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div class="actions" style="margin-top:1rem">
+            <button class="btn btn-green" onclick="guardarProveedor()">Guardar</button>
+            <button class="btn btn-red" onclick="closeModal('modalProveedor')">Cerrar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proveedor: EDITAR -->
+      <div class="modal" id="modalProveedorEdit">
+        <div class="sheet">
+          <h3>Editar Proveedor</h3>
+          <input type="hidden" id="prov_edit_id" />
+          <div class="grid cols-2">
+            <div><label class="label">Nombre</label><input id="pe_nombre" class="input"></div>
+            <div><label class="label">RUC</label><input id="pe_ruc" class="input"></div>
+            <div><label class="label">Contacto</label><input id="pe_contacto" class="input"></div>
+            <div><label class="label">Teléfono</label><input id="pe_tel" class="input"></div>
+            <div><label class="label">País</label><input id="pe_pais" class="input"></div>
+            <div><label class="label">Ciudad</label><input id="pe_ciudad" class="input"></div>
+            <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="pe_dir" class="input"></div>
+            <div><label class="label">Estado</label>
+              <select id="pe_estado" class="input">
+                <option>Activo</option>
+                <option>Inactivo</option>
+              </select>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-success" onclick="actualizarProveedor()">Guardar cambios</button>
+            <button class="btn btn-danger" onclick="closeModal('modalProveedorEdit')">Cerrar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="modalClaveEditar" class="modal">
+        <div class="sheet modal-clave">
+
+          <h3 class="modal-title">
+            🔒 Confirmación requerida
+          </h3>
+
+          <p class="modal-subtitle">
+            Ingrese la contraseña para editar esta venta
+          </p>
+
+          <div class="password-wrapper">
+            <input type="password" id="claveEditar" class="input" placeholder="Contraseña">
+
+            <span class="toggle-password" onclick="togglePasswordEditar()" title="Mostrar / ocultar">
+              👁️
+            </span>
+          </div>
+
+          <!-- ❌ error -->
+          <div id="errorClaveEditar" class="error-msg"></div>
+
+          <div class="actions spaced">
+            <button class="btn secondary" onclick="closeModal('modalClaveEditar')">
+              Cancelar
+            </button>
+
+            <button class="btn primary" id="btnConfirmarClave" onclick="verificarClaveEditar()">
+              Confirmar
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <section id="ventas" class="view hidden">
+
+        <!-- ===== HEADER ===== -->
+        <div class="ventas-header">
+          <h2><i class="fa-solid fa-basket-shopping"></i>Ventas</h2>
+          <div class="header-actions">
+            <a href="javascript:history.back()" class="volver-btn">← Volver</a>
+            <button class="btn btn-blue" onclick="nuevaVenta()">+ Nueva Venta</button>
+          </div>
+        </div>
+
+        <!-- ===== LISTADO DE VENTAS ===== -->
+        <div class="card ventas-tabla">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+              <thead class="table-dark">
+                <tr>
+                  <th style="width:70px">ID</th>
+                  <th style="width:130px">Fecha</th>
+                  <th>Cliente</th>
+                  <th>Productos</th>
+                  <th style="width:140px">Método</th>
+                  <th class="text-end" style="width:140px">Total</th>
+                  <th style="width:120px">Estado</th>
+                  <th style="width:180px">Acciones</th>
+                </tr>
+              </thead>
+
+              <tbody id="tablaVentas"></tbody>
+            </table>
+          </div>
+
+          <div id="ventas-paginacion" class="tabla-paginacion"></div>
+        </div>
+      </section>
+
+      <!-- ===== MODAL ELIMINAR ===== -->
+      <div id="modalEliminarVenta" class="modal-overlay" style="display:none">
+        <div class="modal-box danger">
+          <h3>Eliminar venta</h3>
+          <p>¿Está seguro de eliminar esta venta?</p>
+
+          <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modalEliminarVenta')">
+              Cancelar
+            </button>
+            <button class="btn-danger" onclick="eliminarVentaConfirmada()">
+              Eliminar
             </button>
           </div>
         </div>
-
       </div>
 
-      <aside class="ec-sidebar">
+      <!-- ===== MODAL EDITAR ===== -->
+      <div class="modal" id="modalEditarVenta">
+        <div class="modal-content modal-editar-venta">
+          <h3>Editar Venta</h3>
 
-        <div class="ec-card ec-total-card">
-          <h4>Total Venta</h4>
-          <div id="v_total_box" class="ec-total-amount">
-            <span id="v_total">0</span> Gs.
-          </div>
-        </div>
+          <input type="hidden" id="edit_venta_id">
 
-        <div class="ec-card ec-table-card">
-          <h3>Productos de la venta</h3>
+          <label>Fecha</label>
+          <input type="date" id="edit_fecha" class="input">
 
-          <div class="ec-table-wrap">
-            <table class="ec-table">
+          <label>Forma de pago</label>
+          <select id="edit_forma_pago" class="input">
+            <option value="2">Efectivo</option>
+            <option value="6">Banco Continental</option>
+            <option value="7">Banco Familiar</option>
+            <option value="8">Ueno Bank</option>
+          </select>
+
+          <label>Estado</label>
+          <select id="edit_estado" class="input">
+            <option value="pagado">Pagado</option>
+            <option value="pendiente">Pendiente</option>
+          </select>
+
+          <div class="edit-venta-table-wrap">
+            <table class="table table-striped align-middle edit-venta-table">
               <thead>
                 <tr>
                   <th>Producto</th>
-                  <th>Cant.</th>
-                  <th>Subtotal</th>
+                  <th style="width:110px">Cant.</th>
+                  <th style="width:160px">Precio</th>
+                  <th style="width:160px">Subtotal</th>
+                  <th style="width:70px"></th>
                 </tr>
               </thead>
-              <tbody id="v_items"></tbody>
+              <tbody id="edit_items"></tbody>
             </table>
           </div>
-        </div>
 
-        <div class="ec-actions">
-          <button
-            class="btn btn-secondary"
-            type="button"
-            onclick="closeModal('modalVenta')"
-          >
-            Cancelar
-          </button>
+          <div style="margin-top:.5rem;display:flex;justify-content:flex-end;font-weight:700">
+            Total: <span id="edit_total" style="margin-left:.5rem">0</span> Gs.
+          </div>
 
-          <button
-            class="btn btn-primary"
-            type="button"
-            onclick="abrirPago()"
-          >
-            <i class="fa-solid fa-sack-dollar"></i> Cobrar venta
-          </button>
-        </div>
-
-      </aside>
-    </div>
-  </div>
-</div>
-
-<!-- ===== MODAL PAGO ===== -->
-<div id="modalPago" class="modal-overlay" style="display:none;">
-  <div class="modal-content pago-modal pago-modal-pro">
-
-    <div class="pago-modal-header-pro">
-      <h3>Seleccionar Forma de Pago</h3>
-    </div>
-
-    <div class="pago-grid" id="gridFormasPago">
-      <button class="btn btnFormaPago" data-id="1"  data-nombre="Débito">💳 Débito</button>
-      <button class="btn btnFormaPago" data-id="2"  data-nombre="Efectivo">💵 Efectivo</button>
-      <button class="btn btnFormaPago" data-id="3"  data-nombre="Crédito">💳 Crédito</button>
-      <button class="btn btnFormaPago" data-id="4"  data-nombre="QR">📱 QR</button>
-      <button class="btn btnFormaPago" data-id="5"  data-nombre="BNF">🏦 BNF</button>
-      <button class="btn btnFormaPago" data-id="6"  data-nombre="Continental">🏦 Continental</button>
-      <button class="btn btnFormaPago" data-id="7"  data-nombre="Banco Familiar">🏦 Banco Familiar</button>
-      <button class="btn btnFormaPago" data-id="8"  data-nombre="Ueno Bank">🏦 Ueno Bank</button>
-      <button class="btn btnFormaPago" data-id="9"  data-nombre="Banco Basa">🏦 Banco Basa</button>
-      <button class="btn btnFormaPago" data-id="10" data-nombre="Mango">📱 Mango</button>
-    </div>
-
-    <div id="mensajeFormaPago" class="mensaje-forma-pago-pro" style="display:none;"></div>
-
-    <div id="wrapComprobante" class="pago-comprobante-card" style="display:none;">
-      <label class="label">Nro. de comprobante</label>
-      <input
-        type="text"
-        id="inputComprobante"
-        class="input"
-        placeholder="Ej: 00012345"
-      >
-      <small class="pago-help-text">
-        Obligatorio para QR y transferencias bancarias.
-      </small>
-    </div>
-
-    <div class="pago-layout-pro">
-
-      <div class="pago-col">
-        <div id="bloqueEfectivo" class="pago-card" style="display:none;">
-          <label class="label" id="labelMontoRecibido">Monto recibido (Gs.)</label>
-          <input
-            type="text"
-            id="montoRecibido"
-            class="input"
-            placeholder="0"
-            oninput="formatearMontoRecibido()"
-          >
-
-          <div class="pago-vuelto-box">
-            Vuelto: <span id="vuelto">0</span>
+          <div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:.5rem">
+            <button class="btn secondary" onclick="closeModal('modalEditarVenta')">
+              Cancelar
+            </button>
+            <button class="btn primary" onclick="guardarEdicionVenta()">
+              Guardar
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="pago-col">
-  <div class="pago-card">
-    <label class="label">Moneda</label>
-    <select id="v_moneda" class="input" onchange="toggleTipoCambioVenta()">
-      <option value="PYG">Guaraníes (Gs.)</option>
-      <option value="USD">Dólar (US$)</option>
-      <option value="BRL">Real (R$)</option>
-    </select>
+      <!-- ===== MODAL NUEVA VENTA ===== -->
+      <div id="modalVenta" class="modal-overlay" style="display:none;">
+        <div class="ec-modal">
 
-    <div id="wrapTipoCambio" style="display:none; margin-top:12px;">
-      <label class="label">Tipo de cambio a guaraníes</label>
-
-      <input
-        type="number"
-        id="v_tipo_cambio"
-        class="input"
-        value="6350"
-        readonly
-        disabled
-        tabindex="-1"
-        style="background:#f1f5f9; cursor:not-allowed; color:#475569;"
-      >
-    </div>
-  </div>
-</div>
-      <div class="pago-col">
-        <div id="resumenMonedaVenta" class="pago-card pago-resumen-card">
-          <div class="pago-resumen-title">
-            Resumen de moneda
-          </div>
-          <div class="pago-resumen-line">
-            Total en moneda: <strong id="v_total_moneda">Gs. 0</strong>
-          </div>
-          <div class="pago-resumen-line">
-            Total en guaraníes: <strong id="v_total_pyg">Gs. 0</strong>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="modal-actions pago-actions-pro">
-      <button class="btn primary" onclick="confirmarPagoFinal()">Confirmar Pago</button>
-      <button class="btn secondary" onclick="closeModal('modalPago')">Cancelar</button>
-    </div>
-
-  </div>
-</div>
-<!-- Producto: NUEVO -->
-<div class="modal" id="modalProducto">
-  <div class="sheet">
-    <h3>+Nuevo Producto</h3>
-
-    <div class="grid cols-2">
-
-      <!-- NOMBRE -->
-      <div style="grid-column:1/-1">
-        <label class="label">Nombre del Producto</label>
-        <input id="pr_nombre"
-               class="input"
-               placeholder="Ej: Cable cargador grueso">
-      </div>
-
-      <!-- CÓDIGO -->
-      <div>
-        <label class="label">Código / SKU</label>
-        <input id="pr_codigo"
-               class="input"
-               placeholder="SKU o código de barras">
-      </div>
-
-      <!-- CATEGORÍA -->
-      <div>
-        <label class="label">Categoría</label>
-        <input id="pr_cat"
-               class="input"
-               placeholder="Ej. Lácteos, Galletitas, Limpieza...">
-      </div>
-
-      <!-- MARCA -->
-      <div style="grid-column:1/-1">
-        <label class="label">Marca</label>
-        <input id="pr_marca"
-               class="input"
-               placeholder="Petti, Omo, etc.">
-      </div>
-
-      <!-- PRECIO -->
-      <div>
-        <label class="label">Precio (Gs.)</label>
-        <input id="pr_precio"
-               class="input"
-               type="text"
-               inputmode="numeric"
-               placeholder="0"
-               oninput="formatearMilesPY(this)">
-      </div>
-
-      <!-- COSTO -->
-      <div>
-        <label class="label">Costo (Gs.)</label>
-        <input id="pr_costo"
-               class="input"
-               type="text"
-               inputmode="numeric"
-               placeholder="0"
-               oninput="formatearMilesPY(this)">
-      </div>
-
-      <!-- STOCK -->
-      <div>
-        <label class="label">Cantidad</label>
-        <input id="pr_stock"
-               class="input"
-               type="number"
-               min="0"
-               step="1"
-               placeholder="0">
-      </div>
-
-      <!-- IMAGEN -->
-      <div style="grid-column:1/-1">
-        <label class="label">Imagen (opcional)</label>
-        <input id="pr_img"
-               type="file"
-               accept="image/*">
-      </div>
-
-    </div>
-
-    <div class="actions" style="margin-top:1rem">
-      <button class="btn btn-guardar" onclick="guardarProducto(event)">
-        Guardar
-      </button>
-
-      <button class="btn btn-cerrar" onclick="closeModal('modalProducto')">
-        Cerrar
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Producto: EDITAR -->
-<div class="modal" id="modalProductoEdit">
-  <div class="sheet">
-    <h3>Editar Producto</h3>
-
-    <input type="hidden" id="edit_id"/>
-
-    <div class="grid cols-2">
-
-      <!-- NOMBRE -->
-      <div style="grid-column:1/-1">
-        <label class="label">Nombre del Producto</label>
-        <input id="ed_nombre"
-               class="input"
-               placeholder="Ej: Cable cargador grueso">
-      </div>
-
-      <!-- CÓDIGO -->
-      <div>
-        <label class="label">Código / SKU</label>
-        <input id="ed_codigo"
-               class="input"
-               placeholder="SKU o código de barras">
-      </div>
-
-      <!-- CATEGORÍA -->
-      <div>
-        <label class="label">Categoría</label>
-        <input id="ed_cat"
-               class="input"
-               placeholder="Ej. Lácteos, Galletitas, Limpieza...">
-      </div>
-
-      <!-- MARCA -->
-      <div style="grid-column:1/-1">
-        <label class="label">Marca</label>
-        <input id="ed_marca"
-               class="input"
-               placeholder="Petti, Omo, etc.">
-      </div>
-
-      <!-- PRECIO -->
-      <div>
-        <label class="label">Precio (Gs.)</label>
-        <input id="ed_precio"
-               class="input"
-               type="number"
-               step="0.01"
-               min="0"
-               placeholder="0.00">
-      </div>
-
-      <!-- COSTO -->
-      <div>
-        <label class="label">Costo (Gs.)</label>
-        <input id="ed_costo"
-               class="input"
-               type="number"
-               step="0.01"
-               min="0"
-               placeholder="0.00">
-      </div>
-
-      <!-- STOCK -->
-      <div style="grid-column:1/-1">
-        <label class="label">Cantidad</label>
-        <input id="ed_stock"
-               class="input"
-               type="number"
-               min="0"
-               step="1"
-               placeholder="0">
-      </div>
-
-      <!-- IMAGEN -->
-      <div style="grid-column:1/-1">
-        <label class="label">Imagen (opcional)</label>
-        <input id="ed_img"
-               type="file"
-               accept="image/*"
-               class="input">
-      </div>
-
-    </div>
-
-    <div class="actions" style="margin-top:1rem">
-      <button class="btn btn-success" onclick="actualizarProducto()">
-        Guardar
-      </button>
-
-      <button class="btn btn-danger" onclick="closeModal('modalProductoEdit')">
-        Cerrar
-      </button>
-    </div>
-  </div>
-</div>
-<!-- Categoría: NUEVA -->
-<div class="modal" id="modalCategoria"><div class="sheet">
-  <h3>Nueva Categoría</h3>
-  <div class="grid cols-2">
-    <div style="grid-column:1/-1"><label class="label">Nombre</label><input id="cat_nombre" class="input"></div>
-    <div><label class="label">Código</label><input id="cat_codigo" class="input"></div>
-    <div><label class="label">Imagen</label><input id="cat_img" type="file" accept="image/*" class="input"></div>
-    <div style="grid-column:1/-1"><label class="label">Descripción</label><input id="cat_desc" class="input"></div>
-  </div>
-  <div class="actions" style="margin-top:1rem">
-  <button class="btn btn-green" onclick="guardarCategoria()">Guardar</button>
-  <button class="btn btn-red" onclick="closeModal('modalCategoria')">Cerrar</button>
-</div>
-</div></div>
-
-<!-- Categoría: EDITAR -->
-<div class="modal" id="modalCategoriaEdit">
-  <div class="sheet">
-    <h3>Editar Categoría</h3>
-    <input type="hidden" id="cat_edit_id"/>
-
-    <div class="grid cols-2">
-      <div style="grid-column:1/-1">
-        <label class="label">Categoría</label>
-        <input id="cat_ed_nombre" class="input" placeholder="Nombre de la categoría">
-      </div>
-
-      <div>
-        <label class="label">Código</label>
-        <input id="cat_ed_codigo" class="input" placeholder="Código interno (opcional)">
-      </div>
-
-      <div>
-        <label class="label">Imagen (opcional)</label>
-        <input id="cat_ed_img" type="file" accept="image/*" class="input">
-        <div style="margin-top:.5rem;display:flex;align-items:center;gap:.5rem">
-          <img id="cat_ed_preview" src="" alt=""
-               style="width:48px;height:48px;border-radius:.5rem;object-fit:cover;border:1px solid #e5e7eb;display:none">
-          <span class="text-muted">PNG / JPG</span>
-        </div>
-      </div>
-
-      <div style="grid-column:1/-1">
-        <label class="label">Descripción</label>
-        <input id="cat_ed_desc" class="input" placeholder="Descripción de la categoría">
-      </div>
-    </div>
-
-    <div class="actions" style="margin-top:1rem">
-      <button class="btn btn-success" onclick="actualizarCategoria()">Guardar cambios</button>
-      <button class="btn btn-danger" onclick="closeModal('modalCategoriaEdit')">Cerrar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL — EDITAR COMPRA -->
-<div id="modalEditarCompra" class="modal-overlay" style="display:none;">
-  <input type="hidden" id="edit_compra_id">
-
-  <div class="ec-modal">
-    <div class="ec-header">
-      <div class="ec-header-text">
-        <h3><i class="fa fa-pen-to-square"></i> Editar Compra</h3>
-        <p>Actualizá proveedor, factura, moneda y productos</p>
-      </div>
-
-      <button
-        class="ec-close"
-        type="button"
-        onclick="closeModal('modalEditarCompra')">×</button>
-    </div>
-
-    <div class="ec-body">
-      <!-- IZQUIERDA -->
-      <div class="ec-main">
-        <div class="ec-card">
-          <div class="ec-card-title">Productos</div>
-
-          <div class="ec-product-form">
-            <div class="ec-field ec-field-grow">
-              <label>Producto</label>
-              <select id="edit_c_producto" class="form-select" onchange="onChangeProductoEditarCompra()"></select>
+          <div class="ec-header">
+            <div>
+              <h2><i class="fa-solid fa-receipt"></i> Nueva Venta</h2>
+              <p>Registre productos por escáner o de forma manual</p>
             </div>
 
-            <div class="ec-field ec-field-sm">
-              <label>Cantidad</label>
-              <input type="number" id="edit_c_cantidad" min="1" value="1" class="form-control">
+            <button class="ec-close" type="button" onclick="closeModal('modalVenta')">
+              ×
+            </button>
+          </div>
+
+          <div class="ec-body">
+
+            <div class="ec-main">
+
+              <div class="ec-card">
+                <h3>Datos de la Venta</h3>
+
+                <div class="grid cols-2" style="gap:16px;">
+                  <div class="ec-field">
+                    <label>Cliente</label>
+                    <select id="v_cliente" class="input">
+                      <option value="">Consumidor Final</option>
+                    </select>
+                  </div>
+
+                  <div class="ec-field">
+                    <label>RUC / CI</label>
+                    <input id="v_ruc" class="input" readonly>
+                  </div>
+
+                  <div class="ec-field">
+                    <label>Fecha</label>
+                    <input type="date" id="v_fecha" class="input">
+                  </div>
+
+                  <div class="ec-field">
+                    <label>Estado</label>
+                    <select id="v_estado_pago" class="input">
+                      <option value="pagado">Pagado</option>
+                      <option value="pendiente">Pendiente</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ec-card">
+                <h3>Escáner</h3>
+
+                <div class="ec-field">
+                  <label>Código de barras</label>
+                  <input id="barcodeVenta" class="input" placeholder="Escanee el código de barras">
+                </div>
+              </div>
+
+              <div class="ec-card">
+                <h3>Agregar manualmente</h3>
+
+                <div class="ec-field">
+                  <label>Buscar producto</label>
+                  <input id="buscarProductoManual" class="input" placeholder="Buscar por nombre o código..."
+                    oninput="buscarProductosManual(this.value)" autocomplete="off">
+                </div>
+
+                <div id="listaProductosManual" style="display:none; margin-top:10px;"></div>
+
+                <div class="grid cols-2" style="gap:16px; margin-top:14px;">
+                  <div class="ec-field">
+                    <label>Cantidad</label>
+                    <input id="cantidadManualVenta" type="number" min="1" value="1" class="input">
+                  </div>
+
+                  <div class="ec-field">
+                    <label>Precio</label>
+                    <input id="precioManualVenta" type="text" class="input" readonly>
+                  </div>
+                </div>
+
+                <div style="margin-top:16px;">
+                  <button class="btn btn-primary" type="button" onclick="agregarProductoManualVenta()">
+                    + Agregar producto
+                  </button>
+                </div>
+              </div>
+
             </div>
 
-            <div class="ec-field ec-field-sm">
-              <label id="label_edit_c_costo">Costo (Gs.)</label>
-              <input type="text" id="edit_c_costo" inputmode="numeric" value="0" class="form-control">
-            </div>
+            <aside class="ec-sidebar">
 
-            <div class="ec-field ec-field-btn">
-              <label>&nbsp;</label>
-              <button class="btn btn-primary w-100" onclick="agregarProductoEditarCompra()">
-                + Añadir
-              </button>
-            </div>
-          </div>
-        </div>
+              <div class="ec-card ec-total-card">
+                <h4>Total Venta</h4>
+                <div id="v_total_box" class="ec-total-amount">
+                  <span id="v_total">0</span> Gs.
+                </div>
+              </div>
 
-        <div class="ec-card ec-table-card">
-          <div class="ec-top-total">
-            <span>Total Compra:</span>
-            <strong id="edit_compra_total_top">Gs. 0</strong>
-          </div>
+              <div class="ec-card ec-table-card">
+                <h3>Productos de la venta</h3>
 
-          <div class="ec-card-title">Listado de Productos</div>
+                <div class="ec-table-wrap">
+                  <table class="ec-table">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th>Cant.</th>
+                        <th>Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody id="v_items"></tbody>
+                  </table>
+                </div>
+              </div>
 
-          <div class="ec-table-wrap">
-            <table class="table ec-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Cant.</th>
-                  <th>Costo</th>
-                  <th>Subtotal</th>
-                  <th>Opciones</th>
-                </tr>
-              </thead>
-              <tbody id="edit_compra_items"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+              <div class="ec-actions">
+                <button class="btn btn-secondary" type="button" onclick="closeModal('modalVenta')">
+                  Cancelar
+                </button>
 
-      <!-- DERECHA -->
-      <div class="ec-sidebar">
-        <div class="ec-card ec-summary-primary">
-          <div class="ec-summary-primary-title">Total Compra</div>
-          <div class="ec-summary-primary-amount" id="edit_compra_total_sidebar">Gs. 0</div>
-        </div>
+                <button class="btn btn-primary" type="button" onclick="abrirPago()">
+                  <i class="fa-solid fa-sack-dollar"></i> Cobrar venta
+                </button>
+              </div>
 
-        <div class="ec-card">
-          <div class="ec-card-title">Datos de la Compra</div>
-
-          <div class="ec-sidebar-fields">
-            <div class="ec-field-full">
-              <label>Proveedor</label>
-              <select id="edit_compra_proveedor" class="form-select"></select>
-            </div>
-
-            <div class="ec-field-full">
-              <label>Fecha</label>
-              <input type="date" id="edit_compra_fecha" class="form-control">
-            </div>
-
-            <div class="ec-field-full">
-              <label>N° Factura</label>
-              <input type="text" id="edit_compra_factura" class="form-control">
-            </div>
-
-            <div class="ec-field-full">
-              <label>Forma de Pago</label>
-              <select id="edit_compra_tipo_pago" class="form-select">
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-              </select>
-            </div>
-
-            <div class="ec-field-full">
-              <label>Moneda</label>
-              <select id="edit_c_moneda" class="form-select" onchange="toggleMonedaEditarCompra()">
-                <option value="PYG">Guaraníes (Gs.)</option>
-                <option value="USD">Dólar (US$)</option>
-                <option value="BRL">Real (R$)</option>
-              </select>
-            </div>
-
-            <div class="ec-field-full" id="wrap_edit_c_tipo_cambio" style="display:none;">
-              <label>Tipo de cambio</label>
-              <input
-                type="number"
-                id="edit_c_tipo_cambio_moneda"
-                class="form-control"
-                step="0.01"
-                min="0"
-                value="1"
-                placeholder="Ej: 7900"
-                oninput="renderItemsEditarCompra()"
-              >
-            </div>
-          </div>
-        </div>
-
-        <div class="ec-card">
-          <div class="ec-card-title">Resumen</div>
-
-          <div class="ec-resume-row">
-            <span>Subtotal</span>
-            <strong id="edit_compra_subtotal">Gs. 0</strong>
-          </div>
-
-          <div class="ec-resume-row">
-            <span>IVA 10%</span>
-            <strong id="edit_compra_iva">Gs. 0</strong>
-          </div>
-
-          <div class="ec-resume-row ec-resume-total">
-            <span>Total</span>
-            <strong id="edit_compra_total">Gs. 0</strong>
-          </div>
-        </div>
-
-        <div class="ec-actions">
-          <button class="btn btn-secondary" onclick="closeModal('modalEditarCompra')">Cancelar</button>
-          <button class="btn btn-primary" onclick="guardarEdicionCompra()">Guardar Cambios</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL FUERA DEL MAIN -->
-<div id="logoutModal" class="modal" style="display:none;">
-  <div class="modal-content">
-    <h3>¿Cerrar sesión?</h3>
-    <p>¿Estás seguro de que deseas salir del sistema?</p>
-
-    <div class="modal-buttons">
-      <button onclick="confirmLogout()" class="btn red">Sí, cerrar</button>
-      <button onclick="closeLogoutModal()" class="btn secondary">Cancelar</button>
-    </div>
-  </div>
-</div>
-<!-- MODAL ELIMINAR COMPRA -->
-<div id="modalEliminarCompra" class="modal-overlay" style="display:none;">
-  <div class="modal-content small-modal">
-
-      <h3><i class="fa fa-trash"></i> Eliminar Compra</h3>
-
-      <p>¿Estás seguro de que deseas eliminar esta compra?</p>
-
-      <!-- Aquí guardamos el ID -->
-      <input type="hidden" id="delete_compra_id">
-
-      <div class="actions" style="margin-top:1rem;gap:1rem;justify-content:flex-end;">
-          <button class="btn secondary" onclick="closeModal('modalEliminarCompra')">Cancelar</button>
-
-          <button class="btn btn-danger" onclick="eliminarCompraConfirmada()">
-              Eliminar
-          </button>
-      </div>
-
-  </div>
-</div>
-
-<!-- MODAL ELIMINAR PEDIDO -->
-<div id="modalEliminarPedido" class="modal-overlay" style="display:none;">
-  <div class="modal-content small-modal">
-
-      <h3><i class="fa fa-trash"></i> Eliminar Pedido</h3>
-
-      <p>¿Estás seguro de que deseas eliminar este pedido?</p>
-
-      <input type="hidden" id="delete_pedido_id">
-
-      <div class="actions" style="margin-top:1rem;gap:1rem;justify-content:flex-end;">
-          <button class="btn secondary" onclick="closeModal('modalEliminarPedido')">Cancelar</button>
-
-          <button class="btn btn-danger" onclick="eliminarPedidoConfirmado()">
-              <i class="fa fa-trash"></i> Eliminar
-          </button>
-      </div>
-
-  </div>
-</div>
-
-<section id="caja" class="view hidden caja-view">
-  <div class="actions caja-actions-top">
-    <button class="btn btn-primary" onclick="descargarInformeCajaPDF()">
-      <i class="fa-solid fa-file-pdf"></i> Descargar informe PDF
-    </button>
-  </div>
-
-  <!-- APERTURA / CIERRE -->
-<div class="card caja-top-grid">
-  <div class="caja-box">
-    <div class="caja-box-head">
-      <div class="caja-box-icon caja-box-icon-efectivo">
-        <i class="fa-solid fa-cash-register"></i>
-      </div>
-      <div>
-        <h3>Caja Efectivo</h3>
-        <small>Control de efectivo</small>
-      </div>
-    </div>
-
-    <label class="label">Fecha</label>
-    <input type="date" id="fechaCajaEfectivo" class="input">
-
-    <div class="grid cols-3" style="margin-top:10px">
-      
-
-      
-    </div>
-
-    <div class="actions caja-btn-row">
-      <button class="btn primary" onclick="abrirCaja('efectivo')">🟢 Abrir Caja</button>
-      <button class="btn red gris" onclick="cerrarCaja('efectivo')">🔴 Cerrar Caja</button>
-    </div>
-
-    <div id="estadoCajaEfectivo" class="caja-estado"></div>
-  </div>
-
-  <div class="caja-box">
-    <div class="caja-box-head">
-      <div class="caja-box-icon caja-box-icon-transferencia">
-        <i class="fa-solid fa-repeat"></i>
-      </div>
-      <div>
-        <h3>Caja Transferencia</h3>
-        <small>Control de transferencias</small>
-      </div>
-    </div>
-
-    <label class="label">Fecha</label>
-    <input type="date" id="fechaCajaTransferencia" class="input">
-
-    <div class="grid cols-3" style="margin-top:10px">
-    </div>
-
-    <div class="actions caja-btn-row">
-      <button class="btn primary" onclick="abrirCaja('transferencia')">🟢 Abrir Caja</button>
-      <button class="btn red gris" onclick="cerrarCaja('transferencia')">🔴 Cerrar Caja</button>
-    </div>
-
-    <div id="estadoCajaTransferencia" class="caja-estado"></div>
-  </div>
-</div>
-
-  <!-- RESÚMENES -->
-  <div class="caja-resumen-grid">
-
-    <!-- DÍA -->
-    <div class="resumen-caja-card">
-      <div class="resumen-caja-head">
-        <h3>📅 Recaudado del día</h3>
-        <span class="resumen-pill">HOY</span>
-      </div>
-
-      <div class="resumen-cols">
-        <div class="resumen-bloque">
-          <h4>💵 Efectivo</h4>
-
-          <div class="resumen-item">
-            <span>Ingreso</span>
-            <strong id="dia-ingreso-efectivo" class="valor ingreso">Gs. 0</strong>
-          </div>
-
-          <div class="resumen-item">
-            <span>Egreso</span>
-            <strong id="dia-egreso-efectivo" class="valor egreso">Gs. 0</strong>
-          </div>
-
-          <div class="resumen-item">
-            <span>Saldo</span>
-            <strong id="dia-efectivo" class="valor saldo">Gs. 0</strong>
-          </div>
-        </div>
-
-        <div class="resumen-bloque">
-          <h4>🏦 Transferencia</h4>
-
-          <div class="resumen-item">
-            <span>Ingreso</span>
-            <strong id="dia-ingreso-transferencia" class="valor ingreso">Gs. 0</strong>
-          </div>
-
-          <div class="resumen-item">
-            <span>Egreso</span>
-            <strong id="dia-egreso-transferencia" class="valor egreso">Gs. 0</strong>
-          </div>
-
-          <div class="resumen-item">
-            <span>Saldo</span>
-            <strong id="dia-transferencia" class="valor saldo">Gs. 0</strong>
+            </aside>
           </div>
         </div>
       </div>
 
-      <div class="resumen-total">
-        <span>Total sobrante del día</span>
-        <strong id="dia-total">Gs. 0</strong>
-      </div>
-    </div>
+      <!-- ===== MODAL PAGO ===== -->
+      <div id="modalPago" class="modal-overlay" style="display:none;">
+        <div class="modal-content pago-modal pago-modal-pro">
 
-    <!-- MES -->
-    <div class="resumen-caja-card">
-      <div class="resumen-caja-head">
-        <h3>📆 Recaudado del mes</h3>
-        <span class="resumen-pill resumen-pill-mes">MES</span>
-      </div>
-
-      <div class="resumen-cols">
-        <div class="resumen-bloque">
-          <h4>💵 Efectivo</h4>
-
-          <div class="resumen-item">
-            <span>Ingreso</span>
-            <strong id="mes-ingreso-efectivo" class="valor ingreso">Gs. 0</strong>
+          <div class="pago-modal-header-pro">
+            <h3>Seleccionar Forma de Pago</h3>
           </div>
 
-          <div class="resumen-item">
-            <span>Egreso</span>
-            <strong id="mes-egreso-efectivo" class="valor egreso">Gs. 0</strong>
+          <!-- IMPORTANTE:
+         VACÍO.
+         Los botones ahora se cargan desde la BD -->
+          <div class="pago-grid" id="gridFormasPago"></div>
+
+          <div id="mensajeFormaPago" class="mensaje-forma-pago-pro" style="display:none;">
           </div>
 
-          <div class="resumen-item">
-            <span>Saldo</span>
-            <strong id="mes-efectivo" class="valor saldo">Gs. 0</strong>
-          </div>
-        </div>
+          <!-- COMPROBANTE -->
+          <div id="wrapComprobante" class="pago-comprobante-card" style="display:none;">
 
-        <div class="resumen-bloque">
-          <h4>🏦 Transferencia</h4>
+            <label class="label">
+              Nro. de comprobante
+            </label>
 
-          <div class="resumen-item">
-            <span>Ingreso</span>
-            <strong id="mes-ingreso-transferencia" class="valor ingreso">Gs. 0</strong>
-          </div>
+            <input type="text" id="inputComprobante" class="input" placeholder="Ej: 00012345">
 
-          <div class="resumen-item">
-            <span>Egreso</span>
-            <strong id="mes-egreso-transferencia" class="valor egreso">Gs. 0</strong>
-          </div>
-
-          <div class="resumen-item">
-            <span>Saldo</span>
-            <strong id="mes-transferencia" class="valor saldo">Gs. 0</strong>
-          </div>
-        </div>
-      </div>
-
-      <div class="resumen-total">
-        <span>Total sobrante del mes</span>
-        <strong id="mes-total">Gs. 0</strong>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<section id="formas-pago" class="view hidden">
-
-  <div class="card">
-    <h3><i class="fa fa-credit-card"></i> Formas de Pago</h3>
-
-    <div class="caja-horizontal" style="margin-top:1rem">
-
-      <!-- EFECTIVO -->
-      <div class="caja-col caja-resumen">
-        <h4>💵 Efectivo</h4>
-        <p>Hoy: <b id="fp-dia-efectivo">Gs. 0</b></p>
-        <p>Mes: <b id="fp-mes-efectivo">Gs. 0</b></p>
-      </div>
-
-      <!-- TRANSFERENCIA -->
-      <div class="caja-col caja-resumen">
-        <h4>🔁 Transferencia</h4>
-        <p>Hoy: <b id="fp-dia-transferencia">Gs. 0</b></p>
-        <p>Mes: <b id="fp-mes-transferencia">Gs. 0</b></p>
-      </div>
-
-      <!-- TOTAL -->
-      <div class="caja-col caja-resumen">
-        <h4>📊 Total</h4>
-        <p>Hoy: <b id="fp-dia-total">Gs. 0</b></p>
-        <p>Mes: <b id="fp-mes-total">Gs. 0</b></p>
-      </div>
-
-    </div>
-
-    <!-- DETALLE POR BANCO / FORMA -->
-    <div id="fp-detalle" style="margin-top:1rem"></div>
-    <!-- ✅ NUEVO: MOVIMIENTOS CON COMPROBANTE (NO afecta fp-detalle) -->
-<div id="fp-movimientos" style="margin-top:1rem">
-  <h4 style="margin:0 0 .5rem 0;">🧾 Últimos movimientos (con comprobante)</h4>
-
-  <div style="overflow:auto; border:1px solid #e5e7eb; border-radius:10px;">
-    <table style="width:100%; border-collapse:collapse;">
-      <thead>
-        <tr style="background:#f3f4f6;">
-          <th style="text-align:left; padding:10px;">ID</th>
-          <th style="text-align:left; padding:10px;">Fecha</th>
-          <th style="text-align:left; padding:10px;">Cliente</th>
-          <th style="text-align:left; padding:10px;">Forma/Banco</th>
-          <th style="text-align:left; padding:10px;">Nro. Comprobante</th>
-          <th style="text-align:right; padding:10px;">Total</th>
-        </tr>
-      </thead>
-      <tbody id="fp-tbody-mov"></tbody>
-    </table>
-  </div>
-  <div id="fp-mov-paginacion" class="tabla-paginacion"></div>
-</div>
-
-  </div>
-</main>
-</section>
-</div>
-
-
-
-<!-- ============================
-   MODAL — NUEVA COMPRA
-============================ -->
-<div id="modalNuevaCompra" class="modal-overlay" style="display:none;">
-  <div class="ec-modal">
-
-    <div class="ec-header">
-      <div>
-        <h2><i class="fa afa-cart-shopping"></i> Nueva Compra</h2>
-        <p>Cargá proveedor, factura, moneda y productos</p>
-      </div>
-      <button
-        class="ec-close"
-        type="button"
-        onclick="closeModal('modalNuevaCompra')"
-      >
-        ×
-      </button>
-    </div>
-
-    <div class="ec-body">
-
-      <!-- IZQUIERDA -->
-      <div class="ec-main">
-
-        <div class="ec-card ec-product-card">
-          <h3>Productos</h3>
-
-          <div class="ec-product-form">
-            <div class="ec-field ec-field-product">
-              <label>Producto</label>
-              <select
-                id="c_producto"
-                class="input"
-                onchange="onChangeProductoCompra()"
-              >
-                <option value="">Seleccione producto...</option>
-              </select>
-            </div>
-
-            <div class="ec-field">
-              <label>Cantidad</label>
-              <input
-                type="number"
-                id="c_cantidad"
-                min="1"
-                value="1"
-                class="input"
-              >
-            </div>
-
-            <div class="ec-field">
-              <label id="label_c_costo">Costo (Gs.)</label>
-              <input
-                type="text"
-                id="c_costo"
-                inputmode="numeric"
-                value="0"
-                class="input"
-              >
-            </div>
-
-            <div class="ec-field ec-field-btn">
-              <label>&nbsp;</label>
-              <button
-                class="btn btn-primary"
-                type="button"
-                onclick="agregarItemCompra()"
-              >
-                + Añadir
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="ec-card ec-table-card">
-          <div class="ec-top-total">
-            <span>Total Compra:</span>
-            <strong id="c_total_principal">Gs. 0</strong>
-          </div>
-
-          <h3>Listado de Productos</h3>
-
-          <div class="ec-table-wrap">
-            <table class="ec-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Cant.</th>
-                  <th>Costo</th>
-                  <th>Subtotal</th>
-                  <th>Opciones</th>
-                </tr>
-              </thead>
-              <tbody id="c_items"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- DERECHA -->
-      <aside class="ec-sidebar">
-
-        <div class="ec-card ec-total-card">
-          <h4>Total Compra</h4>
-          <div id="c_total_moneda" class="ec-total-amount">Gs. 0</div>
-        </div>
-
-        <div class="ec-card">
-          <h3>Datos de la Compra</h3>
-
-          <div class="ec-field">
-            <label>Proveedor</label>
-            <select
-              id="c_proveedor"
-              class="input"
-              onchange="setProximaFacturaCompra()"
-            ></select>
-          </div>
-
-          <div class="ec-field">
-            <label>Fecha</label>
-            <input
-              type="date"
-              id="c_fecha"
-              class="input"
-            >
-          </div>
-
-          <div class="ec-field">
-            <label>N° Factura</label>
-            <input
-              type="text"
-              id="c_factura"
-              class="input"
-            >
-          </div>
-
-          <div class="ec-field">
-            <label>Forma de Pago</label>
-            <select id="c_tipo_pago" class="input">
-              <option value="efectivo">Efectivo</option>
-              <option value="transferencia">Transferencia</option>
-            </select>
-          </div>
-
-          <div class="ec-field">
-            <label>Moneda</label>
-            <select
-              id="c_moneda"
-              class="input"
-              onchange="toggleMonedaCompra()"
-            >
-              <option value="PYG">Guaraníes (Gs.)</option>
-              <option value="USD">Dólar (US$)</option>
-              <option value="BRL">Real (R$)</option>
-            </select>
-          </div>
-
-          <div class="ec-field" id="wrap_c_tipo_cambio" style="display:none;">
-            <label>Tipo de cambio a guaraníes</label>
-            <input
-              type="number"
-              id="c_tipo_cambio_moneda"
-              class="input"
-              step="0.01"
-              min="0"
-              value="1"
-              placeholder="Ej:6350"
-              oninput="renderItemsCompra()"
-            >
-            <small style="display:block; margin-top:6px; color:#6b7280;">
-              Ingrese la cotización usada para esta compra.
+            <small class="pago-help-text">
+              Obligatorio para QR y transferencias bancarias.
             </small>
           </div>
 
-          <div
-            id="resumenMonedaCompra"
-            style="margin-top:12px; padding:.8rem; border:1px solid #dbeafe; background:#eff6ff; border-radius:8px;"
-          >
-            <div style="font-weight:600; color:#1d4ed8; margin-bottom:6px;">
-              Resumen de moneda
+          <div class="pago-layout-pro">
+
+            <!-- EFECTIVO -->
+            <div class="pago-col">
+
+              <div id="bloqueEfectivo" class="pago-card efectivo-destacado" style="display:none;">
+
+                <label class="label" id="labelMontoRecibido">
+                  Monto recibido (Gs.)
+                </label>
+
+                <input type="text" id="montoRecibido" class="input input-efectivo" placeholder="0"
+                  oninput="formatearMontoRecibido()">
+
+                <div class="vuelto-box-pro">
+
+                  <div class="vuelto-label">
+                    Vuelto
+                  </div>
+
+                  <div id="vuelto" class="vuelto-valor">
+                    Gs. 0
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- MONEDA -->
+              <div class="pago-col">
+
+                <div class="pago-card">
+
+                  <label class="label">
+                    Moneda
+                  </label>
+
+                  <select id="v_moneda" class="input" onchange="toggleTipoCambioVenta()">
+                    <option value="PYG">
+                      Guaraníes (Gs.)
+                    </option>
+
+                    <option value="USD">
+                      Dólar (US$)
+                    </option>
+
+                    <option value="BRL">
+                      Real (R$)
+                    </option>
+                  </select>
+
+                  <div id="wrapTipoCambio" style="display:none; margin-top:12px;">
+
+                    <label class="label">
+                      Tipo de cambio a guaraníes
+                    </label>
+
+                    <input type="number" id="v_tipo_cambio" class="input" value="6350" readonly disabled tabindex="-1"
+                      style="
+                background:#f1f5f9;
+                cursor:not-allowed;
+                color:#475569;
+              ">
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- RESUMEN -->
+              <div class="pago-col">
+
+                <div id="resumenMonedaVenta" class="pago-card pago-resumen-card">
+
+                  <div class="pago-resumen-title">
+                    Resumen de moneda
+                  </div>
+
+                  <div class="pago-resumen-line">
+                    Total en moneda:
+                    <strong id="v_total_moneda">
+                      Gs. 0
+                    </strong>
+                  </div>
+
+                  <div class="pago-resumen-line">
+                    Total en guaraníes:
+                    <strong id="v_total_pyg">
+                      Gs. 0
+                    </strong>
+                  </div>
+
+                </div>
+
+              </div>
+
             </div>
 
-            <div style="color:#374151;">
-              Subtotal en moneda: <strong id="c_subtotal_moneda">Gs. 0</strong>
+            <!-- BOTONES -->
+            <div class="modal-actions pago-actions-pro">
+
+              <button class="btn primary" onclick="confirmarPagoFinal()">
+                Confirmar Pago
+              </button>
+
+              <button class="btn secondary" onclick="closeModal('modalPago')">
+                Cancelar
+              </button>
+
             </div>
 
-            <div style="color:#374151; margin-top:4px;">
-              IVA en moneda: <strong id="c_iva_moneda">Gs. 0</strong>
+          </div>
+        </div>
+        </div>
+        <!-- Producto: NUEVO -->
+        <div class="modal" id="modalProducto">
+          <div class="sheet">
+            <h3>+Nuevo Producto</h3>
+
+            <div class="grid cols-2">
+
+              <!-- NOMBRE -->
+              <div style="grid-column:1/-1">
+                <label class="label">Nombre del Producto</label>
+                <input id="pr_nombre" class="input" placeholder="Ej: Cable cargador grueso">
+              </div>
+
+              <!-- CÓDIGO -->
+              <div>
+                <label class="label">Código / SKU</label>
+                <input id="pr_codigo" class="input" placeholder="SKU o código de barras">
+              </div>
+
+              <!-- CATEGORÍA -->
+              <div>
+                <label class="label">Categoría</label>
+                <input id="pr_cat" class="input" placeholder="Ej. Lácteos, Galletitas, Limpieza...">
+              </div>
+
+              <!-- MARCA -->
+              <div style="grid-column:1/-1">
+                <label class="label">Marca</label>
+                <input id="pr_marca" class="input" placeholder="Petti, Omo, etc.">
+              </div>
+
+              <!-- PRECIO -->
+              <div>
+                <label class="label">Precio (Gs.)</label>
+                <input id="pr_precio" class="input" type="text" inputmode="numeric" placeholder="0"
+                  oninput="formatearMilesPY(this)">
+              </div>
+
+              <!-- COSTO -->
+              <div>
+                <label class="label">Costo (Gs.)</label>
+                <input id="pr_costo" class="input" type="text" inputmode="numeric" placeholder="0"
+                  oninput="formatearMilesPY(this)">
+              </div>
+
+              <!-- STOCK -->
+              <div>
+                <label class="label">Cantidad</label>
+                <input id="pr_stock" class="input" type="number" min="0" step="1" placeholder="0">
+              </div>
+
+              <!-- IMAGEN -->
+              <div style="grid-column:1/-1">
+                <label class="label">Imagen (opcional)</label>
+                <input id="pr_img" type="file" accept="image/*">
+              </div>
+
             </div>
 
-            <div style="color:#374151; margin-top:4px;">
-              Total en moneda: <strong id="c_total_moneda_text">Gs. 0</strong>
-            </div>
+            <div class="actions" style="margin-top:1rem">
+              <button class="btn btn-guardar" onclick="guardarProducto(event)">
+                Guardar
+              </button>
 
-            <div style="color:#374151; margin-top:4px;">
-              Total en guaraníes: <strong id="c_total_pyg_resumen">Gs. 0</strong>
+              <button class="btn btn-cerrar" onclick="closeModal('modalProducto')">
+                Cerrar
+              </button>
             </div>
           </div>
         </div>
 
-        <div class="ec-actions">
-          <button
-            class="btn btn-secondary"
-            type="button"
-            onclick="closeModal('modalNuevaCompra')"
-          >
-            Cancelar
-          </button>
+        <!-- Producto: EDITAR -->
+        <div class="modal" id="modalProductoEdit">
+          <div class="sheet">
+            <h3>Editar Producto</h3>
 
-          <button
-            class="btn btn-primary"
-            type="button"
-            onclick="guardarCompra()"
-          >
-            <i class="fa fa-check"></i> Guardar Compra
-          </button>
+            <input type="hidden" id="edit_id" />
+
+            <div class="grid cols-2">
+
+              <!-- NOMBRE -->
+              <div style="grid-column:1/-1">
+                <label class="label">Nombre del Producto</label>
+                <input id="ed_nombre" class="input" placeholder="Ej: Cable cargador grueso">
+              </div>
+
+              <!-- CÓDIGO -->
+              <div>
+                <label class="label">Código / SKU</label>
+                <input id="ed_codigo" class="input" placeholder="SKU o código de barras">
+              </div>
+
+              <!-- CATEGORÍA -->
+              <div>
+                <label class="label">Categoría</label>
+                <input id="ed_cat" class="input" placeholder="Ej. Lácteos, Galletitas, Limpieza...">
+              </div>
+
+              <!-- MARCA -->
+              <div style="grid-column:1/-1">
+                <label class="label">Marca</label>
+                <input id="ed_marca" class="input" placeholder="Petti, Omo, etc.">
+              </div>
+
+              <!-- PRECIO -->
+              <div>
+                <label class="label">Precio (Gs.)</label>
+                <input id="ed_precio" class="input" type="number" step="0.01" min="0" placeholder="0.00">
+              </div>
+
+              <!-- COSTO -->
+              <div>
+                <label class="label">Costo (Gs.)</label>
+                <input id="ed_costo" class="input" type="number" step="0.01" min="0" placeholder="0.00">
+              </div>
+
+              <!-- STOCK -->
+              <div style="grid-column:1/-1">
+                <label class="label">Cantidad</label>
+                <input id="ed_stock" class="input" type="number" min="0" step="1" placeholder="0">
+              </div>
+
+              <!-- IMAGEN -->
+              <div style="grid-column:1/-1">
+                <label class="label">Imagen (opcional)</label>
+                <input id="ed_img" type="file" accept="image/*" class="input">
+              </div>
+
+            </div>
+
+            <div class="actions" style="margin-top:1rem">
+              <button class="btn btn-success" onclick="actualizarProducto()">
+                Guardar
+              </button>
+
+              <button class="btn btn-danger" onclick="closeModal('modalProductoEdit')">
+                Cerrar
+              </button>
+            </div>
+          </div>
         </div>
-      </aside>
-    </div>
-  </div>
-</div>
+        <!-- Categoría: NUEVA -->
+        <div class="modal" id="modalCategoria">
+          <div class="sheet">
+            <h3>Nueva Categoría</h3>
+            <div class="grid cols-2">
+              <div style="grid-column:1/-1"><label class="label">Nombre</label><input id="cat_nombre" class="input">
+              </div>
+              <div><label class="label">Código</label><input id="cat_codigo" class="input"></div>
+              <div><label class="label">Imagen</label><input id="cat_img" type="file" accept="image/*" class="input">
+              </div>
+              <div style="grid-column:1/-1"><label class="label">Descripción</label><input id="cat_desc" class="input">
+              </div>
+            </div>
+            <div class="actions" style="margin-top:1rem">
+              <button class="btn btn-green" onclick="guardarCategoria()">Guardar</button>
+              <button class="btn btn-red" onclick="closeModal('modalCategoria')">Cerrar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Categoría: EDITAR -->
+        <div class="modal" id="modalCategoriaEdit">
+          <div class="sheet">
+            <h3>Editar Categoría</h3>
+            <input type="hidden" id="cat_edit_id" />
+
+            <div class="grid cols-2">
+              <div style="grid-column:1/-1">
+                <label class="label">Categoría</label>
+                <input id="cat_ed_nombre" class="input" placeholder="Nombre de la categoría">
+              </div>
+
+              <div>
+                <label class="label">Código</label>
+                <input id="cat_ed_codigo" class="input" placeholder="Código interno (opcional)">
+              </div>
+
+              <div>
+                <label class="label">Imagen (opcional)</label>
+                <input id="cat_ed_img" type="file" accept="image/*" class="input">
+                <div style="margin-top:.5rem;display:flex;align-items:center;gap:.5rem">
+                  <img id="cat_ed_preview" src="" alt=""
+                    style="width:48px;height:48px;border-radius:.5rem;object-fit:cover;border:1px solid #e5e7eb;display:none">
+                  <span class="text-muted">PNG / JPG</span>
+                </div>
+              </div>
+
+              <div style="grid-column:1/-1">
+                <label class="label">Descripción</label>
+                <input id="cat_ed_desc" class="input" placeholder="Descripción de la categoría">
+              </div>
+            </div>
+
+            <div class="actions" style="margin-top:1rem">
+              <button class="btn btn-success" onclick="actualizarCategoria()">Guardar cambios</button>
+              <button class="btn btn-danger" onclick="closeModal('modalCategoriaEdit')">Cerrar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL — EDITAR COMPRA -->
+        <div id="modalEditarCompra" class="modal-overlay" style="display:none;">
+          <input type="hidden" id="edit_compra_id">
+
+          <div class="ec-modal">
+            <div class="ec-header">
+              <div class="ec-header-text">
+                <h3><i class="fa fa-pen-to-square"></i> Editar Compra</h3>
+                <p>Actualizá proveedor, factura, moneda y productos</p>
+              </div>
+
+              <button class="ec-close" type="button" onclick="closeModal('modalEditarCompra')">×</button>
+            </div>
+
+            <div class="ec-body">
+              <!-- IZQUIERDA -->
+              <div class="ec-main">
+                <div class="ec-card">
+                  <div class="ec-card-title">Productos</div>
+
+                  <div class="ec-product-form">
+                    <div class="ec-field ec-field-grow">
+                      <label>Producto</label>
+                      <select id="edit_c_producto" class="form-select"
+                        onchange="onChangeProductoEditarCompra()"></select>
+                    </div>
+
+                    <div class="ec-field ec-field-sm">
+                      <label>Cantidad</label>
+                      <input type="number" id="edit_c_cantidad" min="1" value="1" class="form-control">
+                    </div>
+
+                    <div class="ec-field ec-field-sm">
+                      <label id="label_edit_c_costo">Costo (Gs.)</label>
+                      <input type="text" id="edit_c_costo" inputmode="numeric" value="0" class="form-control">
+                    </div>
+
+                    <div class="ec-field ec-field-btn">
+                      <label>&nbsp;</label>
+                      <button class="btn btn-primary w-100" onclick="agregarProductoEditarCompra()">
+                        + Añadir
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ec-card ec-table-card">
+                  <div class="ec-top-total">
+                    <span>Total Compra:</span>
+                    <strong id="edit_compra_total_top">Gs. 0</strong>
+                  </div>
+
+                  <div class="ec-card-title">Listado de Productos</div>
+
+                  <div class="ec-table-wrap">
+                    <table class="table ec-table">
+                      <thead>
+                        <tr>
+                          <th>Producto</th>
+                          <th>Cant.</th>
+                          <th>Costo</th>
+                          <th>Subtotal</th>
+                          <th>Opciones</th>
+                        </tr>
+                      </thead>
+                      <tbody id="edit_compra_items"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- DERECHA -->
+              <div class="ec-sidebar">
+                <div class="ec-card ec-summary-primary">
+                  <div class="ec-summary-primary-title">Total Compra</div>
+                  <div class="ec-summary-primary-amount" id="edit_compra_total_sidebar">Gs. 0</div>
+                </div>
+
+                <div class="ec-card">
+                  <div class="ec-card-title">Datos de la Compra</div>
+
+                  <div class="ec-sidebar-fields">
+                    <div class="ec-field-full">
+                      <label>Proveedor</label>
+                      <select id="edit_compra_proveedor" class="form-select"></select>
+                    </div>
+
+                    <div class="ec-field-full">
+                      <label>Fecha</label>
+                      <input type="date" id="edit_compra_fecha" class="form-control">
+                    </div>
+
+                    <div class="ec-field-full">
+                      <label>N° Factura</label>
+                      <input type="text" id="edit_compra_factura" class="form-control">
+                    </div>
+
+                    <div class="ec-field-full">
+                      <label>Forma de Pago</label>
+                      <select id="edit_compra_tipo_pago" class="form-select">
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                      </select>
+                    </div>
+
+                    <div class="ec-field-full">
+                      <label>Moneda</label>
+                      <select id="edit_c_moneda" class="form-select" onchange="toggleMonedaEditarCompra()">
+                        <option value="PYG">Guaraníes (Gs.)</option>
+                        <option value="USD">Dólar (US$)</option>
+                        <option value="BRL">Real (R$)</option>
+                      </select>
+                    </div>
+
+                    <div class="ec-field-full" id="wrap_edit_c_tipo_cambio" style="display:none;">
+                      <label>Tipo de cambio</label>
+                      <input type="number" id="edit_c_tipo_cambio_moneda" class="form-control" step="0.01" min="0"
+                        value="1" placeholder="Ej: 7900" oninput="renderItemsEditarCompra()">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ec-card">
+                  <div class="ec-card-title">Resumen</div>
+
+                  <div class="ec-resume-row">
+                    <span>Subtotal</span>
+                    <strong id="edit_compra_subtotal">Gs. 0</strong>
+                  </div>
+
+                  <div class="ec-resume-row">
+                    <span>IVA 10%</span>
+                    <strong id="edit_compra_iva">Gs. 0</strong>
+                  </div>
+
+                  <div class="ec-resume-row ec-resume-total">
+                    <span>Total</span>
+                    <strong id="edit_compra_total">Gs. 0</strong>
+                  </div>
+                </div>
+
+                <div class="ec-actions">
+                  <button class="btn btn-secondary" onclick="closeModal('modalEditarCompra')">Cancelar</button>
+                  <button class="btn btn-primary" onclick="guardarEdicionCompra()">Guardar Cambios</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL FUERA DEL MAIN -->
+        <div id="logoutModal" class="modal" style="display:none;">
+          <div class="modal-content">
+            <h3>¿Cerrar sesión?</h3>
+            <p>¿Estás seguro de que deseas salir del sistema?</p>
+
+            <div class="modal-buttons">
+              <button onclick="confirmLogout()" class="btn red">Sí, cerrar</button>
+              <button onclick="closeLogoutModal()" class="btn secondary">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        <!-- MODAL ELIMINAR COMPRA -->
+        <div id="modalEliminarCompra" class="modal-overlay" style="display:none;">
+          <div class="modal-content small-modal">
+
+            <h3><i class="fa fa-trash"></i> Eliminar Compra</h3>
+
+            <p>¿Estás seguro de que deseas eliminar esta compra?</p>
+
+            <!-- Aquí guardamos el ID -->
+            <input type="hidden" id="delete_compra_id">
+
+            <div class="actions" style="margin-top:1rem;gap:1rem;justify-content:flex-end;">
+              <button class="btn secondary" onclick="closeModal('modalEliminarCompra')">Cancelar</button>
+
+              <button class="btn btn-danger" onclick="eliminarCompraConfirmada()">
+                Eliminar
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- MODAL ELIMINAR PEDIDO -->
+        <div id="modalEliminarPedido" class="modal-overlay" style="display:none;">
+          <div class="modal-content small-modal">
+
+            <h3><i class="fa fa-trash"></i> Eliminar Pedido</h3>
+
+            <p>¿Estás seguro de que deseas eliminar este pedido?</p>
+
+            <input type="hidden" id="delete_pedido_id">
+
+            <div class="actions" style="margin-top:1rem;gap:1rem;justify-content:flex-end;">
+              <button class="btn secondary" onclick="closeModal('modalEliminarPedido')">Cancelar</button>
+
+              <button class="btn btn-danger" onclick="eliminarPedidoConfirmado()">
+                <i class="fa fa-trash"></i> Eliminar
+              </button>
+            </div>
+
+          </div>
+        </div>
+        </section>
+
+        <section id="caja" class="view hidden caja-view">
+          <div class="actions caja-actions-top">
+            <button class="btn btn-primary" onclick="descargarInformeCajaPDF()">
+              <i class="fa-solid fa-file-pdf"></i> Descargar informe PDF
+            </button>
+          </div>
+
+          <!-- APERTURA / CIERRE -->
+          <div class="card caja-top-grid">
+            <div class="caja-box">
+              <div class="caja-box-head">
+                <div class="caja-box-icon caja-box-icon-efectivo">
+                  <i class="fa-solid fa-cash-register"></i>
+                </div>
+                <div>
+                  <h3>Caja Efectivo</h3>
+                  <small>Control de efectivo</small>
+                </div>
+              </div>
+
+              <label class="label">Fecha</label>
+              <input type="date" id="fechaCajaEfectivo" class="input">
+
+              <div class="grid cols-3" style="margin-top:10px">
 
 
-<div class="modal fade" id="modalCajaCerrada" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Caja cerrada</h5>
 
-        <!-- X (la dejamos después en rojo con CSS) -->
-        <button type="button" class="btn-close btn-close-red" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
+              </div>
 
-      <!-- ✅ ESTE ID ES CLAVE -->
-      <div class="modal-body" id="modalCajaCerradaBody">
-        Debe abrir la caja antes de realizar una venta.
-      </div>
+              <div class="actions caja-btn-row">
+                <button class="btn primary" onclick="abrirCaja('efectivo')">🟢 Abrir Caja</button>
+                <button class="btn red gris" onclick="cerrarCaja('efectivo')">🔴 Cerrar Caja</button>
+              </div>
 
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
-      </div>
-    </div>
-  </div>
-</div>
+              <div id="estadoCajaEfectivo" class="caja-estado"></div>
+            </div>
+
+            <div class="caja-box">
+              <div class="caja-box-head">
+                <div class="caja-box-icon caja-box-icon-transferencia">
+                  <i class="fa-solid fa-repeat"></i>
+                </div>
+                <div>
+                  <h3>Caja Transferencia</h3>
+                  <small>Control de transferencias</small>
+                </div>
+              </div>
+
+              <label class="label">Fecha</label>
+              <input type="date" id="fechaCajaTransferencia" class="input">
+
+              <div class="grid cols-3" style="margin-top:10px">
+              </div>
+
+              <div class="actions caja-btn-row">
+                <button class="btn primary" onclick="abrirCaja('transferencia')">🟢 Abrir Caja</button>
+                <button class="btn red gris" onclick="cerrarCaja('transferencia')">🔴 Cerrar Caja</button>
+              </div>
+
+              <div id="estadoCajaTransferencia" class="caja-estado"></div>
+            </div>
+          </div>
+
+          <!-- RESÚMENES -->
+          <div class="caja-resumen-grid">
+
+            <!-- DÍA -->
+            <div class="resumen-caja-card">
+              <div class="resumen-caja-head">
+                <h3>📅 Recaudado del día</h3>
+                <span class="resumen-pill">HOY</span>
+              </div>
+
+              <div class="resumen-cols">
+                <div class="resumen-bloque">
+                  <h4>💵 Efectivo</h4>
+
+                  <div class="resumen-item">
+                    <span>Ingreso</span>
+                    <strong id="dia-ingreso-efectivo" class="valor ingreso">Gs. 0</strong>
+                  </div>
+
+                  <div class="resumen-item">
+                    <span>Egreso</span>
+                    <strong id="dia-egreso-efectivo" class="valor egreso">Gs. 0</strong>
+                  </div>
+
+                  <div class="resumen-item">
+                    <span>Saldo</span>
+                    <strong id="dia-efectivo" class="valor saldo">Gs. 0</strong>
+                  </div>
+                </div>
+
+                <div class="resumen-bloque">
+                  <h4>🏦 Transferencia</h4>
+
+                  <div class="resumen-item">
+                    <span>Ingreso</span>
+                    <strong id="dia-ingreso-transferencia" class="valor ingreso">Gs. 0</strong>
+                  </div>
+
+                  <div class="resumen-item">
+                    <span>Egreso</span>
+                    <strong id="dia-egreso-transferencia" class="valor egreso">Gs. 0</strong>
+                  </div>
+
+                  <div class="resumen-item">
+                    <span>Saldo</span>
+                    <strong id="dia-transferencia" class="valor saldo">Gs. 0</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="resumen-total">
+                <span>Total sobrante del día</span>
+                <strong id="dia-total">Gs. 0</strong>
+              </div>
+            </div>
+
+            <!-- MES -->
+            <div class="resumen-caja-card">
+              <div class="resumen-caja-head">
+                <h3>📆 Recaudado del mes</h3>
+                <span class="resumen-pill resumen-pill-mes">MES</span>
+              </div>
+
+              <div class="resumen-cols">
+                <div class="resumen-bloque">
+                  <h4>💵 Efectivo</h4>
+
+                  <div class="resumen-item">
+                    <span>Ingreso</span>
+                    <strong id="mes-ingreso-efectivo" class="valor ingreso">Gs. 0</strong>
+                  </div>
+
+                  <div class="resumen-item">
+                    <span>Egreso</span>
+                    <strong id="mes-egreso-efectivo" class="valor egreso">Gs. 0</strong>
+                  </div>
+
+                  <div class="resumen-item">
+                    <span>Saldo</span>
+                    <strong id="mes-efectivo" class="valor saldo">Gs. 0</strong>
+                  </div>
+                </div>
+
+                <div class="resumen-bloque">
+                  <h4>🏦 Transferencia</h4>
+
+                  <div class="resumen-item">
+                    <span>Ingreso</span>
+                    <strong id="mes-ingreso-transferencia" class="valor ingreso">Gs. 0</strong>
+                  </div>
+
+                  <div class="resumen-item">
+                    <span>Egreso</span>
+                    <strong id="mes-egreso-transferencia" class="valor egreso">Gs. 0</strong>
+                  </div>
+
+                  <div class="resumen-item">
+                    <span>Saldo</span>
+                    <strong id="mes-transferencia" class="valor saldo">Gs. 0</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="resumen-total">
+                <span>Total sobrante del mes</span>
+                <strong id="mes-total">Gs. 0</strong>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <section id="formas-pago" class="view hidden">
+
+          <div class="card">
+            <h3><i class="fa fa-credit-card"></i> Formas de Pago</h3>
+
+            <div class="caja-horizontal" style="margin-top:1rem">
+
+              <!-- EFECTIVO -->
+              <div class="caja-col caja-resumen">
+                <h4>💵 Efectivo</h4>
+                <p>Hoy: <b id="fp-dia-efectivo">Gs. 0</b></p>
+                <p>Mes: <b id="fp-mes-efectivo">Gs. 0</b></p>
+              </div>
+
+              <!-- TRANSFERENCIA -->
+              <div class="caja-col caja-resumen">
+                <h4>🔁 Transferencia</h4>
+                <p>Hoy: <b id="fp-dia-transferencia">Gs. 0</b></p>
+                <p>Mes: <b id="fp-mes-transferencia">Gs. 0</b></p>
+              </div>
+
+              <!-- TOTAL -->
+              <div class="caja-col caja-resumen">
+                <h4>📊 Total</h4>
+                <p>Hoy: <b id="fp-dia-total">Gs. 0</b></p>
+                <p>Mes: <b id="fp-mes-total">Gs. 0</b></p>
+              </div>
+
+            </div>
+
+            <!-- DETALLE POR BANCO / FORMA -->
+            <div id="fp-detalle" style="margin-top:1rem"></div>
+            <!-- ✅ NUEVO: MOVIMIENTOS CON COMPROBANTE (NO afecta fp-detalle) -->
+            <div id="fp-movimientos" style="margin-top:1rem">
+              <h4 style="margin:0 0 .5rem 0;">🧾 Últimos movimientos (con comprobante)</h4>
+
+              <div style="overflow:auto; border:1px solid #e5e7eb; border-radius:10px;">
+                <table style="width:100%; border-collapse:collapse;">
+                  <thead>
+                    <tr style="background:#f3f4f6;">
+                      <th style="text-align:left; padding:10px;">ID</th>
+                      <th style="text-align:left; padding:10px;">Fecha</th>
+                      <th style="text-align:left; padding:10px;">Cliente</th>
+                      <th style="text-align:left; padding:10px;">Forma/Banco</th>
+                      <th style="text-align:left; padding:10px;">Nro. Comprobante</th>
+                      <th style="text-align:right; padding:10px;">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fp-tbody-mov"></tbody>
+                </table>
+              </div>
+              <div id="fp-mov-paginacion" class="tabla-paginacion"></div>
+            </div>
+
+          </div>
+        </section>
 
 
-<div class="modal" id="modalSelProducto" style="display:none;">
-  <div class="sheet modal-productos-pos">
 
-    <div class="modal-header-pos">
-      <h2>Seleccionar Producto</h2>
-      <button class="btn-cerrar-pos" type="button" onclick="closeModal('modalSelProducto')">✕</button>
-    </div>
+        <!-- ============================
+   MODAL — NUEVA COMPRA
+============================ -->
+        <div id="modalNuevaCompra" class="modal-overlay" style="display:none;">
+          <div class="ec-modal">
 
-    <div class="modal-body-pos">
-      <input
-        id="buscarProductoPedido"
-        class="input buscador-productos-pos"
-        placeholder="Buscar por nombre, marca o categoría..."
-        oninput="filtrarProductosModalPP()"
-        autocomplete="off"
-      >
+            <div class="ec-header">
+              <div>
+                <h2><i class="fa afa-cart-shopping"></i> Nueva Compra</h2>
+                <p>Cargá proveedor, factura, moneda y productos</p>
+              </div>
+              <button class="ec-close" type="button" onclick="closeModal('modalNuevaCompra')">
+                ×
+              </button>
+            </div>
 
-      <div id="tablaSelProductos" class="lista-productos-cards"></div>
-    </div>
+            <div class="ec-body">
 
-  </div>
-</div>
-<!-- MODAL DE EDICIÓN DEL PRODUCTO SELECCIONADO -->
-<div class="modal" id="modalEditarPP" style="display:none;">
-  <div class="sheet" style="max-width:500px;padding:1.8rem;">
+              <!-- IZQUIERDA -->
+              <div class="ec-main">
 
-    <h2 style="margin-bottom:1rem;font-weight:700;">Agregar Producto</h2>
+                <div class="ec-card ec-product-card">
+                  <h3>Productos</h3>
 
-    <label class="label">Código</label>
-    <input id="pp_edit_nombre" class="input" disabled>
+                  <div class="ec-product-form">
+                    <div class="ec-field ec-field-product">
+                      <label>Producto</label>
+                      <select id="c_producto" class="input" onchange="onChangeProductoCompra()">
+                        <option value="">Seleccione producto...</option>
+                      </select>
+                    </div>
 
-    <label class="label">Cantidad</label>
-    <input id="pp_edit_cantidad" type="number" min="1" class="input">
+                    <div class="ec-field">
+                      <label>Cantidad</label>
+                      <input type="number" id="c_cantidad" min="1" value="1" class="input">
+                    </div>
 
-    <label class="label">Unidad</label>
-    <input id="pp_edit_unidad" class="input" placeholder="Unidad / Caja / Pack">
+                    <div class="ec-field">
+                      <label id="label_c_costo">Costo (Gs.)</label>
+                      <input type="text" id="c_costo" inputmode="numeric" value="0" class="input">
+                    </div>
 
-    <label class="label">Costo</label>
-    <input id="pp_edit_costo"
-       class="input"
-       type="text"
-       inputmode="numeric"
-       placeholder="0"
-       oninput="formatearMilesPY(this)">
+                    <div class="ec-field ec-field-btn">
+                      <label>&nbsp;</label>
+                      <button class="btn btn-primary" type="button" onclick="agregarItemCompra()">
+                        + Añadir
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-    <div class="actions" style="justify-content:flex-end;margin-top:1rem;gap:.6rem;">
-      <button class="btn secondary" onclick="closeModal('modalEditarPP')">Cancelar</button>
-      <button class="btn primary" onclick="guardarProductoAListaPP()">Agregar</button>
-    </div>
+                <div class="ec-card ec-table-card">
+                  <div class="ec-top-total">
+                    <span>Total Compra:</span>
+                    <strong id="c_total_principal">Gs. 0</strong>
+                  </div>
 
-  </div>
-</div>
+                  <h3>Listado de Productos</h3>
+
+                  <div class="ec-table-wrap">
+                    <table class="ec-table">
+                      <thead>
+                        <tr>
+                          <th>Producto</th>
+                          <th>Cant.</th>
+                          <th>Costo</th>
+                          <th>Subtotal</th>
+                          <th>Opciones</th>
+                        </tr>
+                      </thead>
+                      <tbody id="c_items"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- DERECHA -->
+              <aside class="ec-sidebar">
+
+                <div class="ec-card ec-total-card">
+                  <h4>Total Compra</h4>
+                  <div id="c_total_moneda" class="ec-total-amount">Gs. 0</div>
+                </div>
+
+                <div class="ec-card">
+                  <h3>Datos de la Compra</h3>
+
+                  <div class="ec-field">
+                    <label>Proveedor</label>
+                    <select id="c_proveedor" class="input" onchange="setProximaFacturaCompra()"></select>
+                  </div>
+
+                  <div class="ec-field">
+                    <label>Fecha</label>
+                    <input type="date" id="c_fecha" class="input">
+                  </div>
+
+                  <div class="ec-field">
+                    <label>N° Factura</label>
+                    <input type="text" id="c_factura" class="input">
+                  </div>
+
+                  <div class="ec-field">
+                    <label>Forma de Pago</label>
+                    <select id="c_tipo_pago" class="input">
+                      <option value="efectivo">Efectivo</option>
+                      <option value="transferencia">Transferencia</option>
+                    </select>
+                  </div>
+
+                  <div class="ec-field">
+                    <label>Moneda</label>
+                    <select id="c_moneda" class="input" onchange="toggleMonedaCompra()">
+                      <option value="PYG">Guaraníes (Gs.)</option>
+                      <option value="USD">Dólar (US$)</option>
+                      <option value="BRL">Real (R$)</option>
+                    </select>
+                  </div>
+
+                  <div class="ec-field" id="wrap_c_tipo_cambio" style="display:none;">
+                    <label>Tipo de cambio a guaraníes</label>
+                    <input type="number" id="c_tipo_cambio_moneda" class="input" step="0.01" min="0" value="1"
+                      placeholder="Ej:6350" oninput="renderItemsCompra()">
+                    <small style="display:block; margin-top:6px; color:#6b7280;">
+                      Ingrese la cotización usada para esta compra.
+                    </small>
+                  </div>
+
+                  <div id="resumenMonedaCompra"
+                    style="margin-top:12px; padding:.8rem; border:1px solid #dbeafe; background:#eff6ff; border-radius:8px;">
+                    <div style="font-weight:600; color:#1d4ed8; margin-bottom:6px;">
+                      Resumen de moneda
+                    </div>
+
+                    <div style="color:#374151;">
+                      Subtotal en moneda: <strong id="c_subtotal_moneda">Gs. 0</strong>
+                    </div>
+
+                    <div style="color:#374151; margin-top:4px;">
+                      IVA en moneda: <strong id="c_iva_moneda">Gs. 0</strong>
+                    </div>
+
+                    <div style="color:#374151; margin-top:4px;">
+                      Total en moneda: <strong id="c_total_moneda_text">Gs. 0</strong>
+                    </div>
+
+                    <div style="color:#374151; margin-top:4px;">
+                      Total en guaraníes: <strong id="c_total_pyg_resumen">Gs. 0</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ec-actions">
+                  <button class="btn btn-secondary" type="button" onclick="closeModal('modalNuevaCompra')">
+                    Cancelar
+                  </button>
+
+                  <button class="btn btn-primary" type="button" onclick="guardarCompra()">
+                    <i class="fa fa-check"></i> Guardar Compra
+                  </button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+
+
+        <div class="modal fade" id="modalCajaCerrada" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Caja cerrada</h5>
+
+                <!-- X (la dejamos después en rojo con CSS) -->
+                <button type="button" class="btn-close btn-close-red" data-bs-dismiss="modal"
+                  aria-label="Cerrar"></button>
+              </div>
+
+              <!-- ✅ ESTE ID ES CLAVE -->
+              <div class="modal-body" id="modalCajaCerradaBody">
+                Debe abrir la caja antes de realizar una venta.
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <div class="modal" id="modalSelProducto" style="display:none;">
+          <div class="sheet modal-productos-pos">
+
+            <div class="modal-header-pos">
+              <h2>Seleccionar Producto</h2>
+              <button class="btn-cerrar-pos" type="button" onclick="closeModal('modalSelProducto')">✕</button>
+            </div>
+
+            <div class="modal-body-pos">
+              <input id="buscarProductoPedido" class="input buscador-productos-pos"
+                placeholder="Buscar por nombre, marca o categoría..." oninput="filtrarProductosModalPP()"
+                autocomplete="off">
+
+              <div id="tablaSelProductos" class="lista-productos-cards"></div>
+            </div>
+
+          </div>
+        </div>
+        <!-- MODAL DE EDICIÓN DEL PRODUCTO SELECCIONADO -->
+        <div class="modal" id="modalEditarPP" style="display:none;">
+          <div class="sheet" style="max-width:500px;padding:1.8rem;">
+
+            <h2 style="margin-bottom:1rem;font-weight:700;">Agregar Producto</h2>
+
+            <label class="label">Código</label>
+            <input id="pp_edit_nombre" class="input" disabled>
+
+            <label class="label">Cantidad</label>
+            <input id="pp_edit_cantidad" type="number" min="1" class="input">
+
+            <label class="label">Unidad</label>
+            <input id="pp_edit_unidad" class="input" placeholder="Unidad / Caja / Pack">
+
+            <label class="label">Costo</label>
+            <input id="pp_edit_costo" class="input" type="text" inputmode="numeric" placeholder="0"
+              oninput="formatearMilesPY(this)">
+
+            <div class="actions" style="justify-content:flex-end;margin-top:1rem;gap:.6rem;">
+              <button class="btn secondary" onclick="closeModal('modalEditarPP')">Cancelar</button>
+              <button class="btn primary" onclick="guardarProductoAListaPP()">Agregar</button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- jsPDF -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script
+          src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+        <!-- Tu app -->
+        <script src="js/app.js?v=3"></script>
+        <script src="js/compras.js?v=1001"></script>
+        <script src="js/ventas.js?v=999"></script>
+
+
+        <script>
+          document.addEventListener("DOMContentLoaded", () => {
+            const btn = document.getElementById("menuBtn");
+            const sidebar = document.querySelector(".sidebar");
+
+            if (!btn || !sidebar) return;
+
+            const openMenu = () => {
+              sidebar.classList.add("open");
+              document.body.classList.add("sidebar-open");
+            };
+
+            const closeMenu = () => {
+              sidebar.classList.remove("open");
+              document.body.classList.remove("sidebar-open");
+            };
+
+            // ✅ Mobile: usar touchstart para que responda rápido
+            btn.addEventListener("touchstart", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (sidebar.classList.contains("open")) closeMenu();
+              else openMenu();
+            }, { passive: false });
+
+            // ✅ Desktop fallback
+            btn.addEventListener("click", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (sidebar.classList.contains("open")) closeMenu();
+              else openMenu();
+            });
+
+            // Cerrar tocando fuera
+            document.addEventListener("touchstart", (e) => {
+              if (!document.body.classList.contains("sidebar-open")) return;
+              const clickDentro = sidebar.contains(e.target) || btn.contains(e.target);
+              if (!clickDentro) closeMenu();
+            }, { passive: true });
+
+            document.addEventListener("click", (e) => {
+              if (!document.body.classList.contains("sidebar-open")) return;
+              const clickDentro = sidebar.contains(e.target) || btn.contains(e.target);
+              if (!clickDentro) closeMenu();
+            });
+          });
+        </script>
 
 
 
+        <script>
+          function toggleMenu() {
+            document.querySelector(".sidebar").classList.toggle("open");
+            document.body.classList.toggle("sidebar-open");
+          }
+        </script>
 
-<!-- jsPDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-<!-- Tu app -->
-<script src="js/app.js?v=3"></script>
-<script src="js/compras.js?v=1001"></script>
-<script src="js/ventas.js?v=999"></script>
-
-
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("menuBtn");
-  const sidebar = document.querySelector(".sidebar");
-
-  if (!btn || !sidebar) return;
-
-  const openMenu = () => {
-    sidebar.classList.add("open");
-    document.body.classList.add("sidebar-open");
-  };
-
-  const closeMenu = () => {
-    sidebar.classList.remove("open");
-    document.body.classList.remove("sidebar-open");
-  };
-
-  // ✅ Mobile: usar touchstart para que responda rápido
-  btn.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (sidebar.classList.contains("open")) closeMenu();
-    else openMenu();
-  }, { passive: false });
-
-  // ✅ Desktop fallback
-  btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (sidebar.classList.contains("open")) closeMenu();
-    else openMenu();
-  });
-
-  // Cerrar tocando fuera
-  document.addEventListener("touchstart", (e) => {
-    if (!document.body.classList.contains("sidebar-open")) return;
-    const clickDentro = sidebar.contains(e.target) || btn.contains(e.target);
-    if (!clickDentro) closeMenu();
-  }, { passive: true });
-
-  document.addEventListener("click", (e) => {
-    if (!document.body.classList.contains("sidebar-open")) return;
-    const clickDentro = sidebar.contains(e.target) || btn.contains(e.target);
-    if (!clickDentro) closeMenu();
-  });
-});
-</script>
-
-
-
-<script>
-function toggleMenu() {
-  document.querySelector(".sidebar").classList.toggle("open");
-  document.body.classList.toggle("sidebar-open");
-}
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

@@ -218,108 +218,502 @@
 </main>
 
 <script>
-  const $=id=>document.getElementById(id);
-  const isHttp=["http:","https:"].includes(location.protocol);
-  const API_BASE=isHttp?"":"http://localhost:4000";
-  let pendingLogo=null;
 
-  function applyConfig(name,logo){
-    if(name) $("mainCompanyName").textContent=name;
-    const img=$("mainLogoImg");
-    const ph=$("logoPlaceholder");
-    if(logo){
-      img.src=logo;img.style.display="block";ph.style.display="none";
-    } else {
-      img.removeAttribute("src");img.style.display="none";ph.style.display="flex";
-    }
-  }
+const $ = id => document.getElementById(id);
 
-  function loadSavedConfig(){
-    const name=localStorage.getItem("empresa_nombre");
-    const logo=localStorage.getItem("empresa_logo");
-    applyConfig(name,logo);
-    if(name) $("setupOverlay").style.display="none";
-  }
+const API_BASE = "";
 
-  function openSetup(){
-    const name=localStorage.getItem("empresa_nombre")||"";
-    const logo=localStorage.getItem("empresa_logo")||"";
-    $("setupName").value=name;
-    pendingLogo=logo||null;
-    if(logo){
-      $("logoPreview").src=logo;$("logoPreview").style.display="block";$("dropContent").style.display="none";
-    } else {
-      $("logoPreview").style.display="none";$("dropContent").style.display="block";
-    }
-    $("setupOverlay").style.display="flex";
-  }
+let pendingLogo = null;
 
-  $("changeConfigBtn").addEventListener("click",openSetup);
+/*
+=====================================================
+MULTIEMPRESA
+=====================================================
+*/
 
-  const logoDrop=$("logoDrop");
-  function handleFile(file){
-    if(!file||!file.type.startsWith("image/")) return;
-    if(file.size>2*1024*1024){alert("El archivo es muy grande (máx. 2 MB)");return;}
-    const reader=new FileReader();
-    reader.onload=e=>{
-      pendingLogo=e.target.result;
-      $("logoPreview").src=pendingLogo;$("logoPreview").style.display="block";$("dropContent").style.display="none";
+function getEmpresas() {
+  return JSON.parse(localStorage.getItem("empresas") || "[]");
+}
+
+function saveEmpresas(empresas) {
+  localStorage.setItem("empresas", JSON.stringify(empresas));
+}
+
+function getEmpresaActivaId() {
+  return localStorage.getItem("empresa_activa");
+}
+
+function setEmpresaActiva(id) {
+  localStorage.setItem("empresa_activa", id);
+}
+
+function getEmpresaActual() {
+
+  const empresas = getEmpresas();
+
+  const empresaId = getEmpresaActivaId();
+
+  return empresas.find(
+    e => String(e.id) === String(empresaId)
+  );
+}
+
+function guardarEmpresa(data) {
+
+  const empresas = getEmpresas();
+
+  const index = empresas.findIndex(
+    e => String(e.id) === String(data.id)
+  );
+
+  if (index >= 0) {
+
+    empresas[index] = {
+      ...empresas[index],
+      ...data
     };
-    reader.readAsDataURL(file);
+
+  } else {
+
+    empresas.push(data);
   }
-  $("logoFileInput").addEventListener("change",e=>handleFile(e.target.files[0]));
-  logoDrop.addEventListener("dragover",e=>{e.preventDefault();logoDrop.classList.add("drag");});
-  logoDrop.addEventListener("dragleave",()=>logoDrop.classList.remove("drag"));
-  logoDrop.addEventListener("drop",e=>{e.preventDefault();logoDrop.classList.remove("drag");handleFile(e.dataTransfer.files[0]);});
 
-  $("setupSaveBtn").addEventListener("click",()=>{
-    const name=$("setupName").value.trim();
-    if(!name){$("setupName").focus();$("setupName").style.borderColor="var(--danger)";return;}
-    $("setupName").style.borderColor="";
-    localStorage.setItem("empresa_nombre",name);
-    if(pendingLogo) localStorage.setItem("empresa_logo",pendingLogo);
-    applyConfig(name,pendingLogo||localStorage.getItem("empresa_logo"));
-    $("setupOverlay").style.display="none";
-  });
+  saveEmpresas(empresas);
+}
 
-  let pwVisible=false;
-  $("eyeBtn").addEventListener("click",()=>{
-    pwVisible=!pwVisible;
-    $("password").type=pwVisible?"text":"password";
-    $("eyeIcon").innerHTML=pwVisible
-      ?'<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
-      :'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
-  });
+/*
+=====================================================
+UI EMPRESA
+=====================================================
+*/
 
-  $("loginForm").addEventListener("submit",async e=>{
-    e.preventDefault();
-    $("errorBox").style.display="none";$("okBox").style.display="none";
-    const usuario=$("usuario").value.trim();
-    const password=$("password").value.trim();
-    if(!usuario||!password) return;
-    $("btnLogin").disabled=true;$("btnText").textContent="Ingresando";
-    $("btnArrow").style.display="none";$("btnSpinner").style.display="block";
-    try{
-      const res=await fetch(`${API_BASE}/login`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({usuario,password})});
-      const data=await res.json().catch(()=>({}));
-      if(!res.ok){$("errorMsg").textContent=data.error||"Usuario o contraseña incorrecta.";$("errorBox").style.display="flex";return;}
-      const user=data.user||{};
-      localStorage.setItem("auth","ok");localStorage.setItem("user",JSON.stringify(user));
-      if(user.empresa_id)     localStorage.setItem("empresa_id",user.empresa_id);
-      if(user.empresa_nombre) localStorage.setItem("empresa_nombre",user.empresa_nombre);
-      if(user.empresa_logo)   localStorage.setItem("empresa_logo",user.empresa_logo);
-      if(user.color_principal)localStorage.setItem("color_principal",user.color_principal);
-      $("okBox").style.display="flex";
-      setTimeout(()=>{window.location.href="index.html";},700);
-    } catch{
-      $("errorMsg").textContent="No se pudo conectar con el servidor.";$("errorBox").style.display="flex";
-    } finally{
-      $("btnLogin").disabled=false;$("btnText").textContent="Ingresar";
-      $("btnArrow").style.display="block";$("btnSpinner").style.display="none";
+function applyConfig(empresa) {
+
+  if (!empresa) return;
+
+  if (empresa.nombre) {
+    $("mainCompanyName").textContent = empresa.nombre;
+  }
+
+  const img = $("mainLogoImg");
+  const ph = $("logoPlaceholder");
+
+  if (empresa.logo) {
+
+    img.src = empresa.logo;
+
+    img.style.display = "block";
+
+    ph.style.display = "none";
+
+  } else {
+
+    img.removeAttribute("src");
+
+    img.style.display = "none";
+
+    ph.style.display = "flex";
+  }
+}
+
+function loadSavedConfig() {
+
+  const empresa = getEmpresaActual();
+
+  /*
+  =====================================================
+  SI NO EXISTE EMPRESA
+  MOSTRAR SETUP
+  =====================================================
+  */
+
+  if (!empresa) {
+
+    $("setupOverlay").style.display = "flex";
+
+    return;
+  }
+
+  /*
+  =====================================================
+  APLICAR CONFIG
+  =====================================================
+  */
+
+  applyConfig(empresa);
+
+  /*
+  =====================================================
+  MOSTRAR SETUP SOLO SI NO HAY NOMBRE
+  =====================================================
+  */
+
+  if (!empresa.nombre) {
+
+    $("setupOverlay").style.display = "flex";
+
+  } else {
+
+    $("setupOverlay").style.display = "none";
+  }
+}
+
+function openSetup() {
+
+  const empresa = getEmpresaActual();
+
+  $("setupName").value = empresa?.nombre || "";
+
+  pendingLogo = empresa?.logo || null;
+
+  if (pendingLogo) {
+
+    $("logoPreview").src = pendingLogo;
+
+    $("logoPreview").style.display = "block";
+
+    $("dropContent").style.display = "none";
+
+  } else {
+
+    $("logoPreview").style.display = "none";
+
+    $("dropContent").style.display = "block";
+  }
+
+  $("setupOverlay").style.display = "flex";
+}
+
+$("changeConfigBtn").addEventListener("click", openSetup);
+
+/*
+=====================================================
+LOGO
+=====================================================
+*/
+
+const logoDrop = $("logoDrop");
+
+function handleFile(file) {
+
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) return;
+
+  if (file.size > 2 * 1024 * 1024) {
+
+    alert("El archivo es muy grande (máx. 2 MB)");
+
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = e => {
+
+    pendingLogo = e.target.result;
+
+    $("logoPreview").src = pendingLogo;
+
+    $("logoPreview").style.display = "block";
+
+    $("dropContent").style.display = "none";
+  };
+
+  reader.readAsDataURL(file);
+}
+
+$("logoFileInput").addEventListener("change", e => {
+
+  handleFile(e.target.files[0]);
+});
+
+logoDrop.addEventListener("dragover", e => {
+
+  e.preventDefault();
+
+  logoDrop.classList.add("drag");
+});
+
+logoDrop.addEventListener("dragleave", () => {
+
+  logoDrop.classList.remove("drag");
+});
+
+logoDrop.addEventListener("drop", e => {
+
+  e.preventDefault();
+
+  logoDrop.classList.remove("drag");
+
+  handleFile(e.dataTransfer.files[0]);
+});
+
+/*
+=====================================================
+GUARDAR CONFIG
+=====================================================
+*/
+
+$("setupSaveBtn").addEventListener("click", () => {
+
+  const name = $("setupName").value.trim();
+
+  if (!name) {
+
+    $("setupName").focus();
+
+    $("setupName").style.borderColor = "red";
+
+    return;
+  }
+
+  $("setupName").style.borderColor = "";
+
+  let empresa = getEmpresaActual();
+
+  /*
+  =====================================================
+  CREAR EMPRESA SI NO EXISTE
+  =====================================================
+  */
+
+  if (!empresa) {
+
+    const nuevaId = "empresa_" + Date.now();
+
+    empresa = {
+      id: nuevaId,
+      nombre: name,
+      logo: pendingLogo || null,
+      color_principal: "#2563eb"
+    };
+
+    guardarEmpresa(empresa);
+
+    setEmpresaActiva(nuevaId);
+
+  } else {
+
+    /*
+    =====================================================
+    ACTUALIZAR EMPRESA
+    =====================================================
+    */
+
+    empresa = {
+      ...empresa,
+      nombre: name,
+      logo: pendingLogo || empresa.logo || null
+    };
+
+    guardarEmpresa(empresa);
+  }
+
+  applyConfig(empresa);
+
+  $("setupOverlay").style.display = "none";
+
+  console.log("EMPRESA GUARDADA:", empresa);
+});
+
+/*
+=====================================================
+PASSWORD
+=====================================================
+*/
+
+let pwVisible = false;
+
+$("eyeBtn").addEventListener("click", () => {
+
+  pwVisible = !pwVisible;
+
+  $("password").type =
+    pwVisible ? "text" : "password";
+
+  $("eyeIcon").innerHTML = pwVisible
+    ? '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+    : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+});
+
+/*
+=====================================================
+LOGIN
+=====================================================
+*/
+
+$("loginForm").addEventListener("submit", async e => {
+
+  e.preventDefault();
+
+  $("errorBox").style.display = "none";
+
+  $("okBox").style.display = "none";
+
+  const usuario = $("usuario").value.trim();
+
+  const password = $("password").value.trim();
+
+  if (!usuario || !password) return;
+
+  $("btnLogin").disabled = true;
+
+  $("btnText").textContent = "Ingresando...";
+
+  $("btnArrow").style.display = "none";
+
+  $("btnSpinner").style.display = "block";
+
+  try {
+
+    const res = await fetch(`${API_BASE}/login`, {
+
+      method: "POST",
+
+      credentials: "include",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        usuario,
+        password
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+
+      $("errorMsg").textContent =
+        data.error || "Usuario o contraseña incorrectos.";
+
+      $("errorBox").style.display = "flex";
+
+      return;
     }
-  });
 
-  loadSavedConfig();
+    const user = data.user;
+
+    if (!user) {
+
+      $("errorMsg").textContent =
+        "Respuesta inválida del servidor.";
+
+      $("errorBox").style.display = "flex";
+
+      return;
+    }
+
+    /*
+    =====================================================
+    EMPRESA
+    =====================================================
+    */
+
+    const empresa = {
+
+      id: user.empresa_id,
+
+      nombre: user.empresa_nombre || "Empresa",
+
+      logo: user.empresa_logo || null,
+
+      color_principal:
+        user.color_principal || "#2563eb"
+    };
+
+    guardarEmpresa(empresa);
+
+    setEmpresaActiva(user.empresa_id);
+
+    /*
+    =====================================================
+    AUTH
+    =====================================================
+    */
+
+    localStorage.setItem("auth", "ok");
+
+    localStorage.setItem("user", JSON.stringify({
+
+      id: user.id,
+
+      usuario: user.usuario,
+
+      rol: user.rol,
+
+      empresa_id: user.empresa_id
+    }));
+
+    $("okBox").style.display = "flex";
+
+    setTimeout(() => {
+
+      window.location.href = "index.html";
+
+    }, 700);
+
+  } catch (err) {
+
+    console.error(err);
+
+    $("errorMsg").textContent =
+      "No se pudo conectar con el servidor.";
+
+    $("errorBox").style.display = "flex";
+
+  } finally {
+
+    $("btnLogin").disabled = false;
+
+    $("btnText").textContent = "Ingresar";
+
+    $("btnArrow").style.display = "block";
+
+    $("btnSpinner").style.display = "none";
+  }
+});
+
+loadSavedConfig();
+
+console.log("EMPRESAS:", getEmpresas());
+
+console.log("EMPRESA ACTIVA:", getEmpresaActivaId());
+
+console.log("EMPRESA ACTUAL:", getEmpresaActual());
+
+
+
+/*
+=========================================
+MULTIEMPRESA GLOBAL
+=========================================
+*/
+
+function getEmpresas() {
+  return JSON.parse(localStorage.getItem("empresas") || "[]");
+}
+
+function getEmpresaActivaId() {
+  return localStorage.getItem("empresa_activa");
+}
+
+function getEmpresaActual() {
+
+  const empresas = getEmpresas();
+
+  const empresaId = getEmpresaActivaId();
+
+  return empresas.find(
+    e => String(e.id) === String(empresaId)
+  );
+}
+
 </script>
+
+
 </body>
 </html>
