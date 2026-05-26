@@ -12,7 +12,18 @@ import bcrypt from "bcryptjs";
 import session from "express-session";
 import PDFDocument from "pdfkit";
 import { createClient } from "@supabase/supabase-js";
-console.log("SERVER CORRECTO (server.js) ->", new Date().toISOString(), "CWD:", process.cwd());
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+console.log(
+  "SERVER CORRECTO (server.js) ->",
+  new Date().toISOString(),
+  "CWD:",
+  process.cwd()
+);
+
 
 const { Pool } = pkg;
 const EDIT_SALES_PASSWORD = process.env.EDIT_SALES_PASSWORD || "editar123";
@@ -24,6 +35,13 @@ let EDIT_SALES_HASH = null;
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+app.use(
+  "/uploads",
+  express.static(
+    path.join(__dirname, "uploads")
+  )
+);
 
 app.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
@@ -7153,6 +7171,30 @@ return res.json({
     });
   }
 });
+
+app.post(
+  "/api/empresas/logo",
+  upload.single("logo"),
+  (req, res) => {
+
+    if (!req.file) {
+
+      return res.status(400).json({
+        ok: false,
+        msg: "No se subió archivo"
+      });
+    }
+
+    res.json({
+
+      ok: true,
+
+      logo:
+        `/uploads/logos/${req.file.filename}`
+    });
+
+  }
+);
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });

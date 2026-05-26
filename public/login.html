@@ -121,32 +121,93 @@
 
 <!-- SETUP OVERLAY -->
 <div id="setupOverlay">
-  <div class="sc">
-    <h2>Personalizá tu login</h2>
-    <p class="hint">Ingresá el nombre y logo de tu empresa. Se mostrará automáticamente.</p>
-    <div class="sf">
-      <label>Nombre de la empresa</label>
-      <input type="text" id="setupName" placeholder="Ej: Distribuidora Central S.A." maxlength="60" autocomplete="off">
-    </div>
-    <div class="sf">
-      <label>Logo de la empresa</label>
-      <div class="logo-drop" id="logoDrop">
-        <input type="file" id="logoFileInput" accept="image/*">
-        <div id="dropContent">
-          <div class="di"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
-          <p class="drop-lbl"><strong>Hacé clic o arrastrá</strong> tu logo aquí</p>
-          <p class="drop-sub">PNG, JPG o SVG · máx. 2 MB</p>
-        </div>
-        <img id="logoPreview" alt="Preview">
-      </div>
-    </div>
-    <button class="setup-btn" id="setupSaveBtn">
-      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      Guardar y continuar
-    </button>
-  </div>
-</div>
 
+  <div class="sc">
+
+    <h2>Personalizá tu login</h2>
+
+    <p class="hint">
+      Ingresá el nombre y logo de tu empresa.
+      Se mostrará automáticamente.
+    </p>
+
+    <!-- NOMBRE -->
+    <div class="sf">
+
+      <label>Nombre de la empresa</label>
+
+      <input
+        type="text"
+        id="setupName"
+        placeholder="Ej: Distribuidora Central S.A."
+        maxlength="60"
+        autocomplete="off"
+      >
+
+    </div>
+
+    <!-- LOGO -->
+    <div class="sf">
+
+      <label>Logo de la empresa</label>
+
+      <div class="logo-drop" id="logoDrop">
+
+        <input
+          type="file"
+          id="logoFileInput"
+          accept="image/*"
+        >
+
+        <div id="dropContent">
+
+          <div class="di">
+
+            <svg viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+
+          </div>
+
+          <p class="drop-lbl">
+            <strong>Hacé clic o arrastrá</strong>
+            tu logo aquí
+          </p>
+
+          <p class="drop-sub">
+            PNG, JPG o SVG · máx. 2 MB
+          </p>
+
+        </div>
+
+        <img
+          id="logoPreview"
+          alt="Preview"
+        >
+
+      </div>
+
+    </div>
+
+    <!-- BOTÓN PRINCIPAL -->
+    <button
+      class="setup-btn"
+      id="setupSaveBtn"
+    >
+
+      <svg viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+
+      Guardar y continuar
+
+    </button>
+
+  </div>
+
+</div>
 <!-- LOGIN -->
 <main class="shell">
   <section class="lp">
@@ -298,66 +359,43 @@ function applyConfig(empresa) {
   const img = $("mainLogoImg");
   const ph = $("logoPlaceholder");
 
-  if (empresa.logo) {
+  if (
+  empresa.logo &&
+  (
+    empresa.logo.startsWith("data:image") ||
+    empresa.logo.startsWith("http")
+  )
+) {
 
-    img.src = empresa.logo;
+  img.src = empresa.logo;
 
-    img.style.display = "block";
+  img.style.display = "block";
 
-    ph.style.display = "none";
+  ph.style.display = "none";
 
-  } else {
+} else {
 
-    img.removeAttribute("src");
+  img.removeAttribute("src");
 
-    img.style.display = "none";
+  img.style.display = "none";
 
-    ph.style.display = "flex";
-  }
+  ph.style.display = "flex";
+}
 }
 
 function loadSavedConfig() {
-
   const empresa = getEmpresaActual();
 
-  /*
-  =====================================================
-  SI NO EXISTE EMPRESA
-  MOSTRAR SETUP
-  =====================================================
-  */
-
-  if (!empresa) {
-
+  // Solo mostrar setup si NO hay empresa guardada con nombre
+  if (!empresa || !empresa.nombre) {
     $("setupOverlay").style.display = "flex";
-
     return;
   }
 
-  /*
-  =====================================================
-  APLICAR CONFIG
-  =====================================================
-  */
-
+  // Si ya tiene nombre → aplicar y ocultar overlay
   applyConfig(empresa);
-
-  /*
-  =====================================================
-  MOSTRAR SETUP SOLO SI NO HAY NOMBRE
-  =====================================================
-  */
-
-  if (!empresa.nombre) {
-
-    $("setupOverlay").style.display = "flex";
-
-  } else {
-
-    $("setupOverlay").style.display = "none";
-  }
+  $("setupOverlay").style.display = "none";
 }
-
 function openSetup() {
 
   const empresa = getEmpresaActual();
@@ -455,7 +493,7 @@ GUARDAR CONFIG
 =====================================================
 */
 
-$("setupSaveBtn").addEventListener("click", () => {
+$("setupSaveBtn").addEventListener("click", async () => {
 
   const name = $("setupName").value.trim();
 
@@ -472,51 +510,106 @@ $("setupSaveBtn").addEventListener("click", () => {
 
   let empresa = getEmpresaActual();
 
+  let logoBase64 = null;
+
   /*
-  =====================================================
-  CREAR EMPRESA SI NO EXISTE
-  =====================================================
+  =========================================
+  LEER LOGO REAL
+  =========================================
+  */
+
+  const file =
+    $("logoFileInput").files[0];
+
+  if (file) {
+
+    logoBase64 = await new Promise((resolve) => {
+
+      const reader = new FileReader();
+
+      reader.onload = e => {
+
+        resolve(e.target.result);
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /*
+  =========================================
+  CREAR EMPRESA
+  =========================================
   */
 
   if (!empresa) {
 
-    const nuevaId = "empresa_" + Date.now();
+  /*
+  =========================================
+  USAR EMPRESA ACTIVA REAL
+  =========================================
+  */
 
-    empresa = {
-      id: nuevaId,
-      nombre: name,
-      logo: pendingLogo || null,
-      color_principal: "#2563eb"
-    };
+  const empresaId =
+    getEmpresaActivaId();
 
-    guardarEmpresa(empresa);
+  empresa = {
 
-    setEmpresaActiva(nuevaId);
+    id: empresaId,
 
-  } else {
+    nombre: name,
 
-    /*
-    =====================================================
-    ACTUALIZAR EMPRESA
-    =====================================================
-    */
+    logo: logoBase64,
 
-    empresa = {
-      ...empresa,
-      nombre: name,
-      logo: pendingLogo || empresa.logo || null
-    };
+    color_principal: "#2563eb"
+  };
 
-    guardarEmpresa(empresa);
-  }
+  guardarEmpresa(empresa);
 
-  applyConfig(empresa);
+} else {
 
-  $("setupOverlay").style.display = "none";
+  /*
+  =========================================
+  ACTUALIZAR
+  =========================================
+  */
 
-  console.log("EMPRESA GUARDADA:", empresa);
+  empresa = {
+
+    ...empresa,
+
+    nombre: name,
+
+    logo:
+      logoBase64 ||
+      empresa.logo ||
+      null
+  };
+
+  guardarEmpresa(empresa);
+}
+
+/*
+=========================================
+APLICAR UI
+=========================================
+*/
+
+applyConfig(empresa);
+
+$("setupOverlay").style.display =
+  "none";
+
+console.log(
+  "EMPRESA GUARDADA:",
+  empresa
+);
+
+console.log(
+  "EMPRESAS:",
+  getEmpresas()
+);
 });
-
 /*
 =====================================================
 PASSWORD
@@ -613,21 +706,32 @@ $("loginForm").addEventListener("submit", async e => {
     =====================================================
     */
 
-    const empresa = {
+    const empresaExistente = getEmpresas().find(
+  e => String(e.id) === String(user.empresa_id)
+);
 
-      id: user.empresa_id,
+const empresa = {
+  id: user.empresa_id,
 
-      nombre: user.empresa_nombre || "Empresa",
+  nombre:
+    empresaExistente?.nombre ||
+    user.empresa_nombre ||
+    "Empresa",
 
-      logo: user.empresa_logo || null,
+  // IMPORTANTE:
+  // primero conservar localStorage
+  logo:
+    empresaExistente?.logo ||
+    user.empresa_logo ||
+    null,
 
-      color_principal:
-        user.color_principal || "#2563eb"
-    };
-
-    guardarEmpresa(empresa);
-
-    setEmpresaActiva(user.empresa_id);
+  color_principal:
+    empresaExistente?.color_principal ||
+    user.color_principal ||
+    "#2563eb"
+};
+guardarEmpresa(empresa);
+setEmpresaActiva(user.empresa_id);
 
     /*
     =====================================================
@@ -686,34 +790,6 @@ console.log("EMPRESA ACTIVA:", getEmpresaActivaId());
 console.log("EMPRESA ACTUAL:", getEmpresaActual());
 
 
-
-/*
-=========================================
-MULTIEMPRESA GLOBAL
-=========================================
-*/
-
-function getEmpresas() {
-  return JSON.parse(localStorage.getItem("empresas") || "[]");
-}
-
-function getEmpresaActivaId() {
-  return localStorage.getItem("empresa_activa");
-}
-
-function getEmpresaActual() {
-
-  const empresas = getEmpresas();
-
-  const empresaId = getEmpresaActivaId();
-
-  return empresas.find(
-    e => String(e.id) === String(empresaId)
-  );
-}
-
 </script>
-
-
 </body>
 </html>

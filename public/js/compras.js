@@ -16,7 +16,7 @@ const USER_COMPRA = JSON.parse(localStorage.getItem("user") || "{}");
 const EMPRESA_NOMBRE_COMPRA =
   localStorage.getItem("empresa_nombre") ||
   USER_COMPRA.empresa_nombre ||
-  "Mi Empresa";
+  "";
 
 const EMPRESA_LOGO_COMPRA =
   localStorage.getItem("empresa_logo") ||

@@ -653,21 +653,39 @@ function getEmpresaActual() {
 
   <div class="topbar">
     <div class="topbar-left">
-      <img id="empresaLogoTop" class="empresa-logo" alt="Logo empresa">
+
+      <img
+        id="empresaLogoTop"
+        class="empresa-logo"
+        src=""
+        alt=""
+        style="display:none;"
+      >
+
       <div>
-        <h2 id="empresaNombreTop">Panel Administrativo</h2>
-        <small id="empresaSubtitulo">Resumen general del sistema</small>
+        <h2 id="empresaNombreTop"></h2>
+
+        <small id="empresaSubtitulo">
+          Panel administrativo
+        </small>
       </div>
+
     </div>
 
     <div class="topbar-buttons">
-      <a href="index.html" class="volver-btn">← Volver</a>
+
+      <a href="index.html" class="volver-btn">
+        ← Volver
+      </a>
+
       <button
-  type="button"
-  class="logout-btn"
-  onclick="openLogoutModal()">
-  Cerrar sesión
-</button>
+        type="button"
+        class="logout-btn"
+        onclick="openLogoutModal()"
+      >
+        Cerrar sesión
+      </button>
+
     </div>
   </div>
 
@@ -940,16 +958,28 @@ function getEmpresaActual() {
  function aplicarEmpresaPanel() {
 
   const empresa =
-  getEmpresaActual() || {};
+    getEmpresaActual() || {};
+
+  /*
+  =========================================
+  DATOS EMPRESA
+  =========================================
+  */
 
   const empresaNombre =
-    empresa.empresa_nombre || "Empresa";
+    empresa.nombre || "SPYnet";
 
   const empresaLogo =
-    empresa.empresa_logo || "img/logo.png";
+    empresa.logo || "";
 
   const colorPrincipal =
     empresa.color_principal || "#2563eb";
+
+  /*
+  =========================================
+  COLORES
+  =========================================
+  */
 
   document.documentElement.style.setProperty(
     "--color-principal",
@@ -961,8 +991,20 @@ function getEmpresaActual() {
     colorPrincipal
   );
 
+  /*
+  =========================================
+  TITLE
+  =========================================
+  */
+
   document.title =
     empresaNombre + " • Panel";
+
+  /*
+  =========================================
+  NOMBRE EMPRESA
+  =========================================
+  */
 
   const topTitle =
     document.getElementById(
@@ -970,9 +1012,16 @@ function getEmpresaActual() {
     );
 
   if (topTitle) {
+
     topTitle.textContent =
       empresaNombre;
   }
+
+  /*
+  =========================================
+  SUBTITULO
+  =========================================
+  */
 
   const subtitulo =
     document.getElementById(
@@ -980,9 +1029,16 @@ function getEmpresaActual() {
     );
 
   if (subtitulo) {
+
     subtitulo.textContent =
       "Panel administrativo";
   }
+
+  /*
+  =========================================
+  LOGO
+  =========================================
+  */
 
   const logo =
     document.getElementById(
@@ -990,8 +1046,29 @@ function getEmpresaActual() {
     );
 
   if (logo) {
-    logo.src = empresaLogo;
+
+    if (
+      empresaLogo &&
+      empresaLogo.startsWith("data:image")
+    ) {
+
+      logo.src = empresaLogo;
+
+      logo.style.display =
+        "block";
+
+    } else {
+
+      logo.style.display =
+        "none";
+    }
   }
+
+  /*
+  =========================================
+  ASISTENTE
+  =========================================
+  */
 
   const assistantTitle =
     document.getElementById(
@@ -1004,6 +1081,12 @@ function getEmpresaActual() {
       empresaNombre + " Asistente";
   }
 
+  /*
+  =========================================
+  TITULO RESUMEN
+  =========================================
+  */
+
   const resumen =
     document.getElementById(
       "tituloResumen"
@@ -1012,11 +1095,11 @@ function getEmpresaActual() {
   if (resumen) {
 
     resumen.textContent =
-      "Resumen general - " +
-      empresaNombre;
+      "Resumen general";
   }
 }
-    aplicarEmpresaPanel();
+
+aplicarEmpresaPanel();
 
     // ── Navegación ────────────────────────────────────────────────────────
     window.irA = function(seccion) {
@@ -1330,7 +1413,7 @@ function cargarEmpresaAdmin() {
 
   if (resumen) {
     resumen.textContent =
-      "Resumen general - " + (empresa.nombre || "Empresa");
+      "Resumen general  " + (empresa.nombre || "Empresa");
   }
 
   /*
