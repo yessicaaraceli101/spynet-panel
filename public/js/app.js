@@ -7237,25 +7237,6 @@ function nuevaVenta() {
   }
 }
 
-async function subirLogo(file, empresaId) {
-  const formData = new FormData();
-
-  formData.append("logo", file);
-
-  const res = await fetch(
-    `/empresas/${empresaId}/logo`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error("Error al subir logo");
-  }
-
-  return await res.json();
-}
 
 window.cargarVentas = cargarVentas;
 window.nuevaVenta = nuevaVenta;

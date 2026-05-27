@@ -1467,12 +1467,20 @@ async function guardarEdicionVenta() {
 
   const total = items.reduce((a, it) => a + (it.cantidad * it.precio_unitario), 0);
 
+  // ← NUEVO: leer moneda y tipo de cambio del modal
+  const moneda     = document.getElementById("edit_moneda")?.value || "PYG";
+  const tipoCambio = Number(document.getElementById("edit_tipo_cambio")?.value || 1);
+  const total_moneda = (moneda !== "PYG" && tipoCambio > 0) ? total / tipoCambio : total;
+
   const body = {
-    fecha: document.getElementById("edit_fecha").value,
+    fecha:         document.getElementById("edit_fecha").value,
     forma_pago_id: Number(document.getElementById("edit_forma_pago").value),
-    estado_pago: document.getElementById("edit_estado").value,
+    estado_pago:   document.getElementById("edit_estado").value,
+    moneda,                  // ← NUEVO
+    tipo_cambio: tipoCambio, // ← NUEVO
     total,
-    total_pyg: total,
+    total_pyg:  total,
+    total_moneda,            // ← NUEVO
     items
   };
 
@@ -1516,34 +1524,42 @@ async function abrirEditarVenta(id) {
 
     const venta = await res.json();
 
-    document.getElementById("edit_venta_id").value = venta.id;
-    document.getElementById("edit_fecha").value = (venta.fecha || "").slice(0, 10);
-    document.getElementById("edit_estado").value = venta.estado_pago || "pagado";
+    document.getElementById("edit_venta_id").value  = venta.id;
+    document.getElementById("edit_fecha").value     = (venta.fecha || "").slice(0, 10);
+    document.getElementById("edit_estado").value    = venta.estado_pago || "pagado";
     document.getElementById("edit_forma_pago").value = venta.forma_pago_id;
+
+    // Restaurar moneda y tipo de cambio
+    const moneda = (venta.moneda || "PYG").toUpperCase();
+    const selMoneda = document.getElementById("edit_moneda");
+    const inpTC     = document.getElementById("edit_tipo_cambio");
+    if (selMoneda) selMoneda.value = moneda;
+    if (inpTC)     inpTC.value    = venta.tipo_cambio || 1;
+    toggleEditTipoCambio();
 
     const tbody = document.getElementById("edit_items");
     tbody.innerHTML = "";
 
     (venta.items || []).forEach((it, idx) => {
-      const cant = Number(it.cantidad || 0);
+      const cant       = Number(it.cantidad || 0);
       const precioUnit = Number(
         it.precio_unitario ??
         (cant > 0 ? (Number(it.subtotal || 0) / cant) : 0)
       );
 
-      const sub = cant * precioUnit;
-
       tbody.innerHTML += `
         <tr data-idx="${idx}">
           <td>${it.producto_nombre || "-"}</td>
           <td>
-            <input type="number" min="1" class="form-control form-control-sm edit-cant" value="${cant}" data-producto-id="${it.producto_id}" />
+            <input type="number" min="1" class="form-control form-control-sm edit-cant"
+                   value="${cant}" data-producto-id="${it.producto_id}" />
           </td>
           <td>
-            <input type="number" min="0" class="form-control form-control-sm edit-precio" value="${precioUnit}" />
+            <input type="number" min="0" class="form-control form-control-sm edit-precio"
+                   value="${precioUnit}" />
           </td>
           <td style="text-align:right;">
-            <span class="edit-subtotal">${nf(sub)}</span>
+            <span class="edit-subtotal">${nf(cant * precioUnit)}</span>
           </td>
           <td style="text-align:center;">
             <button class="btn btn-sm btn-danger btn-del-item" type="button">X</button>
@@ -1559,27 +1575,45 @@ async function abrirEditarVenta(id) {
     console.error(err);
     alert("❌ Error cargando la venta");
   }
+
 }
 
 function recalcularEditTotales() {
   const rows = document.querySelectorAll("#edit_items tr");
-  let total = 0;
+  let totalPyg = 0;
 
   rows.forEach(tr => {
-    const cant = Number(tr.querySelector(".edit-cant")?.value || 0);
+    const cant   = Number(tr.querySelector(".edit-cant")?.value  || 0);
     const precio = Number(tr.querySelector(".edit-precio")?.value || 0);
-    const sub = cant * precio;
-
-    const span = tr.querySelector(".edit-subtotal");
+    const sub    = cant * precio;
+    const span   = tr.querySelector(".edit-subtotal");
     if (span) span.textContent = nf(sub);
-
-    total += sub;
+    totalPyg += sub;
   });
 
-  const lbl = document.getElementById("edit_total");
-  if (lbl) lbl.textContent = nf(total);
-}
+  const moneda     = document.getElementById("edit_moneda")?.value || "PYG";
+  const tipoCambio = Number(document.getElementById("edit_tipo_cambio")?.value || 1);
 
+  const lblMoneda = document.getElementById("edit_total_moneda");
+  const lblPyg    = document.getElementById("edit_total_pyg_small");
+
+  if (moneda === "USD") {
+    const totalUsd = tipoCambio > 0 ? totalPyg / tipoCambio : 0;
+    if (lblMoneda) lblMoneda.textContent = `US$ ${nfDecimal(totalUsd)}`;
+    if (lblPyg)    lblPyg.textContent    = `(Gs. ${nf(totalPyg)})`;
+  } else if (moneda === "BRL") {
+    const totalBrl = tipoCambio > 0 ? totalPyg / tipoCambio : 0;
+    if (lblMoneda) lblMoneda.textContent = `R$ ${nfDecimal(totalBrl)}`;
+    if (lblPyg)    lblPyg.textContent    = `(Gs. ${nf(totalPyg)})`;
+  } else {
+    if (lblMoneda) lblMoneda.textContent = `Gs. ${nf(totalPyg)}`;
+    if (lblPyg)    lblPyg.textContent    = "";
+  }
+
+  // También actualizar el campo oculto que usa guardarEdicionVenta
+  const lblLegacy = document.getElementById("edit_total");
+  if (lblLegacy) lblLegacy.textContent = nf(totalPyg);
+}
 document.addEventListener("input", (e) => {
   if (!e.target.closest("#edit_items")) return;
   if (e.target.classList.contains("edit-cant") || e.target.classList.contains("edit-precio")) {
@@ -1816,6 +1850,49 @@ function agregarProductoManualVenta() {
   }
 
   productoManualSeleccionado = null;
+}
+
+async function toggleEditTipoCambio() {
+  const moneda = document.getElementById("edit_moneda")?.value || "PYG";
+  const wrap   = document.getElementById("wrapEditTipoCambio");
+  const input  = document.getElementById("edit_tipo_cambio");
+
+  if (moneda === "PYG") {
+    if (wrap)  wrap.style.display = "none";
+    if (input) input.value = 1;
+    recalcularEditTotales();
+    return;
+  }
+
+  // Traer cotización del servidor (igual que toggleTipoCambioVenta)
+  let usd = 6350;
+  let brl = 1250;
+
+  try {
+    const res  = await fetch("/config/monedas", { credentials: "include" });
+    const data = await res.json();
+
+    if (Array.isArray(data.monedas)) {
+      data.monedas.forEach(m => {
+        if (m.moneda === "USD") usd = Number(m.tipo_cambio);
+        if (m.moneda === "BRL") brl = Number(m.tipo_cambio);
+      });
+    }
+  } catch (e) {
+    console.error("No se pudo cargar cotización:", e);
+  }
+
+  if (wrap) wrap.style.display = "block";
+
+  if (input) {
+    input.value    = moneda === "USD" ? usd : brl;
+    input.readOnly = true;  // ← solo lectura, se cambia desde el panel admin
+    input.style.background = "#f3f4f6";
+    input.style.color      = "#6b7280";
+    input.style.cursor     = "not-allowed";
+  }
+
+  recalcularEditTotales();
 }
 
 window.imprimirTicket = imprimirTicket;

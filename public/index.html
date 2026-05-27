@@ -972,58 +972,78 @@
       </div>
 
       <!-- ===== MODAL EDITAR ===== -->
-      <div class="modal" id="modalEditarVenta">
-        <div class="modal-content modal-editar-venta">
-          <h3>Editar Venta</h3>
+      <!-- ===== MODAL EDITAR ===== -->
+<div class="modal" id="modalEditarVenta">
+  <div class="modal-content modal-editar-venta">
+    <h3>Editar Venta</h3>
 
-          <input type="hidden" id="edit_venta_id">
+    <input type="hidden" id="edit_venta_id">
 
-          <label>Fecha</label>
-          <input type="date" id="edit_fecha" class="input">
+    <label>Fecha</label>
+    <input type="date" id="edit_fecha" class="input">
 
-          <label>Forma de pago</label>
-          <select id="edit_forma_pago" class="input">
-            <option value="2">Efectivo</option>
-            <option value="6">Banco Continental</option>
-            <option value="7">Banco Familiar</option>
-            <option value="8">Ueno Bank</option>
-          </select>
+    <label>Forma de pago</label>
+    <select id="edit_forma_pago" class="input">
+      <option value="2">Efectivo</option>
+      <option value="1">Débito</option>
+      <option value="3">Crédito</option>
+      <option value="4">QR</option>
+      <option value="5">BNF</option>
+      <option value="6">Continental</option>
+      <option value="7">Banco Familiar</option>
+      <option value="8">Ueno Bank</option>
+      <option value="9">Banco Basa</option>
+      <option value="10">Mango</option>
+    </select>
 
-          <label>Estado</label>
-          <select id="edit_estado" class="input">
-            <option value="pagado">Pagado</option>
-            <option value="pendiente">Pendiente</option>
-          </select>
+    <label>Estado</label>
+    <select id="edit_estado" class="input">
+      <option value="pagado">Pagado</option>
+      <option value="pendiente">Pendiente</option>
+    </select>
 
-          <div class="edit-venta-table-wrap">
-            <table class="table table-striped align-middle edit-venta-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th style="width:110px">Cant.</th>
-                  <th style="width:160px">Precio</th>
-                  <th style="width:160px">Subtotal</th>
-                  <th style="width:70px"></th>
-                </tr>
-              </thead>
-              <tbody id="edit_items"></tbody>
-            </table>
-          </div>
-
-          <div style="margin-top:.5rem;display:flex;justify-content:flex-end;font-weight:700">
-            Total: <span id="edit_total" style="margin-left:.5rem">0</span> Gs.
-          </div>
-
-          <div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:.5rem">
-            <button class="btn secondary" onclick="closeModal('modalEditarVenta')">
-              Cancelar
-            </button>
-            <button class="btn primary" onclick="guardarEdicionVenta()">
-              Guardar
-            </button>
-          </div>
-        </div>
+    <!-- MONEDA -->
+    <label>Moneda</label>
+    <div style="display:flex; gap:.5rem; align-items:center;">
+      <select id="edit_moneda" class="input" style="flex:1" onchange="toggleEditTipoCambio()">
+        <option value="PYG">Guaraní (Gs.)</option>
+        <option value="USD">Dólar (US$)</option>
+        <option value="BRL">Real (R$)</option>
+      </select>
+      <div id="wrapEditTipoCambio" style="display:none; flex:1">
+        <input type="number" id="edit_tipo_cambio" class="input"
+       placeholder="Cotización" readonly
+       style="background:#f3f4f6; color:#6b7280; cursor:not-allowed;">
       </div>
+    </div>
+
+    <div class="edit-venta-table-wrap">
+      <table class="table table-striped align-middle edit-venta-table">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th style="width:110px">Cant.</th>
+            <th style="width:160px">Precio (Gs.)</th>
+            <th style="width:160px">Subtotal</th>
+            <th style="width:70px"></th>
+          </tr>
+        </thead>
+        <tbody id="edit_items"></tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:.5rem;display:flex;justify-content:flex-end;font-weight:700;gap:.3rem">
+      Total:
+      <span id="edit_total_moneda" style="margin-left:.5rem">Gs. 0</span>
+      <span id="edit_total_pyg_small" style="font-weight:400; color:#666; font-size:.85em; align-self:center;"></span>
+    </div>
+
+    <div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:.5rem">
+      <button class="btn secondary" onclick="closeModal('modalEditarVenta')">Cancelar</button>
+      <button class="btn primary" onclick="guardarEdicionVenta()">Guardar</button>
+    </div>
+  </div>
+</div>
 
       <!-- ===== MODAL NUEVA VENTA ===== -->
       <div id="modalVenta" class="modal-overlay" style="display:none;">
