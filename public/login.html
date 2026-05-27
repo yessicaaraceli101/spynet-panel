@@ -790,6 +790,99 @@ console.log("EMPRESA ACTIVA:", getEmpresaActivaId());
 console.log("EMPRESA ACTUAL:", getEmpresaActual());
 
 
+async function subirLogo(file, empresaId) {
+
+  const formData = new FormData();
+
+  formData.append("logo", file);
+
+  const res = await fetch(
+    `/empresas/${empresaId}/logo`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Error al subir logo");
+  }
+
+  return await res.json();
+}
+
+const logoInput =
+  document.getElementById("logoFileInput");
+
+const logoPreview =
+  document.getElementById("logoPreview");
+
+logoInput.addEventListener(
+  "change",
+  async (e) => {
+
+    try {
+
+      const file =
+        e.target.files[0];
+
+      if (!file) return;
+
+      // preview
+      logoPreview.src =
+        URL.createObjectURL(file);
+
+      logoPreview.style.display =
+        "block";
+
+      // empresa actual
+      const empresaId = getEmpresaActivaId();
+
+      // subir logo
+      const data =
+        await subirLogo(
+          file,
+          empresaId
+        );
+
+      console.log(data);
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert(
+        "Error al subir logo"
+      );
+    }
+  }
+);
+
+async function cargarLogoEmpresa(empresaId) {
+
+  const res = await fetch(
+    `/empresas/${empresaId}`
+  );
+
+  const empresa = await res.json();
+
+  if (empresa.logo) {
+
+    document.getElementById(
+      "logoPreview"
+    ).src = empresa.logo;
+
+    document.getElementById(
+      "logoPreview"
+    ).style.display = "block";
+  }
+}
+const empresaId = getEmpresaActivaId();
+
+if (empresaId) {
+  cargarLogoEmpresa(empresaId);
+}
+
 </script>
 </body>
 </html>

@@ -174,6 +174,28 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+
+const logosDir = path.join(__dirname, "public/uploads/logos");
+
+if (!fs.existsSync(logosDir)) {
+  fs.mkdirSync(logosDir, { recursive: true });
+}
+
+const logoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, logosDir);
+  },
+
+  filename: (req, file, cb) => {
+    const empresaId = req.params.id;
+    const ext = path.extname(file.originalname || "") || ".png";
+
+    cb(null, `empresa-${empresaId}${ext}`);
+  },
+});
+
+const uploadLogo = multer({ storage: logoStorage });
+
 /** ÚNICA función para convertir dataURL base64 a archivo físico en /public/uploads */
 function saveDataUrlToFile(dataUrl, prefix = "prod") {
   if (!dataUrl || !dataUrl.startsWith("data:")) return null;
@@ -7195,6 +7217,73 @@ app.post(
 
   }
 );
+
+app.post("/empresas/:id/logo",uploadLogo.single("logo"),
+  async (req, res) => {
+    try {
+      const empresaId = req.params.id;
+
+      const logoPath = `/uploads/logos/${req.file.filename}`;
+
+      await pool.query(
+        `
+        UPDATE empresas
+        SET logo = $1
+        WHERE id = $2
+        `,
+        [logoPath, empresaId]
+      );
+
+      res.json({
+        ok: true,
+        logo: logoPath,
+      });
+
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+        error: "Error al subir logo",
+      });
+    }
+  }
+);
+app.get("/empresas/:id", async (req, res) => {
+
+  try {
+
+    const empresaId = req.params.id;
+
+    const result = await pool.query(
+      `
+      SELECT
+        id,
+        nombre,
+        logo,
+        color_principal
+      FROM empresas
+      WHERE id = $1
+      `,
+      [empresaId]
+    );
+
+    if (!result.rows.length) {
+
+      return res.status(404).json({
+        error: "Empresa no encontrada"
+      });
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      error: "Error al obtener empresa"
+    });
+  }
+});
 app.listen(PORT, () => {
   console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });
