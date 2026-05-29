@@ -5,18 +5,23 @@ const API = window.location.origin;
 ========================================= */
 const USER = JSON.parse(localStorage.getItem("user") || "{}");
 
+// Leer empresa del array multiempresa
+const _empresaActivaId = localStorage.getItem("empresa_activa");
+const _empresas = JSON.parse(localStorage.getItem("empresas") || "[]");
+const _empresa = _empresas.find(e => String(e.id) === String(_empresaActivaId)) || {};
+
 const EMPRESA_NOMBRE =
-  localStorage.getItem("empresa_nombre") ||
+  _empresa.nombre ||
   USER.empresa_nombre ||
-  "SPYnet Proyectos e Infraestructuras";
+  "Mi Empresa";
 
 const EMPRESA_LOGO =
-  localStorage.getItem("empresa_logo") ||
+  _empresa.logo ||
   USER.empresa_logo ||
   "img/logo2.png";
 
 const EMPRESA_COLOR =
-  localStorage.getItem("color_principal") ||
+  _empresa.color_principal ||
   USER.color_principal ||
   "#2563eb";
 
@@ -34,27 +39,63 @@ function aplicarPersonalizacionEmpresa() {
     el.src = EMPRESA_LOGO;
   });
 
+  // Sidebar logo — tira del login/localStorage
+  const sidebarLogo = document.getElementById("sidebarEmpresaLogo");
+  if (sidebarLogo) sidebarLogo.src = EMPRESA_LOGO || "img/logo2.png";
+
+  // Sidebar nombre — tira del login/localStorage
+  const sidebarNombre = document.getElementById("sidebarEmpresaNombre");
+  if (sidebarNombre) sidebarNombre.textContent = EMPRESA_NOMBRE || "Mi Empresa";
+
+  // Panel admin
   const logoPanel = document.getElementById("logoEmpresa");
   if (logoPanel) logoPanel.src = EMPRESA_LOGO;
 
   const nombrePanel = document.getElementById("nombreEmpresa");
   if (nombrePanel) nombrePanel.textContent = EMPRESA_NOMBRE;
 
+  // Color principal
   document.querySelectorAll(".btn-primary").forEach(btn => {
     btn.style.background = EMPRESA_COLOR;
     btn.style.borderColor = EMPRESA_COLOR;
   });
+
+  document.documentElement.style.setProperty("--primary", EMPRESA_COLOR);
+  document.documentElement.style.setProperty("--color-principal", EMPRESA_COLOR);
 }
 
 /* =========================================
-   LOGOS / PDF
+   LOGOS / PDF — multiempresa
+   Tira del usuario logueado (login/localStorage)
 ========================================= */
 let logoConsorcio = "";
-let logoSpynet = "";
+let logoSpynet    = "";
 
 async function initPDF() {
-  logoConsorcio = await cargarLogoBase64(EMPRESA_LOGO || "img/logo1.jpg");
-  logoSpynet = await cargarLogoBase64(EMPRESA_LOGO || "img/logo2.png");
+  const logoUrl = EMPRESA_LOGO || "img/logo2.png";
+
+  try {
+    logoConsorcio = await cargarLogoBase64(logoUrl);
+    logoSpynet    = logoConsorcio;
+  } catch (e) {
+    console.warn("No se pudo cargar el logo para PDF:", e);
+    logoConsorcio = "";
+    logoSpynet    = "";
+  }
+}
+
+async function initPDF() {
+  // Siempre usa el logo de la empresa logueada
+  const logoUrl = EMPRESA_LOGO || "img/logo2.png";
+
+  try {
+    logoConsorcio = await cargarLogoBase64(logoUrl);
+    logoSpynet    = logoConsorcio; // mismo logo, misma empresa
+  } catch (e) {
+    console.warn("No se pudo cargar el logo para PDF:", e);
+    logoConsorcio = "";
+    logoSpynet    = "";
+  }
 }
 
 /* =========================================
@@ -167,149 +208,346 @@ function fmtDate(d) {
    PEDIDOS
 ========================================= */
 async function listarPedidos() {
+
   const tabla = document.getElementById("tabla_pedidos");
 
   if (!tabla) return;
 
   tabla.innerHTML = `
     <tr>
-      <td colspan="11" class="text-center py-3 text-muted">Cargando...</td>
+      <td colspan="12" class="text-center py-3 text-muted">
+        Cargando...
+      </td>
     </tr>
   `;
 
   try {
+
     const pedidos = await jget("/api/pedidos");
 
     if (!Array.isArray(pedidos) || !pedidos.length) {
+
       tabla.innerHTML = `
         <tr>
-          <td colspan="11" class="text-center py-3 text-muted">
+          <td colspan="12" class="text-center py-3 text-muted">
             No hay pedidos registrados.
           </td>
         </tr>
       `;
+
       return;
     }
 
     tabla.innerHTML = "";
 
     pedidos.forEach(p => {
-      const items = Array.isArray(p.items) ? p.items : [];
+
+      const items = Array.isArray(p.items)
+        ? p.items
+        : [];
+
+      /* =========================
+         PRODUCTOS
+      ========================= */
 
       const prodArr = items
         .map(i => i.producto_nombre || "¿?")
         .filter(Boolean);
 
       const prodVis = prodArr.slice(0, 2);
-      const prodExtra = prodArr.length - prodVis.length;
+
+      const prodExtra =
+        prodArr.length - prodVis.length;
 
       const productosHtml = prodArr.length
         ? `
-          <div class="text-truncate" style="max-width:320px" title="${prodArr.join(", ")}">
-            ${prodVis.join(", ")}${prodExtra > 0 ? ` <span class="badge bg-secondary">+${prodExtra}</span>` : ""}
+          <div
+            class="text-truncate"
+            style="max-width:320px"
+            title="${prodArr.join(", ")}"
+          >
+
+            ${prodVis.join(", ")}
+
+            ${
+              prodExtra > 0
+                ? `
+                  <span class="badge bg-secondary">
+                    +${prodExtra}
+                  </span>
+                `
+                : ""
+            }
+
           </div>
         `
-        : `<span class="text-muted">—</span>`;
+        : `
+          <span class="text-muted">
+            —
+          </span>
+        `;
+
+      /* =========================
+         CATEGORÍAS
+      ========================= */
 
       const catArr = [
-        ...new Set(items.map(i => i.categoria_nombre || "Sin categoría"))
+        ...new Set(
+          items.map(
+            i => i.categoria_nombre || "Sin categoría"
+          )
+        )
       ];
 
       const categoriasHtml = catArr.length
-        ? `<div class="text-truncate" style="max-width:220px" title="${catArr.join(", ")}">${catArr.join(", ")}</div>`
-        : `<span class="text-muted">—</span>`;
+        ? `
+          <div
+            class="text-truncate"
+            style="max-width:220px"
+            title="${catArr.join(", ")}"
+          >
+
+            ${catArr.join(", ")}
+
+          </div>
+        `
+        : `
+          <span class="text-muted">
+            —
+          </span>
+        `;
+
+      /* =========================
+         CANTIDAD
+      ========================= */
 
       const cantidad_items = items.reduce(
-        (a, i) => a + Number(i.cantidad || 0),
+        (a, i) =>
+          a + Number(i.cantidad || 0),
         0
       );
 
-      const recibido = !!p.fecha_recepcion;
+      /* =========================
+         ESTADO
+      ========================= */
+
+      const recibido =
+        !!p.fecha_recepcion;
 
       const estadoHtml = recibido
-        ? `<span class="badge bg-success">Recibido</span>`
-        : `<span class="badge bg-warning text-dark">Pendiente</span>`;
+        ? `
+          <span class="badge bg-success">
+            Recibido
+          </span>
+        `
+        : `
+          <span class="badge bg-warning text-dark">
+            Pendiente
+          </span>
+        `;
 
-      const nombreProveedorSeguro = JSON.stringify(p.proveedor_nombre || "");
+      /* =========================
+         SEGURIDAD
+      ========================= */
+
+      const nombreProveedorSeguro =
+        JSON.stringify(
+          p.proveedor_nombre || ""
+        );
+
+      /* =========================
+         EMAIL
+      ========================= */
+
+      const proveedorEmail =
+        p.proveedor_email ||
+        p.email ||
+        "—";
+
+      /* =========================
+         ROW
+      ========================= */
 
       const tr = document.createElement("tr");
 
       tr.innerHTML = `
-        <td class="fw-semibold">#${p.id}</td>
 
-        <td>${p.proveedor_nombre || "—"}</td>
-
-        <td>${productosHtml}</td>
-
-        <td>${categoriasHtml}</td>
-
-        <td>${fmtDate(p.fecha_pedido)}</td>
-
-        <td>
-          <div class="d-flex flex-column gap-1">
-            <span>${p.fecha_recepcion ? fmtDate(p.fecha_recepcion) : "—"}</span>
-            ${estadoHtml}
-          </div>
+        <!-- ID -->
+        <td class="fw-semibold">
+          #${p.id}
         </td>
 
-        <td class="text-center">${cantidad_items}</td>
+        <!-- PROVEEDOR -->
+        <td>
 
-        <td class="text-end">Gs. ${money(p.subtotal)}</td>
-        <td class="text-end">Gs. ${money(p.iva)}</td>
-        <td class="text-end fw-semibold">Gs. ${money(p.total)}</td>
+          <div class="fw-semibold">
+            ${p.proveedor_nombre || "—"}
+          </div>
 
+        </td>
+
+        <!-- EMAIL -->
+        <td>
+
+          <div
+            class="text-truncate"
+            style="max-width:220px"
+            title="${proveedorEmail !== "—" ? proveedorEmail : ""}"
+          >
+
+            ${
+              proveedorEmail !== "—"
+                ? `
+                  <a href="mailto:${proveedorEmail}">
+                    ${proveedorEmail}
+                  </a>
+                `
+                : `
+                  <span class="text-muted">
+                    —
+                  </span>
+                `
+            }
+
+          </div>
+
+        </td>
+
+        <!-- PRODUCTOS -->
+        <td>
+          ${productosHtml}
+        </td>
+
+        <!-- CATEGORÍAS -->
+        <td>
+          ${categoriasHtml}
+        </td>
+
+        <!-- FECHA PEDIDO -->
+        <td>
+          ${fmtDate(p.fecha_pedido)}
+        </td>
+
+        <!-- FECHA RECEPCIÓN -->
+        <td>
+
+          <div class="d-flex flex-column gap-1">
+
+            <span>
+              ${
+                p.fecha_recepcion
+                  ? fmtDate(p.fecha_recepcion)
+                  : "—"
+              }
+            </span>
+
+            ${estadoHtml}
+
+          </div>
+
+        </td>
+
+        <!-- ITEMS -->
         <td class="text-center">
-          <div style="display:flex; gap:6px; justify-content:center;">
+          ${cantidad_items}
+        </td>
+
+        <!-- SUBTOTAL -->
+        <td class="text-end">
+          Gs. ${money(p.subtotal)}
+        </td>
+
+        <!-- IVA -->
+        <td class="text-end">
+          Gs. ${money(p.iva)}
+        </td>
+
+        <!-- TOTAL -->
+        <td class="text-end fw-semibold">
+          Gs. ${money(p.total)}
+        </td>
+
+        <!-- ACCIONES -->
+        <td
+          class="text-center"
+          style="min-width:180px"
+        >
+
+          <div
+            style="
+              display:flex;
+              gap:6px;
+              justify-content:center;
+              flex-wrap:wrap;
+            "
+          >
+
+            <!-- PDF -->
             <button
               class="btn btn-sm"
               onclick='exportarPDF_Proveedor(${nombreProveedorSeguro})'
-              title="Generar PDF del proveedor"
-              style="background:#6b7280;color:#fff;border:none;"
+              title="Generar PDF"
+              style="
+                background:#6b7280;
+                color:#fff;
+                border:none;
+              "
             >
+
               <i class="fa-solid fa-file-pdf"></i>
+
             </button>
 
             ${
               !recibido
                 ? `
+                  <!-- RECIBIR -->
                   <button
                     class="btn btn-success btn-sm"
                     onclick="recibirPedido(${p.id})"
-                    title="Marcar como recibido"
+                    title="Marcar recibido"
                   >
+
                     <i class="fa-solid fa-check"></i>
+
                   </button>
                 `
                 : ""
             }
 
+            <!-- ELIMINAR -->
             <button
               class="btn btn-danger btn-sm"
               onclick="eliminarPedido(${p.id})"
-              title="Eliminar pedido"
+              title="Eliminar"
             >
+
               <i class="fa-solid fa-trash"></i>
+
             </button>
+
           </div>
+
         </td>
       `;
 
       tabla.appendChild(tr);
+
     });
 
   } catch (err) {
+
     console.error(err);
 
     tabla.innerHTML = `
       <tr>
-        <td colspan="11" class="text-center py-3 text-danger">
+        <td colspan="12" class="text-center py-3 text-danger">
           Error cargando pedidos.
         </td>
       </tr>
     `;
   }
 }
-
 /* =========================================
    AUTO INICIO
 ========================================= */
@@ -1322,42 +1560,68 @@ function printTableAsPDF(containerSel, title) {
 
 /* ================== UI PRO (Toast, Loading, Skeleton) ================== */
 function toast(msg, type = "info") {
-  const el = document.createElement("div");
-
-  el.className = `toast ${type}`;
-  el.textContent = msg;
+  // Eliminar toasts anteriores
+  document.querySelectorAll(".toast-pro").forEach(t => t.remove());
 
   const color =
-    type === "error"
-      ? "#c0392b"
-      : type === "success"
-      ? "#2ecc71"
-      : EMPRESA_COLOR || "#34495e";
+    type === "error"   ? { bg: "#fee2e2", border: "#ef4444", text: "#991b1b", icon: "❌" } :
+    type === "success" ? { bg: "#f0fdf4", border: "#22c55e", text: "#166534", icon: "✅" } :
+                         { bg: "#eff6ff", border: "#3b82f6", text: "#1e40af", icon: "ℹ️" };
+
+  const el = document.createElement("div");
+  el.className = "toast-pro";
+
+  el.innerHTML = `
+    <div style="font-size:2rem;line-height:1">${color.icon}</div>
+    <div>
+      <div style="font-weight:700;font-size:.95rem;margin-bottom:2px;">
+        ${type === "success" ? "¡Éxito!" : type === "error" ? "Error" : "Información"}
+      </div>
+      <div style="font-size:.85rem;opacity:.85">${msg}</div>
+    </div>
+    <button onclick="this.parentElement.remove()" style="
+      background:none;border:none;cursor:pointer;
+      font-size:1.1rem;color:${color.text};opacity:.6;
+      margin-left:.5rem;padding:0;line-height:1;
+    ">✕</button>
+  `;
 
   Object.assign(el.style, {
     position: "fixed",
-    right: "1rem",
-    bottom: "1rem",
-    padding: ".75rem 1rem",
-    background: color,
-    color: "#fff",
-    borderRadius: "10px",
-    boxShadow: "0 6px 20px rgba(0,0,0,.25)",
-    zIndex: 9999,
-    opacity: 0,
-    transition: "opacity .15s ease"
+    top: "1.5rem",
+    right: "1.5rem",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    padding: "1rem 1.25rem",
+    background: color.bg,
+    color: color.text,
+    border: `1.5px solid ${color.border}`,
+    borderLeft: `5px solid ${color.border}`,
+    borderRadius: "12px",
+    boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+    zIndex: "99999",
+    minWidth: "280px",
+    maxWidth: "360px",
+    opacity: "0",
+    transform: "translateX(40px)",
+    transition: "opacity .3s ease, transform .3s ease"
   });
 
   document.body.appendChild(el);
 
+  // Animar entrada
   requestAnimationFrame(() => {
-    el.style.opacity = 1;
+    el.style.opacity = "1";
+    el.style.transform = "translateX(0)";
   });
 
+  // Salida automática
   setTimeout(() => {
-    el.style.opacity = 0;
-    setTimeout(() => el.remove(), 200);
-  }, 3000);
+    el.style.opacity = "0";
+    el.style.transform = "translateX(40px)";
+    setTimeout(() => el.remove(), 350);
+  }, 3500);
 }
 
 async function withLoading(btn, fn) {
@@ -1944,15 +2208,20 @@ async function actualizarCliente() {
 /* ============================================
       ELIMINAR CLIENTE
 ============================================ */
-async function eliminarCliente(id) {
-  if (!confirm("¿Eliminar cliente?")) return;
+function eliminarCliente(id) {
+  document.getElementById("delete_cliente_id").value = id;
+  openModal("modalEliminarCliente");
+}
+
+async function confirmarEliminarCliente() {
+  const id = document.getElementById("delete_cliente_id").value;
+  if (!id) return;
 
   try {
     await jdel("/clientes/" + id);
-
+    closeModal("modalEliminarCliente");
     toast("Cliente eliminado correctamente", "success");
     listarClientes();
-
   } catch (err) {
     console.error(err);
     alert("No se pudo eliminar.");
@@ -2177,55 +2446,91 @@ let PROV_PAGE = 1;
 const PROV_PER_PAGE = 8;
 
 async function listarProveedores() {
+
   try {
+
     aplicarPersonalizacionEmpresa();
 
     const data = await jget("/proveedores");
 
     proveedoresOriginal = (Array.isArray(data) ? data : []).map(p => ({
+
       ...p,
+
       id: Number(p.id),
+
       nombre: p.nombre || "",
+
       ruc: p.ruc || "",
+
       contacto: p.contacto || "",
+
+      email: p.email || "",
+
       telefono: p.telefono || "",
+
       pais: p.pais || "",
+
       ciudad: p.ciudad || "",
+
       direccion: p.direccion || "",
+
       estado: p.estado === false ? false : true
+
     }));
 
     proveedoresFiltrados = [...proveedoresOriginal];
+
     provPaginaActual = 1;
+
     PROV_CACHE = [...proveedoresOriginal];
+
     PROV_FILTER = [...proveedoresFiltrados];
 
     renderProveedoresTabla();
 
   } catch (err) {
+
     console.error("Error cargando proveedores:", err);
+
     toast("Error cargando proveedores", "error");
+
   }
+
 }
 
 function filtrarProveedores(q = "") {
+
   q = String(q || "").toLowerCase().trim();
 
   proveedoresFiltrados = proveedoresOriginal.filter(p =>
+
     String(p.nombre || "").toLowerCase().includes(q) ||
+
     String(p.ruc || "").toLowerCase().includes(q) ||
+
     String(p.contacto || "").toLowerCase().includes(q) ||
+
+    String(p.email || "").toLowerCase().includes(q) ||
+
     String(p.telefono || "").toLowerCase().includes(q) ||
+
     String(p.pais || "").toLowerCase().includes(q) ||
+
     String(p.ciudad || "").toLowerCase().includes(q) ||
+
     String(p.direccion || "").toLowerCase().includes(q)
+
   );
 
   provPaginaActual = 1;
+
   renderProveedoresTabla();
+
 }
 
 function renderProveedoresTabla() {
+
   const tbody = document.getElementById("tabla-proveedores");
   const pag = document.getElementById("proveedores-paginacion");
 
@@ -2235,57 +2540,130 @@ function renderProveedoresTabla() {
   pag.innerHTML = "";
 
   if (!proveedoresFiltrados.length) {
+
     tbody.innerHTML = `
       <tr>
-        <td colspan="10" style="text-align:center;padding:1rem;">
+        <td colspan="11" style="text-align:center;padding:1rem;">
           No se encontraron proveedores para esta empresa.
         </td>
       </tr>
     `;
+
     return;
   }
 
   const inicio = (provPaginaActual - 1) * provPorPagina;
   const fin = inicio + provPorPagina;
+
   const pageData = proveedoresFiltrados.slice(inicio, fin);
 
   pageData.forEach(p => {
+
     const tr = document.createElement("tr");
 
-    const estadoClase = p.estado ? "pagado" : "pendiente";
-    const estadoTexto = p.estado ? "Activo" : "Inactivo";
-
     tr.innerHTML = `
-      <td>${Number(p.id)}</td>
-      <td>${escapeHtml(p.nombre || "")}</td>
-      <td>${escapeHtml(p.ruc || "")}</td>
-      <td>${escapeHtml(p.contacto || "")}</td>
-      <td>${escapeHtml(p.telefono || "")}</td>
-      <td>${escapeHtml(p.pais || "")}</td>
-      <td>${escapeHtml(p.ciudad || "")}</td>
-      <td>${escapeHtml(p.direccion || "")}</td>
+
+      <td class="fw-semibold">
+        #${Number(p.id)}
+      </td>
+
       <td>
-        <span class="estado-badge ${estadoClase}">
-          ${estadoTexto}
+        ${escapeHtml(p.nombre || "—")}
+      </td>
+
+      <td>
+        ${escapeHtml(p.ruc || "—")}
+      </td>
+
+      <td>
+        ${escapeHtml(p.contacto || "—")}
+      </td>
+
+      <td>
+        <span style="font-size:.92rem">
+          ${escapeHtml(p.email || "—")}
         </span>
       </td>
-      <td class="actions text-center">
-        <button class="btn-icon edit" onclick="abrirEditarProveedor(${Number(p.id)})">
-          <i class="fa fa-pen"></i>
-        </button>
 
-        <button class="btn-icon delete" onclick="eliminarProveedor(${Number(p.id)})">
-          <i class="fa fa-trash"></i>
-        </button>
+      <td>
+        ${escapeHtml(p.telefono || "—")}
       </td>
+
+      <td>
+        ${escapeHtml(p.pais || "—")}
+      </td>
+
+      <td>
+        ${escapeHtml(p.ciudad || "—")}
+      </td>
+
+      <td>
+        <div
+          class="text-truncate"
+          style="max-width:220px"
+          title="${escapeHtml(p.direccion || "")}"
+        >
+          ${escapeHtml(p.direccion || "—")}
+        </div>
+      </td>
+
+      <td>
+
+        ${
+          p.estado
+            ? `
+              <span class="badge bg-success">
+                Activo
+              </span>
+            `
+            : `
+              <span class="badge bg-secondary">
+                Inactivo
+              </span>
+            `
+        }
+
+      </td>
+
+      <td class="text-center">
+
+        <div
+          style="
+            display:flex;
+            gap:6px;
+            justify-content:center;
+          "
+        >
+
+          <button
+            class="btn btn-primary btn-sm"
+            onclick="abrirEditarProveedor(${Number(p.id)})"
+            title="Editar proveedor"
+          >
+            <i class="fa fa-pen"></i>
+          </button>
+
+          <button
+            class="btn btn-danger btn-sm"
+            onclick="eliminarProveedor(${Number(p.id)})"
+            title="Eliminar proveedor"
+          >
+            <i class="fa fa-trash"></i>
+          </button>
+
+        </div>
+
+      </td>
+
     `;
 
     tbody.appendChild(tr);
+
   });
 
   renderPaginacionProveedores();
-}
 
+}
 function renderPaginacionProveedores() {
   const div = document.getElementById("proveedores-paginacion");
   if (!div) return;
@@ -2332,6 +2710,10 @@ async function guardarProveedor() {
     nombre: gv("#p_nombre"),
     ruc: gv("#p_ruc"),
     contacto: gv("#p_contacto"),
+
+    // NUEVO EMAIL
+    email: gv("#p_email"),
+
     telefono: gv("#p_tel"),
     pais: gv("#p_pais"),
     ciudad: gv("#p_ciudad"),
@@ -2340,18 +2722,46 @@ async function guardarProveedor() {
   };
 
   try {
-    if (!body.nombre) return alert("El nombre es obligatorio");
-    if (!body.ruc) return alert("El RUC es obligatorio");
+
+    if (!body.nombre) {
+      return alert("El nombre es obligatorio");
+    }
+
+    if (!body.ruc) {
+      return alert("El RUC es obligatorio");
+    }
+
+    // VALIDAR EMAIL
+    if (!body.email) {
+      return alert("El email es obligatorio");
+    }
 
     await jpost("/proveedores", body);
 
     closeModal("modalProveedor");
+
     toast("Proveedor guardado correctamente", "success");
+
     listarProveedores();
 
+    // LIMPIAR CAMPOS
+    sv("#p_nombre", "");
+    sv("#p_ruc", "");
+    sv("#p_contacto", "");
+    sv("#p_email", "");
+    sv("#p_tel", "");
+    sv("#p_pais", "Paraguay");
+    sv("#p_ciudad", "");
+    sv("#p_dir", "");
+    sv("#p_estado", "Activo");
+
   } catch (e) {
+
     console.error(e);
-    alert("No se pudo guardar el proveedor.\n" + e.message);
+
+    alert(
+      "No se pudo guardar el proveedor.\n" + e.message
+    );
   }
 }
 
@@ -2417,21 +2827,6 @@ async function actualizarProveedor() {
   } catch (e) {
     console.error(e);
     alert("No se pudo actualizar el proveedor.\n" + e.message);
-  }
-}
-
-async function eliminarProveedor(id) {
-  if (!confirm("¿Eliminar proveedor?")) return;
-
-  try {
-    await jdel("/proveedores/" + id);
-
-    toast("Proveedor eliminado correctamente", "success");
-    listarProveedores();
-
-  } catch (e) {
-    console.error(e);
-    alert("No se pudo eliminar.\n" + e.message);
   }
 }
 
@@ -2660,10 +3055,12 @@ function cambiarPaginaProveedores(nueva) {
 }
 
 async function guardarProveedor() {
+
   const body = {
     nombre: gv("#p_nombre"),
     ruc: gv("#p_ruc"),
     contacto: gv("#p_contacto"),
+    email: gv("#p_email"),
     telefono: gv("#p_tel"),
     pais: gv("#p_pais"),
     ciudad: gv("#p_ciudad"),
@@ -2672,14 +3069,29 @@ async function guardarProveedor() {
   };
 
   try {
+
     if (!body.nombre) return alert("El nombre es obligatorio");
     if (!body.ruc) return alert("El RUC es obligatorio");
+    if (!body.email) return alert("El email es obligatorio");
 
     await jpost("/proveedores", body);
 
     closeModal("modalProveedor");
+
     toast("Proveedor guardado correctamente", "success");
+
     listarProveedores();
+
+    // LIMPIAR CAMPOS
+    document.querySelector("#p_nombre").value = "";
+    document.querySelector("#p_ruc").value = "";
+    document.querySelector("#p_contacto").value = "";
+    document.querySelector("#p_email").value = "";
+    document.querySelector("#p_tel").value = "";
+    document.querySelector("#p_pais").value = "Paraguay";
+    document.querySelector("#p_ciudad").value = "";
+    document.querySelector("#p_dir").value = "";
+    document.querySelector("#p_estado").value = "Activo";
 
   } catch (e) {
     console.error(e);
@@ -2688,32 +3100,56 @@ async function guardarProveedor() {
 }
 
 function abrirEditarProveedor(id) {
+
   const _id = Number(id);
-  const p = (proveedoresOriginal || []).find(x => Number(x.id) === _id);
+
+  const p = (proveedoresOriginal || []).find(
+    x => Number(x.id) === _id
+  );
 
   if (!p) {
+
     alert("Proveedor no encontrado");
+
     return;
   }
 
   const set = (sel, val) => {
+
     const el = qs(sel);
-    if (el) el.value = val ?? "";
+
+    if (el) {
+      el.value = val ?? "";
+    }
   };
 
   set("#prov_edit_id", p.id);
+
   set("#pe_nombre", p.nombre);
+
   set("#pe_ruc", p.ruc);
+
   set("#pe_contacto", p.contacto);
+
+  // EMAIL
+  set("#pe_email", p.email);
+
   set("#pe_tel", p.telefono);
+
   set("#pe_pais", p.pais);
+
   set("#pe_ciudad", p.ciudad);
+
   set("#pe_dir", p.direccion);
 
   const est =
+
     p.estado === false ||
+
     String(p.estado).toLowerCase() === "inactivo"
+
       ? "Inactivo"
+
       : "Activo";
 
   set("#pe_estado", est);
@@ -2722,45 +3158,88 @@ function abrirEditarProveedor(id) {
 }
 
 async function actualizarProveedor() {
+
   const id = Number(gv("#prov_edit_id"));
 
   const body = {
+
     nombre: gv("#pe_nombre"),
+
     ruc: gv("#pe_ruc"),
+
     contacto: gv("#pe_contacto"),
+
+    // EMAIL
+    email: gv("#pe_email"),
+
     telefono: gv("#pe_tel"),
+
     pais: gv("#pe_pais"),
+
     ciudad: gv("#pe_ciudad"),
+
     direccion: gv("#pe_dir"),
+
     estado: gv("#pe_estado") !== "Inactivo"
   };
 
   try {
-    if (!id) return alert("ID inválido");
-    if (!body.nombre) return alert("El nombre es obligatorio");
-    if (!body.ruc) return alert("El RUC es obligatorio");
 
-    await jput("/proveedores/" + id, body);
+    if (!id) {
+      return alert("ID inválido");
+    }
+
+    if (!body.nombre) {
+      return alert("El nombre es obligatorio");
+    }
+
+    if (!body.ruc) {
+      return alert("El RUC es obligatorio");
+    }
+
+    if (!body.email) {
+      return alert("El email es obligatorio");
+    }
+
+    await jput(
+      "/proveedores/" + id,
+      body
+    );
 
     closeModal("modalProveedorEdit");
-    toast("Proveedor actualizado correctamente", "success");
+
+    toast(
+      "Proveedor actualizado correctamente",
+      "success"
+    );
+
     listarProveedores();
 
   } catch (e) {
+
     console.error(e);
-    alert("No se pudo actualizar el proveedor.\n" + e.message);
+
+    alert(
+      "No se pudo actualizar el proveedor.\n" +
+      e.message
+    );
   }
 }
 
-async function eliminarProveedor(id) {
-  if (!confirm("¿Eliminar proveedor?")) return;
+function eliminarProveedor(id) {
+  document.getElementById("delete_proveedor_id").value = id;
+  openModal("modalEliminarProveedor");
+}
+
+async function confirmarEliminarProveedor() {
+  const id = document.getElementById("delete_proveedor_id").value;
+  if (!id) return;
 
   try {
     await jdel("/proveedores/" + id);
-
+    closeModal("modalEliminarProveedor");
     toast("Proveedor eliminado correctamente", "success");
     listarProveedores();
-
   } catch (e) {
     console.error(e);
     alert("No se pudo eliminar.\n" + e.message);
@@ -2993,16 +3472,21 @@ function cambiarPaginaProductos(nueva) {
   renderProductos(PROD_CACHE_FILTER);
 }
 
-async function eliminarProducto(id) {
-  if (!confirm("¿Seguro que querés eliminar este producto?")) return;
+function eliminarProducto(id) {
+  document.getElementById("delete_producto_id").value = id;
+  openModal("modalEliminarProducto");
+}
+
+async function confirmarEliminarProducto() {
+  const id = document.getElementById("delete_producto_id").value;
+  if (!id) return;
 
   try {
     await jdel("/productos/" + id);
-
+    closeModal("modalEliminarProducto");
     toast("Producto eliminado correctamente", "success");
     listarProductos();
     cargarKpis();
-
   } catch (err) {
     alert("⚠️ Error al eliminar: " + err.message);
   }
@@ -3487,15 +3971,20 @@ async function actualizarCategoria() {
   }
 }
 
-async function eliminarCategoria(id) {
-  if (!confirm("¿Eliminar categoría?")) return;
+function eliminarCategoria(id) {
+  document.getElementById("delete_categoria_id").value = id;
+  openModal("modalEliminarCategoria");
+}
+
+async function confirmarEliminarCategoria() {
+  const id = document.getElementById("delete_categoria_id").value;
+  if (!id) return;
 
   try {
     await jdel("/categorias/" + id);
-
+    closeModal("modalEliminarCategoria");
     toast("Categoría eliminada correctamente", "success");
     listarCategorias();
-
   } catch (err) {
     console.error(err);
     alert("No se pudo eliminar la categoría.\n" + err.message);
@@ -3988,12 +4477,33 @@ async function cargarProveedoresEnSelect() {
 /* ================== FORMAS DE PAGO ================== */
 
 function normalizarFormaPago(v) {
-  const fp =
-    (v.forma_pago || v.metodo || v.forma_pago_nombre || v.forma || "")
+
+  let nombre =
+    (
+      v.forma_pago_nombre ||
+      v.forma_pago ||
+      v.metodo ||
+      v.forma ||
+      ""
+    )
+    .toString()
+    .trim();
+
+  const banco =
+    (v.banco_nombre || "")
       .toString()
       .trim();
 
-  return fp || "Sin especificar";
+  // Agregar nombre del banco si corresponde
+  if (
+    nombre.toLowerCase().includes("otro banco") &&
+    banco &&
+    !nombre.includes("(")
+  ) {
+    nombre += ` (${banco})`;
+  }
+
+  return nombre || "Sin especificar";
 }
 
 function detectarTipoGeneral(fpNombre) {
@@ -4016,6 +4526,7 @@ async function listarFP() {
 
   try {
     ventas = await jget("/ventas");
+    console.table(ventas);
   } catch (e) {
     console.error("Error cargando ventas:", e);
     return;
@@ -4830,53 +5341,109 @@ function calcularTotalesPP() {
   });
 }
 
-async function guardarPedido() {
+async function guardarPedido(enviar = false) {
+
   const items = Array.isArray(window.pp_items)
     ? window.pp_items
     : (window.pp_items = []);
 
   if (!items.length) {
-    return alert("Debe agregar al menos un producto.");
+    return alert(
+      "Debe agregar al menos un producto."
+    );
   }
 
-  const proveedor_id = qs("#pp_proveedor")?.value;
-  const fecha_pedido = qs("#pp_fecha")?.value;
+  const proveedor_id =
+    qs("#pp_proveedor")?.value;
+
+  const fecha_pedido =
+    qs("#pp_fecha")?.value;
 
   if (!proveedor_id) {
-    return alert("Seleccione un proveedor.");
+    return alert(
+      "Seleccione un proveedor."
+    );
   }
 
   if (!fecha_pedido) {
-    return alert("Seleccione la fecha del pedido.");
+    return alert(
+      "Seleccione la fecha del pedido."
+    );
   }
 
   const pedido = {
-    proveedor_id: Number(proveedor_id),
+
+    proveedor_id:
+      Number(proveedor_id),
+
     fecha_pedido,
+
     observacion: "",
+
+    // NUEVO
+    enviar_email: !!enviar,
+
     items: items.map(i => ({
-      producto_id: Number(i.producto_id || i.id),
-      descripcion: i.unidad || "",
-      cantidad: Number(i.cantidad) || 0,
-      precio_unit: Number(i.costo) || 0
+
+      producto_id:
+        Number(
+          i.producto_id || i.id
+        ),
+
+      descripcion:
+        i.unidad || "",
+
+      cantidad:
+        Number(i.cantidad) || 0,
+
+      precio_unit:
+        Number(i.costo) || 0
     }))
   };
 
   try {
-    await jpost("/api/pedidos", pedido);
 
-    toast("Pedido guardado correctamente", "success");
+    const resp = await jpost(
+      "/api/pedidos",
+      pedido
+    );
+
+    if (enviar) {
+
+      toast(
+        "Pedido guardado y enviado correctamente",
+        "success"
+      );
+
+    } else {
+
+      toast(
+        "Pedido guardado correctamente",
+        "success"
+      );
+    }
+
+    console.log(
+      "Pedido creado:",
+      resp
+    );
 
     window.pp_items = [];
 
     renderPP_Items();
 
-    location.hash = "#lista_pedidos";
+    location.hash =
+      "#lista_pedidos";
+
     listarPedidos();
 
   } catch (err) {
+
     console.error(err);
-    alert("Error al guardar el pedido.");
+
+    alert(
+      "Error al guardar el pedido."
+    );
   }
 }
 
@@ -5386,24 +5953,28 @@ async function cargarVentasComparadas() {
   }
 }
 
-async function filtrarVentasPorDia() {
-  const fecha = qs("#filtro-dia")?.value;
-  if (!fecha) return;
+async function filtrarVentasPorRango() {
+  const desde = document.getElementById("filtro-desde")?.value;
+  const hasta = document.getElementById("filtro-hasta")?.value;
+  const resultado = document.getElementById("resultado-filtro");
+
+  if (!desde || !hasta) return;
 
   try {
     const ventas = await jget("/ventas");
 
-    const filtradas = ventas.filter(v =>
-      String(v.fecha || v.created_at || "").slice(0, 10) === fecha
-    );
+    const filtradas = ventas.filter(v => {
+      const fecha = toYMD(v.fecha || v.created_at);
+      return fecha >= desde && fecha <= hasta;
+    });
 
     const total = filtradas.reduce(
-      (a, v) => a + Number(v.total_pyg ?? v.total ?? 0),
-      0
+      (a, v) => a + Number(v.total_pyg ?? v.total ?? 0), 0
     );
 
-    const resultado = qs("#resultado-filtro");
-    if (resultado) resultado.textContent = `Gs. ${money(total)}`;
+    if (resultado) {
+      resultado.textContent = `Gs. ${money(total)}`;
+    }
 
   } catch (err) {
     console.error("Error filtrando ventas:", err);

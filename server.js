@@ -13,6 +13,7 @@ import session from "express-session";
 import PDFDocument from "pdfkit";
 import { createClient } from "@supabase/supabase-js";
 import { fileURLToPath } from "url";
+import nodemailer from "nodemailer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +37,169 @@ let EDIT_SALES_HASH = null;
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+
+async function enviarPedidoProveedor({
+
+  empresaId,
+
+  proveedorEmail,
+
+  proveedorNombre,
+
+  pedidoId,
+
+  pdfPath,
+
+  empresaNombre
+
+}) {
+
+  if (!proveedorEmail) {
+
+    console.log(
+      "Proveedor sin email"
+    );
+
+    return;
+  }
+
+  /* =========================
+     OBTENER SMTP EMPRESA
+  ========================= */
+
+  const { rows } = await pool.query(
+    `
+    SELECT
+      smtp_host,
+      smtp_port,
+      smtp_secure,
+      smtp_user,
+      smtp_pass,
+      smtp_from
+    FROM empresas
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [empresaId]
+  );
+
+  if (!rows.length) {
+    throw new Error(
+      "Empresa no encontrada"
+    );
+  }
+
+  const empresa = rows[0];
+
+  /* =========================
+     VALIDAR SMTP
+  ========================= */
+
+  if (
+    !empresa.smtp_host ||
+    !empresa.smtp_user ||
+    !empresa.smtp_pass
+  ) {
+    throw new Error(
+      "SMTP no configurado"
+    );
+  }
+
+  /* =========================
+     TRANSPORTER
+  ========================= */
+
+  const transporter =
+    nodemailer.createTransport({
+
+      host:
+        empresa.smtp_host,
+
+      port:
+        Number(
+          empresa.smtp_port || 465
+        ),
+
+      secure:
+        !!empresa.smtp_secure,
+
+      auth: {
+
+        user:
+          empresa.smtp_user,
+
+        pass:
+          empresa.smtp_pass
+      }
+    });
+
+  /* =========================
+     ENVIAR EMAIL
+  ========================= */
+
+  await transporter.sendMail({
+
+    from: `
+      "${empresaNombre}"
+      <${empresa.smtp_from}>
+    `,
+
+    to:
+      proveedorEmail,
+
+    subject:
+      `Pedido #${pedidoId}`,
+
+    html: `
+      <div
+        style="
+          font-family:Arial,sans-serif
+        "
+      >
+
+        <h2>
+          Orden de Compra
+        </h2>
+
+        <p>
+          Hola
+          ${proveedorNombre || ""}.
+        </p>
+
+        <p>
+          Adjuntamos el pedido N°
+          <b>#${pedidoId}</b>.
+        </p>
+
+        <p>
+          Favor revisar el PDF adjunto.
+        </p>
+
+        <br>
+
+        <p>
+          Saludos.
+        </p>
+
+      </div>
+    `,
+
+    attachments: [
+      {
+        filename:
+          `pedido_${pedidoId}.pdf`,
+
+        path:
+          pdfPath
+      }
+    ]
+  });
+
+  console.log(
+    "Pedido enviado a:",
+    proveedorEmail
+  );
+}
 app.use(
   "/uploads",
   express.static(
@@ -196,6 +360,8 @@ const logoStorage = multer.diskStorage({
 
 const uploadLogo = multer({ storage: logoStorage });
 
+
+
 /** ÚNICA función para convertir dataURL base64 a archivo físico en /public/uploads */
 function saveDataUrlToFile(dataUrl, prefix = "prod") {
   if (!dataUrl || !dataUrl.startsWith("data:")) return null;
@@ -253,6 +419,7 @@ async function bootstrapFormasPagoTodasEmpresas() {
       { nombre: "Ueno Bank",      tipo: "transferencia" },
       { nombre: "Banco Basa",     tipo: "transferencia" },
       { nombre: "Mango",          tipo: "transferencia" },
+      { nombre: "Otro Banco",     tipo: "transferencia" },
     ];
 
     const { rows: empresas } = await pool.query(
@@ -617,6 +784,7 @@ app.get("/proveedores", requireEmpresa, async (req, res) => {
         nombre,
         ruc,
         contacto,
+        email,
         telefono,
         pais,
         ciudad,
@@ -630,33 +798,48 @@ app.get("/proveedores", requireEmpresa, async (req, res) => {
     );
 
     res.json(rows);
+
   } catch (e) {
+
     console.error("GET /proveedores", e);
-    res.status(500).json({ error: "Error al listar proveedores" });
+
+    res.status(500).json({
+      error: "Error al listar proveedores"
+    });
   }
 });
 
 app.post("/proveedores", requireEmpresa, async (req, res) => {
   try {
+
     const empresaId = getEmpresaId(req);
 
     const {
       nombre = "",
       ruc = "",
       contacto = null,
+
+      // NUEVO
+      email = null,
+
       telefono = null,
       pais = null,
       ciudad = null,
       direccion = null,
       estado = true
+
     } = req.body || {};
 
     if (!nombre.trim()) {
-      return res.status(400).json({ error: "El nombre es obligatorio" });
+      return res.status(400).json({
+        error: "El nombre es obligatorio"
+      });
     }
 
     if (!ruc.trim()) {
-      return res.status(400).json({ error: "El RUC es obligatorio" });
+      return res.status(400).json({
+        error: "El RUC es obligatorio"
+      });
     }
 
     const { rows } = await pool.query(
@@ -665,6 +848,7 @@ app.post("/proveedores", requireEmpresa, async (req, res) => {
         nombre,
         ruc,
         contacto,
+        email,
         telefono,
         pais,
         ciudad,
@@ -672,12 +856,14 @@ app.post("/proveedores", requireEmpresa, async (req, res) => {
         estado,
         empresa_id
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+
       RETURNING 
         id,
         nombre,
         ruc,
         contacto,
+        email,
         telefono,
         pais,
         ciudad,
@@ -688,6 +874,7 @@ app.post("/proveedores", requireEmpresa, async (req, res) => {
         nombre.trim(),
         ruc.trim(),
         contacto,
+        email,
         telefono,
         pais,
         ciudad,
@@ -698,38 +885,56 @@ app.post("/proveedores", requireEmpresa, async (req, res) => {
     );
 
     res.status(201).json(rows[0]);
+
   } catch (e) {
+
     console.error("POST /proveedores", e);
-    res.status(500).json({ error: "Error al crear proveedor" });
+
+    res.status(500).json({
+      error: "Error al crear proveedor"
+    });
   }
 });
 
 app.put("/proveedores/:id", requireEmpresa, async (req, res) => {
   try {
+
     const empresaId = getEmpresaId(req);
+
     const id = Number(req.params.id);
 
     const {
       nombre = "",
       ruc = "",
       contacto = null,
+
+      // NUEVO
+      email = null,
+
       telefono = null,
       pais = null,
       ciudad = null,
       direccion = null,
       estado = true
+
     } = req.body || {};
 
     if (!id) {
-      return res.status(400).json({ error: "ID inválido" });
+      return res.status(400).json({
+        error: "ID inválido"
+      });
     }
 
     if (!nombre.trim()) {
-      return res.status(400).json({ error: "El nombre es obligatorio" });
+      return res.status(400).json({
+        error: "El nombre es obligatorio"
+      });
     }
 
     if (!ruc.trim()) {
-      return res.status(400).json({ error: "El RUC es obligatorio" });
+      return res.status(400).json({
+        error: "El RUC es obligatorio"
+      });
     }
 
     const { rows } = await pool.query(
@@ -739,18 +944,22 @@ app.put("/proveedores/:id", requireEmpresa, async (req, res) => {
         nombre = $1,
         ruc = $2,
         contacto = $3,
-        telefono = $4,
-        pais = $5,
-        ciudad = $6,
-        direccion = $7,
-        estado = $8
-      WHERE id = $9
-        AND empresa_id = $10
+        email = $4,
+        telefono = $5,
+        pais = $6,
+        ciudad = $7,
+        direccion = $8,
+        estado = $9
+
+      WHERE id = $10
+        AND empresa_id = $11
+
       RETURNING 
         id,
         nombre,
         ruc,
         contacto,
+        email,
         telefono,
         pais,
         ciudad,
@@ -761,6 +970,7 @@ app.put("/proveedores/:id", requireEmpresa, async (req, res) => {
         nombre.trim(),
         ruc.trim(),
         contacto,
+        email,
         telefono,
         pais,
         ciudad,
@@ -778,19 +988,28 @@ app.put("/proveedores/:id", requireEmpresa, async (req, res) => {
     }
 
     res.json(rows[0]);
+
   } catch (e) {
+
     console.error("PUT /proveedores/:id", e);
-    res.status(500).json({ error: "Error al actualizar proveedor" });
+
+    res.status(500).json({
+      error: "Error al actualizar proveedor"
+    });
   }
 });
 
 app.delete("/proveedores/:id", requireEmpresa, async (req, res) => {
   try {
+
     const empresaId = getEmpresaId(req);
+
     const id = Number(req.params.id);
 
     if (!id) {
-      return res.status(400).json({ error: "ID inválido" });
+      return res.status(400).json({
+        error: "ID inválido"
+      });
     }
 
     const { rowCount } = await pool.query(
@@ -809,9 +1028,14 @@ app.delete("/proveedores/:id", requireEmpresa, async (req, res) => {
     }
 
     res.json({ ok: true });
+
   } catch (e) {
+
     console.error("DELETE /proveedores/:id", e);
-    res.status(500).json({ error: "Error al eliminar proveedor" });
+
+    res.status(500).json({
+      error: "Error al eliminar proveedor"
+    });
   }
 });
 
@@ -1704,8 +1928,12 @@ async function bootstrapPedidos(pool) {
 
 await bootstrapPedidos(pool);
 
-/* ---------- PDF generator ---------- */
 async function generarPDFPedido(pool, pedidoId, empresaId) {
+
+  // =====================================================
+  // PEDIDO
+  // =====================================================
+
   const { rows: pr } = await pool.query(
     `
     SELECT *
@@ -1721,9 +1949,36 @@ async function generarPDFPedido(pool, pedidoId, empresaId) {
 
   const pedido = pr[0];
 
+  // =====================================================
+  // EMPRESA
+  // =====================================================
+
+  const { rows: empr } = await pool.query(
+    `
+    SELECT
+      nombre,
+      logo
+    FROM empresas
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [empresaId]
+  );
+
+  const empresa = empr[0] || {};
+
+  // =====================================================
+  // PROVEEDOR
+  // =====================================================
+
   const { rows: provr } = await pool.query(
     `
-    SELECT *
+    SELECT
+      nombre,
+      ruc,
+      contacto,
+      email,
+      telefono
     FROM proveedores
     WHERE id = $1
       AND empresa_id = $2
@@ -1734,25 +1989,40 @@ async function generarPDFPedido(pool, pedidoId, empresaId) {
 
   const prov = provr[0] || {};
 
+  // =====================================================
+  // ITEMS
+  // =====================================================
+
   const { rows: items } = await pool.query(
     `
-    SELECT 
+    SELECT
       i.*,
       p.nombre,
       p.codigo
     FROM pedidos_prov_items i
+
     LEFT JOIN productos p
       ON p.id = i.producto_id
      AND p.empresa_id = $2
+
     WHERE i.pedido_id = $1
       AND i.empresa_id = $2
+
     ORDER BY i.id ASC
     `,
     [pedidoId, empresaId]
   );
 
+  // =====================================================
+  // PDF
+  // =====================================================
+
   const pdfName = `pedido_${empresaId}_${pedidoId}.pdf`;
-  const outPath = path.join(PDF_DIR, pdfName);
+
+  const outPath = path.join(
+    PDF_DIR,
+    pdfName
+  );
 
   const doc = new PDFDocument({
     size: "A4",
@@ -1760,136 +2030,397 @@ async function generarPDFPedido(pool, pedidoId, empresaId) {
   });
 
   const stream = fs.createWriteStream(outPath);
+
   doc.pipe(stream);
 
-  doc.fontSize(18).text("AUTOSERVICE • Orden de Compra");
+  // =====================================================
+  // COLORES
+  // =====================================================
 
-  doc.moveDown(0.3).fontSize(10)
-    .text(`N° Pedido: ${pedido.id}`)
-    .text(`Fecha: ${pedido.fecha_pedido.toISOString().slice(0, 10)}`);
+  const COLOR_PRIMARY = "#2563eb";
+  const COLOR_SECONDARY = "#64748b";
+  const COLOR_BORDER = "#cbd5e1";
+  const COLOR_LIGHT = "#f1f5f9";
+  const COLOR_TEXT = "#1e293b";
 
-  doc.moveDown(0.5).fontSize(12).text("Proveedor", { underline: true });
+  // =====================================================
+  // HEADER
+  // =====================================================
 
-  doc.fontSize(10)
-    .text(`Nombre: ${prov.nombre || pedido.proveedor_id}`)
-    .text(`RUC: ${prov.ruc || "-"}`)
-    .text(`Contacto: ${prov.contacto || "-"}`)
-    .text(`Teléfono: ${prov.telefono || "-"}`);
+  doc
+    .rect(0, 0, 595, 110)
+    .fill("#eff6ff");
 
-  doc.moveDown(0.5).fontSize(12).text("Observación", { underline: true });
-  doc.fontSize(10).text(pedido.observacion || "-");
-  doc.moveDown(0.8);
+  // =====================================================
+  // LOGO
+  // =====================================================
 
-  const header = [
+  if (empresa.logo) {
+
+    try {
+
+      const cleanLogo = empresa.logo
+        .replace(/^\/+/, "")
+        .replace("uploads/", "");
+
+      const logoPath = path.join(
+        __dirname,
+        "public",
+        "uploads",
+        cleanLogo
+      );
+
+      if (fs.existsSync(logoPath)) {
+
+        doc.image(
+          logoPath,
+          40,
+          25,
+          {
+            fit: [90, 90],
+            align: "left"
+          }
+        );
+
+      }
+
+    } catch (e) {
+
+      console.error(
+        "Error cargando logo:",
+        e.message
+      );
+
+    }
+
+  }
+
+  // =====================================================
+  // TITULO
+  // =====================================================
+
+  doc
+    .fillColor(COLOR_PRIMARY)
+    .font("Helvetica-Bold")
+    .fontSize(24)
+    .text(
+      empresa.nombre || "EMPRESA",
+      150,
+      30
+    );
+
+  doc
+    .fillColor(COLOR_SECONDARY)
+    .fontSize(16)
+    .text(
+      "ORDEN DE COMPRA",
+      150,
+      60
+    );
+
+  // =====================================================
+  // DATOS PEDIDO
+  // =====================================================
+
+  doc
+    .roundedRect(40, 130, 515, 80, 8)
+    .fillAndStroke("#ffffff", COLOR_BORDER);
+
+  doc
+    .fillColor(COLOR_TEXT)
+    .font("Helvetica-Bold")
+    .fontSize(11)
+    .text("DATOS DEL PEDIDO", 55, 145);
+
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .text(`Pedido N°: ${pedido.id}`, 55, 170)
+    .text(
+      `Fecha: ${
+        pedido.fecha_pedido
+          ?.toISOString()
+          ?.slice(0, 10) || "-"
+      }`,
+      220,
+      170
+    );
+
+  // =====================================================
+  // PROVEEDOR
+  // =====================================================
+
+  doc
+    .roundedRect(40, 230, 515, 110, 8)
+    .fillAndStroke("#ffffff", COLOR_BORDER);
+
+  doc
+    .fillColor(COLOR_PRIMARY)
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .text("PROVEEDOR", 55, 245);
+
+  doc
+    .fillColor(COLOR_TEXT)
+    .font("Helvetica")
+    .fontSize(10)
+    .text(`Nombre: ${prov.nombre || "-"}`, 55, 270)
+    .text(`RUC: ${prov.ruc || "-"}`, 55, 288)
+    .text(`Contacto: ${prov.contacto || "-"}`, 55, 306)
+    .text(`Teléfono: ${prov.telefono || "-"}`, 300, 270)
+    .text(`Email: ${prov.email || "-"}`, 300, 288);
+
+  // =====================================================
+  // OBSERVACION
+  // =====================================================
+
+  let currentY = 360;
+
+  if (pedido.observacion) {
+
+    doc
+      .roundedRect(40, currentY, 515, 70, 8)
+      .fillAndStroke("#ffffff", COLOR_BORDER);
+
+    doc
+      .fillColor(COLOR_PRIMARY)
+      .font("Helvetica-Bold")
+      .fontSize(11)
+      .text("OBSERVACIÓN", 55, currentY + 15);
+
+    doc
+      .fillColor(COLOR_TEXT)
+      .font("Helvetica")
+      .fontSize(10)
+      .text(
+        pedido.observacion,
+        55,
+        currentY + 35,
+        {
+          width: 470
+        }
+      );
+
+    currentY += 90;
+
+  }
+
+  // =====================================================
+  // TABLA HEADER
+  // =====================================================
+
+  currentY += 10;
+
+  const startX = 40;
+
+  const cols = [
+    35,
+    180,
+    120,
+    60,
+    60,
+    80
+  ];
+
+  const headers = [
     "#",
     "Producto",
     "Descripción",
     "Cant.",
-    "Costo (Gs.)",
-    "Total (Gs.)"
+    "Costo",
+    "Total"
   ];
 
-  const widths = [30, 170, 150, 60, 80, 80];
-  const startX = doc.x;
-  let y = doc.y;
+  let x = startX;
 
-  doc.fontSize(10).fillColor("#000");
+  headers.forEach((h, i) => {
 
-  header.forEach((h, i) => {
-    doc.text(
-      h,
-      startX + widths.slice(0, i).reduce((a, b) => a + b, 0),
-      y,
-      { width: widths[i] }
-    );
+    doc
+      .rect(x, currentY, cols[i], 25)
+      .fillAndStroke(COLOR_PRIMARY, COLOR_PRIMARY);
+
+    doc
+      .fillColor("#ffffff")
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .text(
+        h,
+        x + 5,
+        currentY + 8,
+        {
+          width: cols[i] - 10,
+          align: "center"
+        }
+      );
+
+    x += cols[i];
+
   });
 
-  y += 16;
+  currentY += 25;
+
+  // =====================================================
+  // ITEMS
+  // =====================================================
 
   items.forEach((it, idx) => {
-    const cells = [
+
+    if (currentY > 720) {
+
+      doc.addPage();
+
+      currentY = 40;
+
+    }
+
+    const values = [
+
       String(idx + 1),
-      `${it.nombre || ""}${it.codigo ? " — " + it.codigo : ""}`,
+
+      `${it.nombre || ""}${
+        it.codigo
+          ? " - " + it.codigo
+          : ""
+      }`,
+
       it.descripcion || "-",
-      String(it.cantidad),
-      fmtPY(it.precio_unit),
-      fmtPY(it.total)
+
+      String(it.cantidad || 0),
+
+      fmtPY(it.precio_unit || 0),
+
+      fmtPY(it.total || 0)
+
     ];
 
-    cells.forEach((c, i) => {
-      doc.text(
-        c,
-        startX + widths.slice(0, i).reduce((a, b) => a + b, 0),
-        y,
-        { width: widths[i] }
-      );
+    let xx = startX;
+
+    values.forEach((val, i) => {
+
+      doc
+        .rect(xx, currentY, cols[i], 24)
+        .fillAndStroke(
+          idx % 2 === 0
+            ? "#ffffff"
+            : COLOR_LIGHT,
+          COLOR_BORDER
+        );
+
+      doc
+        .fillColor(COLOR_TEXT)
+        .font("Helvetica")
+        .fontSize(9)
+        .text(
+          String(val),
+          xx + 4,
+          currentY + 7,
+          {
+            width: cols[i] - 8,
+            align: i >= 3 ? "right" : "left"
+          }
+        );
+
+      xx += cols[i];
+
     });
 
-    y += 16;
+    currentY += 24;
 
-    if (y > 750) {
-      doc.addPage();
-      y = doc.y;
-    }
   });
 
-  y += 10;
+  // =====================================================
+  // TOTALES
+  // =====================================================
 
-  const rightX = startX + widths[0] + widths[1] + widths[2] + widths[3];
+  currentY += 20;
 
-  doc.text("Subtotal", rightX, y, {
-    width: widths[4],
-    align: "right"
-  });
+  const totalBoxX = 340;
 
-  doc.text(fmtPY(pedido.subtotal), rightX + widths[4], y, {
-    width: widths[5],
-    align: "right"
-  });
+  doc
+    .roundedRect(totalBoxX, currentY, 215, 80, 8)
+    .fillAndStroke("#ffffff", COLOR_BORDER);
 
-  y += 16;
+  doc
+    .fillColor(COLOR_TEXT)
+    .font("Helvetica")
+    .fontSize(10)
+    .text("Subtotal:", totalBoxX + 15, currentY + 15)
+    .text(
+      fmtPY(pedido.subtotal || 0),
+      totalBoxX + 100,
+      currentY + 15,
+      {
+        width: 90,
+        align: "right"
+      }
+    );
 
-  doc.text("IVA 10%", rightX, y, {
-    width: widths[4],
-    align: "right"
-  });
+  doc
+    .text("IVA 10%:", totalBoxX + 15, currentY + 35)
+    .text(
+      fmtPY(pedido.iva || 0),
+      totalBoxX + 100,
+      currentY + 35,
+      {
+        width: 90,
+        align: "right"
+      }
+    );
 
-  doc.text(fmtPY(pedido.iva), rightX + widths[4], y, {
-    width: widths[5],
-    align: "right"
-  });
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor(COLOR_PRIMARY)
+    .text("TOTAL:", totalBoxX + 15, currentY + 58)
+    .text(
+      fmtPY(pedido.total || 0),
+      totalBoxX + 100,
+      currentY + 58,
+      {
+        width: 90,
+        align: "right"
+      }
+    );
 
-  y += 16;
+  // =====================================================
+  // FOOTER
+  // =====================================================
 
-  doc.font("Helvetica-Bold");
+  doc
+    .fillColor(COLOR_SECONDARY)
+    .fontSize(9)
+    .font("Helvetica")
+    .text(
+      `Documento generado automáticamente • ${empresa.nombre || "EMPRESA"}`,
+      40,
+      780,
+      {
+        align: "center",
+        width: 515
+      }
+    );
 
-  doc.text("TOTAL", rightX, y, {
-    width: widths[4],
-    align: "right"
-  });
-
-  doc.text(fmtPY(pedido.total), rightX + widths[4], y, {
-    width: widths[5],
-    align: "right"
-  });
-
-  doc.font("Helvetica");
-
-  doc.moveDown(2);
-
-  doc.fontSize(9)
-    .fillColor("#666")
-    .text("© 2025 Consorcio SPY — Generado automáticamente", {
-      align: "center"
-    });
+  // =====================================================
+  // FINALIZAR
+  // =====================================================
 
   doc.end();
 
-  return new Promise(resolve =>
-    stream.on("finish", () => resolve({ file: pdfName }))
-  );
-}
+  return new Promise((resolve) => {
 
+    stream.on("finish", () => {
+
+      resolve({
+        file: pdfName,
+        path: outPath,
+        fullPath: outPath
+      });
+
+    });
+
+  });
+
+}
 /* ---------- Helpers estado ---------- */
 function normalizeOutPedidoRow(p) {
   return {
@@ -1968,9 +2499,11 @@ app.get("/pedidos", requireEmpresa, async (req, res) => {
   }
 });
 
+
 /* ---------- LISTAR pedidos + ítems embebidos ---------- */
 app.get("/api/pedidos", requireEmpresa, async (req, res) => {
   try {
+
     const empresaId = getEmpresaId(req);
 
     // === 1) PEDIDOS ===
@@ -1979,17 +2512,26 @@ app.get("/api/pedidos", requireEmpresa, async (req, res) => {
       SELECT 
         p.id,
         p.proveedor_id,
+
         pr.nombre AS proveedor_nombre,
+
+        -- NUEVO
+        pr.email AS proveedor_email,
+
         p.fecha_pedido,
         p.fecha_recepcion,
         p.subtotal,
         p.iva,
         p.total
+
       FROM pedidos_prov p
+
       LEFT JOIN proveedores pr 
         ON pr.id = p.proveedor_id
        AND pr.empresa_id = $1
+
       WHERE p.empresa_id = $1
+
       ORDER BY p.id DESC
       `,
       [empresaId]
@@ -2002,21 +2544,29 @@ app.get("/api/pedidos", requireEmpresa, async (req, res) => {
         i.id,
         i.pedido_id,
         i.producto_id,
+
         prod.nombre AS producto_nombre,
         prod.codigo AS producto_codigo,
+
         cat.nombre AS categoria_nombre,
+
         i.descripcion,
         i.cantidad,
         i.precio_unit,
         i.total
+
       FROM pedidos_prov_items i
+
       LEFT JOIN productos prod 
         ON prod.id = i.producto_id
        AND prod.empresa_id = $1
+
       LEFT JOIN categorias cat 
         ON cat.id = prod.categoria_id
        AND cat.empresa_id = $1
+
       WHERE i.empresa_id = $1
+
       ORDER BY i.pedido_id, i.id
       `,
       [empresaId]
@@ -2024,11 +2574,17 @@ app.get("/api/pedidos", requireEmpresa, async (req, res) => {
 
     // === 3) Agrupar items por pedido ===
     const itemsByPedido = items.reduce((acc, it) => {
+
       (acc[it.pedido_id] ||= []).push({
         id: it.id,
         producto_id: it.producto_id,
-        producto_nombre: it.producto_nombre || "¿?",
-        categoria_nombre: it.categoria_nombre || "Sin categoría",
+
+        producto_nombre:
+          it.producto_nombre || "¿?",
+
+        categoria_nombre:
+          it.categoria_nombre || "Sin categoría",
+
         descripcion: it.descripcion,
         cantidad: it.cantidad,
         precio_unit: it.precio_unit,
@@ -2036,19 +2592,30 @@ app.get("/api/pedidos", requireEmpresa, async (req, res) => {
       });
 
       return acc;
+
     }, {});
 
     // === 4) Adjuntar items a cada pedido ===
     const response = pedidos.map(p => ({
       ...p,
-      items: itemsByPedido[p.id] || []
+
+      // NUEVO
+      proveedor_email:
+        p.proveedor_email || "",
+
+      items:
+        itemsByPedido[p.id] || []
     }));
 
     res.json(response);
 
   } catch (error) {
+
     console.error("GET /api/pedidos", error);
-    res.status(500).json({ error: "Error al listar pedidos" });
+
+    res.status(500).json({
+      error: "Error al listar pedidos"
+    });
   }
 });
 /* ---------- OBTENER pedido por id (con ítems) ---------- */
@@ -2126,6 +2693,7 @@ app.get("/api/pedidos/:id", requireEmpresa, async (req, res) => {
 });
 /* ---------- CREAR pedido (y PDF) ---------- */
 app.post("/api/pedidos", requireEmpresa, async (req, res) => {
+
   const empresaId = getEmpresaId(req);
 
   const {
@@ -2136,15 +2704,18 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
   } = req.body || {};
 
   if (!proveedor_id || !Array.isArray(items) || !items.length) {
+
     return res.status(400).json({
       ok: false,
       msg: "Proveedor e ítems son obligatorios."
     });
+
   }
 
   const client = await pool.connect();
 
   try {
+
     await client.query("BEGIN");
 
     const provQ = await client.query(
@@ -2159,11 +2730,14 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
     );
 
     if (!provQ.rowCount) {
+
       await client.query("ROLLBACK");
+
       return res.status(404).json({
         ok: false,
         msg: "Proveedor no encontrado o no pertenece a esta empresa"
       });
+
     }
 
     const fechaPedidoFinal = fecha_pedido || hoyStr();
@@ -2190,19 +2764,28 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
     );
 
     const pedidoId = rp[0].id;
+
     let subtotal = 0;
 
     for (const it of items) {
+
       const productoId = Number(it.producto_id || 0);
+
       const cantidad = Number(it.cantidad || 0);
-      const precioUnit = Number(it.costo_estimado ?? it.precio_unit ?? 0);
+
+      const precioUnit = Number(
+        it.costo_estimado ?? it.precio_unit ?? 0
+      );
 
       if (!productoId || cantidad <= 0 || precioUnit < 0) {
+
         await client.query("ROLLBACK");
+
         return res.status(400).json({
           ok: false,
           msg: "Ítem inválido en el pedido"
         });
+
       }
 
       const prodQ = await client.query(
@@ -2218,14 +2801,18 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
       );
 
       if (!prodQ.rowCount) {
+
         await client.query("ROLLBACK");
+
         return res.status(404).json({
           ok: false,
           msg: `Producto ${productoId} no encontrado o no pertenece a esta empresa`
         });
+
       }
 
       const totalLinea = cantidad * precioUnit;
+
       subtotal += totalLinea;
 
       await client.query(
@@ -2251,9 +2838,11 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
           empresaId
         ]
       );
+
     }
 
     const iva = Math.round(subtotal * 0.10);
+
     const total = subtotal + iva;
 
     await client.query(
@@ -2276,7 +2865,139 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
 
     await client.query("COMMIT");
 
-    const pdf = await generarPDFPedido(pool, pedidoId, empresaId);
+    /* =========================================================
+       GENERAR PDF
+    ========================================================= */
+
+    const pdf = await generarPDFPedido(
+      pool,
+      pedidoId,
+      empresaId
+    );
+
+    /* =========================================================
+       OBTENER DATOS DEL PROVEEDOR + EMPRESA
+    ========================================================= */
+
+    const { rows: provRows } = await pool.query(
+      `
+      SELECT
+
+        pr.nombre,
+        pr.email,
+
+        e.nombre AS empresa_nombre,
+        e.smtp_host,
+        e.smtp_port,
+        e.smtp_secure,
+        e.smtp_user,
+        e.smtp_pass,
+        e.smtp_from
+
+      FROM proveedores pr
+
+      INNER JOIN empresas e
+        ON e.id = pr.empresa_id
+
+      WHERE pr.id = $1
+        AND pr.empresa_id = $2
+
+      LIMIT 1
+      `,
+      [proveedor_id, empresaId]
+    );
+
+    const provData = provRows[0];
+
+    /* =========================================================
+       ENVIAR EMAIL AUTOMÁTICO
+    ========================================================= */
+
+    if (
+      provData?.email &&
+      provData?.smtp_user &&
+      provData?.smtp_pass
+    ) {
+
+      try {
+
+        const transporter = nodemailer.createTransport({
+
+  host: "smtp.gmail.com",
+
+  port: 587,
+
+  secure: false,
+
+  requireTLS: true,
+
+  tls: {
+    rejectUnauthorized: false,
+    family: 4
+  },
+
+  auth: {
+
+    user: provData.smtp_user,
+
+    pass: provData.smtp_pass
+  }
+
+});
+
+await transporter.sendMail({
+
+  from: `"${provData.empresa_nombre}" <${provData.smtp_from || provData.smtp_user}>`,
+
+  to: provData.email,
+
+  subject: `Pedido #${pedidoId}`,
+
+  html: `
+    <div style="font-family:Arial,sans-serif">
+
+      <h2>
+        Orden de Compra
+      </h2>
+
+      <p>
+        Hola ${provData.nombre || ""}.
+      </p>
+
+      <p>
+        Adjuntamos el pedido N° <b>#${pedidoId}</b>.
+      </p>
+
+      <p>
+        Favor revisar el PDF adjunto.
+      </p>
+
+    </div>
+  `,
+
+  attachments: [
+    {
+      filename: `pedido_${pedidoId}.pdf`,
+      path: pdf?.fullPath || pdf?.path || pdf?.file
+    }
+  ]
+
+});
+        console.log(
+          "✅ Pedido enviado al proveedor:",
+          provData.email
+        );
+
+      } catch (mailError) {
+
+        console.error(
+          "❌ ERROR ENVIANDO EMAIL:",
+          mailError
+        );
+
+      }
+
+    }
 
     res.status(201).json({
       ok: true,
@@ -2285,18 +3006,26 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
     });
 
   } catch (e) {
+
     await client.query("ROLLBACK");
-    console.error("POST /api/pedidos ERROR:", e);
+
+    console.error(
+      "POST /api/pedidos ERROR:",
+      e
+    );
 
     res.status(500).json({
       ok: false,
       msg: "No se pudo crear el pedido"
     });
-  } finally {
-    client.release();
-  }
-});
 
+  } finally {
+
+    client.release();
+
+  }
+
+});
 /* ---------- CAMBIAR estado genérico ---------- */
 app.put("/api/pedidos/:id/estado", requireEmpresa, async (req, res) => {
   const empresaId = getEmpresaId(req);
@@ -2498,7 +3227,6 @@ app.get("/pedidos/:id", requireEmpresa, async (req, res) => {
   }
 });
 
-// Front antiguo: POST /pedidos/:id/enviar
 app.post("/pedidos/:id/enviar", requireEmpresa, async (req, res) => {
   const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
@@ -3517,7 +4245,8 @@ app.post("/ventas", requireEmpresa, async (req, res) => {
     items,
     estado_pago,
     nro_comprobante,
-    fecha
+    fecha,
+    banco_nombre
   } = req.body || {};
 
   const client = await pool.connect();
@@ -3618,7 +4347,8 @@ const REQUIERE_COMPROBANTE = [
   "Banco Basa",
   "Mango",
   "Débito",
-  "Crédito"
+  "Crédito",
+  "Otro Banco"
 ];
 
 const compStr = (nro_comprobante || "").toString().trim();
@@ -3699,46 +4429,71 @@ const tipoCajaNecesaria =
       req.session?.user?.usuario ||
       "Sin usuario";
 
-    const compFinal = REQUIERE_COMPROBANTE.includes(formaPago.nombre) ? compStr : null;
+    const compFinal =
+  REQUIERE_COMPROBANTE.includes(formaPago.nombre)
+    ? compStr
+    : null;
 
-    const v = await client.query(
-      `
-      INSERT INTO ventas (
-        fecha,
-        cliente_id,
-        caja_id,
-        usuario_id,
-        cajero_nombre,
-        total,
-        total_pyg,
-        total_moneda,
-        moneda,
-        tipo_cambio,
-        forma_pago_id,
-        estado_pago,
-        nro_comprobante,
-        empresa_id
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-      RETURNING id
-      `,
-      [
-        fechaFinal,
-        clienteIdFinal,
-        caja_id_final,
-        usuarioId,
-        cajeroNombre,
-        totalFinal,
-        totalPygFinal,
-        totalMonedaFinal,
-        monedaFinal,
-        tipoCambioFinal,
-        fpId,
-        (estado_pago || "pendiente").toString().trim().toLowerCase(),
-        compFinal,
-        empresaId
-      ]
-    );
+const nombreFormaPago = String(formaPago.nombre || "")
+  .trim()
+  .toLowerCase();
+
+const esOtroBanco =
+  nombreFormaPago.includes("otro banco");
+
+const bancoNombreFinal = esOtroBanco
+  ? String(banco_nombre || "").trim()
+  : null;
+
+console.log("=================================");
+console.log("FORMA PAGO:", formaPago.nombre);
+console.log("BANCO RECIBIDO:", banco_nombre);
+console.log("BANCO FINAL:", bancoNombreFinal);
+console.log("=================================");
+
+const v = await client.query(
+  `
+  INSERT INTO ventas (
+    fecha,
+    cliente_id,
+    caja_id,
+    usuario_id,
+    cajero_nombre,
+    total,
+    total_pyg,
+    total_moneda,
+    moneda,
+    tipo_cambio,
+    forma_pago_id,
+    estado_pago,
+    nro_comprobante,
+    banco_nombre,
+    empresa_id
+  )
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+  RETURNING id
+  `,
+  [
+    fechaFinal,
+    clienteIdFinal,
+    caja_id_final,
+    usuarioId,
+    cajeroNombre,
+    totalFinal,
+    totalPygFinal,
+    totalMonedaFinal,
+    monedaFinal,
+    tipoCambioFinal,
+    fpId,
+    (estado_pago || "pendiente")
+      .toString()
+      .trim()
+      .toLowerCase(),
+    compFinal,
+    bancoNombreFinal,
+    empresaId
+  ]
+);
 
     const ventaId = v.rows[0].id;
 
@@ -5345,27 +6100,51 @@ app.get("/formas-pago/movimientos", requireEmpresa, async (req, res) => {
         v.fecha,
         v.total,
         v.estado_pago,
-        fp.nombre AS forma_pago_nombre,
+
+        CASE
+          WHEN lower(trim(fp.nombre)) LIKE '%otro banco%'
+               AND v.banco_nombre IS NOT NULL
+               AND trim(v.banco_nombre) <> ''
+          THEN fp.nombre || ' (' || trim(v.banco_nombre) || ')'
+          ELSE fp.nombre
+        END AS forma_pago_nombre,
+
         v.nro_comprobante,
-        COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente_nombre
+
+        COALESCE(
+          c.nombre || ' ' || c.apellido,
+          'Consumidor Final'
+        ) AS cliente_nombre
+
       FROM ventas v
+
       LEFT JOIN formas_pago fp
         ON fp.id = v.forma_pago_id
        AND fp.empresa_id = $1
+
       LEFT JOIN clientes c
         ON c.id = v.cliente_id
        AND c.empresa_id = $1
+
       WHERE v.empresa_id = $1
+
       ORDER BY v.id DESC
       LIMIT 50
       `,
       [empresaId]
     );
 
+    console.table(q.rows);
+
     res.json(q.rows);
+
   } catch (err) {
     console.error("❌ Error en /formas-pago/movimientos:", err);
-    res.status(500).json({ ok: false, msg: "Error cargando movimientos" });
+
+    res.status(500).json({
+      ok: false,
+      msg: "Error cargando movimientos"
+    });
   }
 });
 
@@ -7194,26 +7973,54 @@ return res.json({
   }
 });
 
-app.post(
-  "/api/empresas/logo",
-  upload.single("logo"),
-  (req, res) => {
+app.post("/api/empresas/logo",requireEmpresa,uploadLogo.single("logo"),
 
-    if (!req.file) {
+  async (req, res) => {
 
-      return res.status(400).json({
-        ok: false,
-        msg: "No se subió archivo"
+    try {
+
+      const empresaId = getEmpresaId(req);
+
+      if (!req.file) {
+
+        return res.status(400).json({
+          ok: false,
+          msg: "No se subió archivo"
+        });
+
+      }
+
+      const logoPath =
+        `/uploads/logos/${req.file.filename}`;
+
+      // guardar en BD
+      await pool.query(
+        `
+        UPDATE empresas
+        SET logo = $1
+        WHERE id = $2
+        `,
+        [logoPath, empresaId]
+      );
+
+      res.json({
+
+        ok: true,
+
+        logo: logoPath
+
       });
+
+    } catch (e) {
+
+      console.error(e);
+
+      res.status(500).json({
+        ok: false,
+        msg: "No se pudo guardar logo"
+      });
+
     }
-
-    res.json({
-
-      ok: true,
-
-      logo:
-        `/uploads/logos/${req.file.filename}`
-    });
 
   }
 );

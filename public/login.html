@@ -115,6 +115,61 @@
       .welcome h1{font-size:1.72rem}
       .sc{padding:32px 24px}
     }
+    #mainCompanyName {
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.logo-box {
+  width: auto;        /* ← elimina el límite del contenedor */
+  height: auto;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#mainLogoImg {
+  width: 200px;        /* ← ahora sí funciona */
+  height: 200px;
+  max-width: unset;    /* ← esto cancela el max-width: 100% original */
+  max-height: unset;   /* ← ídem */
+  object-fit: contain;
+  border-radius: 0;
+  background: transparent;
+  display: block;
+}
+.logo-ph {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255,255,255,0.5);
+}
+
+.logo-ph svg {
+  width: 64px;
+  height: 64px;
+  stroke: rgba(255,255,255,0.4);
+  fill: none;
+  stroke-width: 1.2;
+}
+
+.logo-ph span {
+  font-size: 13px;
+}
   </style>
 </head>
 <body>
@@ -226,7 +281,7 @@
           <span>Tu logo</span>
         </div>
       </div>
-      <div class="cpill" id="mainCompanyName">Tu empresa</div>
+      <div id="mainCompanyName">Tu empresa</div>
       <button class="chg-btn" id="changeConfigBtn">✎ Cambiar configuración</button>
     </div>
 

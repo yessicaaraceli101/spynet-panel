@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SPYnet • Panel</title>
+  <title id="pageTitle">SPYnet • Acceso</title>
   <link rel="icon" type="image/png" href="img/logo.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -23,253 +23,267 @@
   <div class="layout">
     <aside class="sidebar">
 
-      <div class="sidebar-user-card" id="usuarioSidebar">
-        <div class="sidebar-user-avatar">
-          <i class="fa-solid fa-user"></i>
-        </div>
+ <div class="sidebar-brand">
+  <img
+    id="sidebarEmpresaLogo"
+    src="img/logo2.png"
+    alt="Logo"
+    style="
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255,255,255,.25);
+      flex-shrink: 0;
+    "
+  >
+  <div class="sidebar-brand-text">
+    <span class="sidebar-brand-name" id="sidebarEmpresaNombre">Cargando...</span>
+    <span class="sidebar-brand-sub">Sistema de Gestión</span>
+  </div>
+</div> 
 
-        <div class="sidebar-user-info">
-          <span class="sidebar-user-label">Usuario activo</span>
-          <strong class="sidebar-user-name" id="usuarioSidebarNombre">Cargando...</strong>
-        </div>
-      </div>
+  <!-- USUARIO -->
+  <div class="sidebar-user-card" id="usuarioSidebar">
+    <div class="sidebar-user-avatar">
+      <i class="fa-solid fa-user"></i>
+    </div>
+    <div class="sidebar-user-info">
+      <span class="sidebar-user-label">Usuario activo</span>
+      <strong class="sidebar-user-name" id="usuarioSidebarNombre">Cargando...</strong>
+    </div>
+  </div>
 
-      <div class="brand">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="#2563eb" stroke-width="2" />
-          <path d="M7 13l3 3 7-7" stroke="#2563eb" stroke-width="2" fill="none" />
-        </svg>
-     
-      </div>
-      <nav class="sidebar-nav">
-        <a href="#dashboard" data-link class="active">
-          <i class="fa-solid fa-gauge"></i>
-          Dashboard
-        </a>
+  <!-- SEPARADOR -->
+  <div style="height:1px;background:rgba(255,255,255,.12);margin:0 1rem .5rem;"></div>
 
-        <a href="#clientes" data-link>
-          <i class="fa-solid fa-users"></i>
-          Clientes
-        </a>
+  <!-- NAV -->
+  <nav class="sidebar-nav">
 
-        <a href="#caja" data-link>
-          <i class="fa-solid fa-cash-register"></i>
-          Caja
-        </a>
+    <p class="sidebar-section-label">PRINCIPAL</p>
 
-        <a href="#ventas" data-link>
-          <i class="fa-solid fa-basket-shopping"></i>
-          Ventas
-        </a>
+    <a href="#dashboard" data-link class="active">
+      <i class="fa-solid fa-gauge"></i>
+      Dashboard
+    </a>
 
-        <a href="#proveedores" data-link>
-          <i class="fa-solid fa-truck-field"></i>
-          Proveedores
-        </a>
+    <a href="#ventas" data-link>
+      <i class="fa-solid fa-basket-shopping"></i>
+      Ventas
+    </a>
 
-        <a href="#pedidos" data-link>
-          <i class="fa-solid fa-file-invoice"></i>
-          Pedido a Proveedor
-        </a>
+    <a href="#caja" data-link>
+      <i class="fa-solid fa-cash-register"></i>
+      Caja
+    </a>
 
-        <a href="#lista_pedidos" data-link>
-          <i class="fa-solid fa-list-check"></i>
-          Lista de Pedidos
-        </a>
+    <p class="sidebar-section-label">GESTIÓN</p>
 
-        <a href="#productos" data-link>
-          <i class="fa-solid fa-box"></i>
-          Productos
-        </a>
+    <a href="#clientes" data-link>
+      <i class="fa-solid fa-users"></i>
+      Clientes
+    </a>
 
-        <a href="#categorias" data-link>
-          <i class="fa-solid fa-tags"></i>
-          Categorías
-        </a>
+    <a href="#proveedores" data-link>
+      <i class="fa-solid fa-truck-field"></i>
+      Proveedores
+    </a>
 
-        <a href="#compras" data-link>
-          <i class="fa-solid fa-cart-shopping"></i>
-          Compras
-        </a>
+    <a href="#productos" data-link>
+      <i class="fa-solid fa-box"></i>
+      Productos
+    </a>
 
-        <a href="#cuentas-pagar" data-link>
-          <i class="fas fa-file-invoice-dollar"></i>
-          <span>Cuentas a Pagar</span>
-        </a>
+    <a href="#categorias" data-link>
+      <i class="fa-solid fa-tags"></i>
+      Categorías
+    </a>
 
-        <a href="#formas-pago" data-link>
-          <i class="fa fa-credit-card"></i>
-          <span>Formas de Pago</span>
-        </a>
+    <p class="sidebar-section-label">COMPRAS</p>
 
-        <a href="admin.html">
-          <i class="fa-solid fa-user-gear"></i>
-          Panel Administrativo
-        </a>
+    <a href="#compras" data-link>
+      <i class="fa-solid fa-cart-shopping"></i>
+      Compras
+    </a>
 
-        <a href="#" class="logout-link" onclick="logout(event); return false;">
-          <i class="fa-solid fa-right-from-bracket"></i>
-          Cerrar sesión
-        </a>
-      </nav>
-    </aside>
+    <a href="#pedidos" data-link>
+      <i class="fa-solid fa-file-invoice"></i>
+      Pedido a Proveedor
+    </a>
+
+    <a href="#lista_pedidos" data-link>
+      <i class="fa-solid fa-list-check"></i>
+      Lista de Pedidos
+    </a>
+
+    <p class="sidebar-section-label">FINANZAS</p>
+
+    <a href="#cuentas-pagar" data-link>
+      <i class="fas fa-file-invoice-dollar"></i>
+      Cuentas a Pagar
+    </a>
+
+    <a href="#formas-pago" data-link>
+      <i class="fa fa-credit-card"></i>
+      Formas de Pago
+    </a>
+
+    <p class="sidebar-section-label">SISTEMA</p>
+
+    <a href="admin.html">
+      <i class="fa-solid fa-user-gear"></i>
+      Panel Administrativo
+    </a>
+
+    <a href="#" class="logout-link" onclick="logout(event); return false;">
+      <i class="fa-solid fa-right-from-bracket"></i>
+      Cerrar sesión
+    </a>
+
+  </nav>
+</aside>
 
     <main>
 
       <section id="dashboard" class="view active">
-        <div class="dashboard-header">
 
-          <div class="header-top">
+  <!-- HEADER -->
+  <div class="dashboard-header">
+    <div class="header-top">
+      <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Resumen general del sistema y accesos principales</p>
+      </div>
+      <div class="top-right-actions">
+        <button id="btnNotificaciones" class="btn-notif" type="button">
+          <i class="fa-solid fa-bell"></i>
+          <span id="notifCount">0</span>
+        </button>
+        <div id="notifDropdown" class="notif-dropdown hidden"><h4>Notificaciones</h4></div>
+      </div>
+    </div>
+  </div>
 
-            <h1 class="page-title">Dashboard</h1>
+  <!-- KPIs -->
+  <div class="dashboard-kpis">
 
-            <div class="top-right-actions">
+    <div class="kpi-card modern">
+      <div class="kpi-top">
+        <div class="kpi-icon blue-soft"><i class="fa-solid fa-coins"></i></div>
+        <span class="kpi-label">Ventas Hoy</span>
+      </div>
+      <p id="dash-ventas-hoy" class="kpi-value">Gs. 0</p>
+      <small class="kpi-foot">Ingreso acumulado del día</small>
+    </div>
 
-              <button id="btnNotificaciones" class="btn-notif" type="button">
-                <i class="fa-solid fa-bell"></i>
-                <span id="notifCount">3</span>
-              </button>
+    <div class="kpi-card modern">
+      <div class="kpi-top">
+        <div class="kpi-icon green-soft"><i class="fa-solid fa-chart-line"></i></div>
+        <span class="kpi-label">Ventas del Mes</span>
+      </div>
+      <p id="dash-ventas-mes" class="kpi-value">Gs. 0</p>
+      <small class="kpi-foot">Total acumulado mensual</small>
+    </div>
 
-              <div id="notifDropdown" class="notif-dropdown hidden">
-
-                <h4>Notificaciones</h4>
-
-              </div>
-
-              <img src="img/IMG-20260413-WA0026.jpg" class="logo-top">
-
-            </div>
-
-          </div>
-
-          <p class="page-subtitle">
-            Resumen general del sistema y accesos principales
-          </p>
-
+    <div class="kpi-card modern filter-card" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="kpi-top">
+        <div class="kpi-icon orange-soft"><i class="fa-solid fa-calendar-days"></i></div>
+        <div>
+          <span class="kpi-label">Ventas por período</span>
+          <small style="display:block;color:#9ca3af;font-size:.72rem;">Filtrá por rango de fechas</small>
         </div>
-        <div class="dashboard-kpis">
-          <div class="kpi-card modern">
-            <div class="kpi-top">
-              <div class="kpi-icon blue-soft">
-                <i class="fa-solid fa-coins"></i>
-              </div>
-              <span class="kpi-label">Ventas Hoy</span>
-            </div>
-            <p id="dash-ventas-hoy" class="kpi-value">Gs. 0</p>
-            <small class="kpi-foot">Ingreso acumulado del día</small>
-          </div>
-
-          <div class="kpi-card modern">
-            <div class="kpi-top">
-              <div class="kpi-icon green-soft">
-                <i class="fa-solid fa-chart-line"></i>
-              </div>
-              <span class="kpi-label">Ventas del Mes</span>
-            </div>
-            <p id="dash-ventas-mes" class="kpi-value">Gs. 0</p>
-            <small class="kpi-foot">Total acumulado mensual</small>
-          </div>
-
-          <div class="kpi-card modern filter-card">
-            <div class="kpi-top">
-              <div class="kpi-icon orange-soft">
-                <i class="fa-solid fa-calendar-days"></i>
-              </div>
-              <span class="kpi-label">Filtrar por día</span>
-            </div>
-            <input type="date" id="filtro-dia" class="date-input" onchange="filtrarVentasPorDia()">
-            <p id="resultado-filtro" class="kpi-value-small">Seleccione una fecha para ver el resultado</p>
-          </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div style="flex:1;">
+          <label style="font-size:.7rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Desde</label>
+          <input type="date" id="filtro-desde" class="date-input" style="width:100%;padding:.45rem .6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.85rem;color:#374151;outline:none;" onchange="filtrarVentasPorRango()">
         </div>
+        <div style="padding-top:18px;color:#9ca3af;">→</div>
+        <div style="flex:1;">
+          <label style="font-size:.7rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Hasta</label>
+          <input type="date" id="filtro-hasta" class="date-input" style="width:100%;padding:.45rem .6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.85rem;color:#374151;outline:none;" onchange="filtrarVentasPorRango()">
+        </div>
+      </div>
+      <div style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1.5px solid #fed7aa;border-radius:10px;padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <p style="margin:0;font-size:.72rem;font-weight:600;color:#c2410c;text-transform:uppercase;letter-spacing:.5px;">Total del período</p>
+          <p id="resultado-filtro" style="margin:0;font-size:1.25rem;font-weight:800;color:#ea580c;">— seleccioná fechas —</p>
+        </div>
+        <div style="width:38px;height:38px;border-radius:50%;background:#fed7aa;display:flex;align-items:center;justify-content:center;">
+          <i class="fa-solid fa-sack-dollar" style="color:#c2410c;font-size:.9rem;"></i>
+        </div>
+      </div>
+    </div>
 
-        <div class="dashboard-grid dashboard-grid-2">
-          <div class="card modern-card quick-card">
-            <div class="card-head">
-              <div class="card-head-left">
-                <div class="section-icon">
-                  <i class="fa-solid fa-bolt"></i>
-                </div>
-                <div>
-                  <h3>Accesos rápidos</h3>
-                  <p>Acciones principales del panel</p>
-                </div>
-              </div>
-            </div>
+  </div> <!-- fin .dashboard-kpis -->
 
-            <div class="quick-actions-grid">
-              <button class="quick-btn primary" onclick="nav('#ventas')">
-                <div class="quick-btn-icon">
-                  <i class="fa-solid fa-cart-shopping"></i>
-                </div>
-                <div class="quick-btn-text">
-                  <span>Nueva Venta</span>
-                  <small>Registrar una venta</small>
-                </div>
-                <i class="fa-solid fa-arrow-right"></i>
-              </button>
+  <!-- GRILLA -->
+  <div class="dashboard-grid dashboard-grid-2">
 
-              <button class="quick-btn success" onclick="nav('#compras')">
-                <div class="quick-btn-icon">
-                  <i class="fa-solid fa-receipt"></i>
-                </div>
-                <div class="quick-btn-text">
-                  <span>Nueva Compra</span>
-                  <small>Registrar una compra</small>
-                </div>
-                <i class="fa-solid fa-arrow-right"></i>
-              </button>
-
-              <button class="quick-btn warning" onclick="nav('#productos')">
-                <div class="quick-btn-icon">
-                  <i class="fa-solid fa-box"></i>
-                </div>
-                <div class="quick-btn-text">
-                  <span>Gestionar Productos</span>
-                  <small>Editar y controlar stock</small>
-                </div>
-                <i class="fa-solid fa-arrow-right"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="card modern-card sales-chart-card">
-            <div class="card-head">
-              <div class="card-head-left">
-                <div class="section-icon">
-                  <i class="fa-solid fa-chart-column"></i>
-                </div>
-                <div>
-                  <h3>Ventas comparadas</h3>
-                  <p>Ayer vs Hoy</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="sales-bars-wrap">
-              <div class="sales-bar-item">
-                <div class="sales-bar-label">
-                  <span>Ayer</span>
-                  <strong id="ayer-texto">Gs. 0</strong>
-                </div>
-                <div class="sales-bar-track">
-                  <div id="bar-ayer" class="sales-bar-fill ayer"></div>
-                </div>
-              </div>
-
-              <div class="sales-bar-item">
-                <div class="sales-bar-label">
-                  <span>Hoy</span>
-                  <strong id="hoy-texto">Gs. 0</strong>
-                </div>
-                <div class="sales-bar-track">
-                  <div id="bar-hoy" class="sales-bar-fill hoy"></div>
-                </div>
-              </div>
-            </div>
+    <div class="card modern-card quick-card">
+      <div class="card-head">
+        <div class="card-head-left">
+          <div class="section-icon"><i class="fa-solid fa-bolt"></i></div>
+          <div>
+            <h3>Accesos rápidos</h3>
+            <p>Acciones principales del panel</p>
           </div>
         </div>
-      </section>
+      </div>
+      <div class="quick-actions-grid">
+        <button class="quick-btn primary" onclick="nav('#ventas')">
+          <div class="quick-btn-icon"><i class="fa-solid fa-cart-shopping"></i></div>
+          <div class="quick-btn-text"><span>Nueva Venta</span><small>Registrar una venta</small></div>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+        <button class="quick-btn success" onclick="nav('#compras')">
+          <div class="quick-btn-icon"><i class="fa-solid fa-receipt"></i></div>
+          <div class="quick-btn-text"><span>Nueva Compra</span><small>Registrar una compra</small></div>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+        <button class="quick-btn warning" onclick="nav('#productos')">
+          <div class="quick-btn-icon"><i class="fa-solid fa-box"></i></div>
+          <div class="quick-btn-text"><span>Gestionar Productos</span><small>Editar y controlar stock</small></div>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
 
+    <div class="card modern-card sales-chart-card">
+      <div class="card-head">
+        <div class="card-head-left">
+          <div class="section-icon"><i class="fa-solid fa-chart-column"></i></div>
+          <div>
+            <h3>Ventas comparadas</h3>
+            <p>Ayer vs Hoy</p>
+          </div>
+        </div>
+      </div>
+      <div class="sales-bars-wrap">
+        <div class="sales-bar-item">
+          <div class="sales-bar-label">
+            <span>Ayer</span>
+            <strong id="ayer-texto">Gs. 0</strong>
+          </div>
+          <div class="sales-bar-track">
+            <div id="bar-ayer" class="sales-bar-fill ayer"></div>
+          </div>
+        </div>
+        <div class="sales-bar-item">
+          <div class="sales-bar-label">
+            <span>Hoy</span>
+            <strong id="hoy-texto">Gs. 0</strong>
+          </div>
+          <div class="sales-bar-track">
+            <div id="bar-hoy" class="sales-bar-fill hoy"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</section>
       <!-- CLIENTES -->
       <section id="clientes" class="view hidden">
         <div class="card">
@@ -308,43 +322,136 @@
       </section>
 
       <!-- PROVEEDORES -->
-      <section id="proveedores" class="view hidden">
-        <div class="card">
-          <div class="actions" style="justify-content:space-between;align-items:center">
-            <div><b>Proveedores</b> <span class="tag">Listado</span></div>
-            <div class="actions">
-              <div class="search">
-                <input id="provSearch" placeholder="Buscar proveedor..." oninput="filtrarProveedores(this.value)" />
-              </div>
-              <a href="index.html" class="volver-btn">← Volver</a>
-              <button class="btn btn-blue" onclick="openModal('modalProveedor')">+ Nuevo</button>
-            </div>
-          </div>
+<section id="proveedores" class="view hidden">
 
-          <div class="table-responsive mt-3">
-            <table class="table table-striped table-hover">
-              <thead class="table-dark">
-                <tr>
-                  <th>ID</th>
-                  <th>Nombre</th>
-                  <th>RUC</th>
-                  <th>Contacto</th>
-                  <th>Teléfono</th>
-                  <th>País</th>
-                  <th>Ciudad</th>
-                  <th>Dirección</th>
-                  <th>Estado</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody id="tabla-proveedores"></tbody>
-            </table>
-          </div>
+  <div class="card">
 
-          <div id="proveedores-paginacion" class="tabla-paginacion"></div>
+    <!-- HEADER -->
+    <div
+      class="actions"
+      style="
+        justify-content:space-between;
+        align-items:center;
+        flex-wrap:wrap;
+        gap:10px;
+      "
+    >
+
+      <div>
+        <b>Proveedores</b>
+        <span class="tag">Listado</span>
+      </div>
+
+      <div
+        class="actions"
+        style="
+          flex-wrap:wrap;
+          gap:8px;
+        "
+      >
+
+        <div class="search">
+
+          <input
+            id="provSearch"
+            placeholder="Buscar proveedor..."
+            oninput="filtrarProveedores(this.value)"
+          />
+
         </div>
-      </section>
 
+        <a
+          href="index.html"
+          class="volver-btn"
+        >
+          ← Volver
+        </a>
+
+        <button
+          class="btn btn-blue"
+          onclick="openModal('modalProveedor')"
+        >
+          + Nuevo
+        </button>
+
+      </div>
+
+    </div>
+
+    <!-- TABLA -->
+    <div class="table-responsive mt-3">
+
+      <table class="table table-striped table-hover align-middle">
+
+        <thead class="table-dark">
+
+          <tr>
+
+            <th style="min-width:70px">
+              ID
+            </th>
+
+            <th style="min-width:180px">
+              Nombre
+            </th>
+
+            <th style="min-width:130px">
+              RUC
+            </th>
+
+            <th style="min-width:160px">
+              Nombre Contacto
+            </th>
+
+            <th style="min-width:240px">
+              Email
+            </th>
+
+            <th style="min-width:140px">
+              Teléfono
+            </th>
+
+            <th style="min-width:120px">
+              País
+            </th>
+
+            <th style="min-width:120px">
+              Ciudad
+            </th>
+
+            <th style="min-width:220px">
+              Dirección
+            </th>
+
+            <th style="min-width:110px">
+              Estado
+            </th>
+
+            <th
+              class="text-center"
+              style="min-width:120px"
+            >
+              Acción
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody id="tabla-proveedores"></tbody>
+
+      </table>
+
+    </div>
+
+    <div
+      id="proveedores-paginacion"
+      class="tabla-paginacion"
+    ></div>
+
+  </div>
+
+</section>
       <!-- PRODUCTOS -->
       <section id="productos" class="view hidden">
         <div class="card">
@@ -427,7 +534,7 @@
                 <table class="table table-striped align-middle">
                   <thead class="table-light">
                     <tr>
-                      <th style="width:35%">ID</th>
+                      <th style="width:35%">Producto</th>
                       <th style="width:15%">Cantidad</th>
                       <th style="width:20%">Precio de Compra</th>
                       <th style="width:20%">Subtotal</th>
@@ -449,59 +556,180 @@
 
               <!-- Footer actions -->
               <div class="d-flex justify-content-end gap-2 mt-4">
-                <button type="button" class="btn btn-success" onclick="guardarPedido()">Guardar</button>
-                <button type="button" class="btn btn-danger" onclick="cancelarPedido()">Cancelar</button>
-              </div>
+
+  <button
+  type="button"
+  class="btn btn-primary"
+  onclick="guardarPedido(true)"
+>
+  <i class="fa-solid fa-paper-plane"></i>
+  Guardar y Enviar al correo proveedor
+</button>
+
+  <button
+    type="button"
+    class="btn btn-success"
+    onclick="guardarPedido(false)"
+  >
+    <i class="fa-solid fa-floppy-disk"></i>
+    Guardar
+  </button>
+
+  <button
+    type="button"
+    class="btn btn-danger"
+    onclick="cancelarPedido()"
+  >
+    Cancelar
+  </button>
+
+</div>
 
             </div>
           </div>
         </div>
       </section>
       <!-- ================================================================= -->
-      <!-- SECCIÓN: LISTA DE PEDIDOS -->
-      <!-- ================================================================= -->
-      <section id="lista_pedidos" class="view hidden">
-        <div class="card">
-          <div class="actions" style="justify-content:space-between;align-items:center">
-            <div>
-              <b>Lista de Pedidos a Proveedor</b>
-              <span class="tag">Listado</span>
-            </div>
+<!-- SECCIÓN: LISTA DE PEDIDOS -->
+<!-- ================================================================= -->
+<section id="lista_pedidos" class="view hidden">
 
-            <div class="actions" style="gap:.5rem">
-              <a href="index.html" class="volver-btn">← Volver</a>
-              <button class="btn btn-primary" onclick="exportarPDF_Listado()">
-                <i class="fa-solid fa-file-pdf"></i> Descargar PDF
-              </button>
-            </div>
-          </div>
+  <div class="card">
 
-          <div class="table-responsive mt-3">
-            <table class="table table-striped table-hover align-middle">
-              <thead class="table-dark">
-                <tr>
-                  <th style="width:70px">ID</th>
-                  <th>Proveedor</th>
-                  <th>Productos</th>
-                  <th>Categorías</th>
-                  <th style="width:130px">Fecha Pedido</th>
-                  <th style="width:140px">Fecha Recepción</th>
-                  <th class="text-center" style="width:100px">Ítems</th>
-                  <th class="text-end" style="width:120px">Subtotal</th>
-                  <th class="text-end" style="width:100px">IVA</th>
-                  <th class="text-end" style="width:120px">Total</th>
-                  <th class="text-center" style="width:110px">Acciones</th>
-                </tr>
-              </thead>
+    <!-- HEADER -->
+    <div
+      class="actions"
+      style="
+        justify-content:space-between;
+        align-items:center;
+        flex-wrap:wrap;
+        gap:10px;
+      "
+    >
 
-              <tbody id="tabla_pedidos"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      <div>
+        <b>Lista de Pedidos a Proveedor</b>
+        <span class="tag">Listado</span>
+      </div>
 
-      <!-- Acordeón donde se incrustarán los detalles -->
-      <div id="detalles_pedido_container" class="mt-3"></div>
+      <div
+        class="actions"
+        style="
+          gap:.5rem;
+          flex-wrap:wrap;
+        "
+      >
+
+        <a
+          href="index.html"
+          class="volver-btn"
+        >
+          ← Volver
+        </a>
+
+        <button
+          class="btn btn-primary"
+          onclick="exportarPDF_Listado()"
+        >
+          <i class="fa-solid fa-file-pdf"></i>
+          Descargar PDF
+        </button>
+
+      </div>
+
+    </div>
+
+    <!-- TABLA -->
+    <div class="table-responsive mt-3">
+
+      <table class="table table-striped table-hover align-middle">
+
+        <thead class="table-dark">
+
+          <tr>
+
+            <th style="min-width:70px">
+              ID
+            </th>
+
+            <th style="min-width:170px">
+              Proveedor
+            </th>
+
+            <th style="min-width:240px">
+              Email
+            </th>
+
+            <th style="min-width:280px">
+              Productos
+            </th>
+
+            <th style="min-width:180px">
+              Categorías
+            </th>
+
+            <th style="min-width:130px">
+              Fecha Pedido
+            </th>
+
+            <th style="min-width:150px">
+              Fecha Recepción
+            </th>
+
+            <th
+              class="text-center"
+              style="min-width:90px"
+            >
+              Ítems
+            </th>
+
+            <th
+              class="text-end"
+              style="min-width:120px"
+            >
+              Subtotal
+            </th>
+
+            <th
+              class="text-end"
+              style="min-width:100px"
+            >
+              IVA
+            </th>
+
+            <th
+              class="text-end"
+              style="min-width:120px"
+            >
+              Total
+            </th>
+
+            <th
+              class="text-center"
+              style="min-width:180px"
+            >
+              Acciones
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody id="tabla_pedidos"></tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+</section>
+
+<!-- Acordeón donde se incrustarán los detalles -->
+<div
+  id="detalles_pedido_container"
+  class="mt-3"
+></div>
 
       <!-- ================================================================= -->
       <!--  MODAL EDITAR ÍTEM -->
@@ -827,61 +1055,275 @@
       </div>
 
       <!-- Proveedor: NUEVO -->
-      <div class="modal" id="modalProveedor">
-        <div class="sheet">
-          <h3>Nuevo Proveedor</h3>
-          <div class="grid cols-2">
-            <div><label class="label">Nombre</label><input id="p_nombre" class="input"
-                placeholder="Nombre del proveedor"></div>
-            <div><label class="label">RUC</label><input id="p_ruc" class="input" placeholder="Ej: 1234567-8"></div>
-            <div><label class="label">Contacto</label><input id="p_contacto" class="input"
-                placeholder="Nombre de contacto"></div>
-            <div><label class="label">Teléfono</label><input id="p_tel" class="input" placeholder="Ej: 0981 123 456">
-            </div>
-            <div><label class="label">País</label><input id="p_pais" class="input" value="Paraguay"></div>
-            <div><label class="label">Ciudad</label><input id="p_ciudad" class="input" placeholder="Asunción"></div>
-            <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="p_dir" class="input"
-                placeholder="Dirección completa"></div>
-            <div><label class="label">Estado</label>
-              <select id="p_estado" class="input">
-                <option>Activo</option>
-                <option>Inactivo</option>
-              </select>
-            </div>
-          </div>
-          <div class="actions" style="margin-top:1rem">
-            <button class="btn btn-green" onclick="guardarProveedor()">Guardar</button>
-            <button class="btn btn-red" onclick="closeModal('modalProveedor')">Cerrar</button>
-          </div>
-        </div>
+<div class="modal" id="modalProveedor">
+
+  <div class="sheet">
+
+    <h3>Nuevo Proveedor</h3>
+
+    <div class="grid cols-2">
+
+      <!-- NOMBRE -->
+      <div>
+        <label class="label">Nombre</label>
+
+        <input
+          id="p_nombre"
+          class="input"
+          placeholder="Nombre del proveedor"
+        >
       </div>
 
-      <!-- Proveedor: EDITAR -->
-      <div class="modal" id="modalProveedorEdit">
-        <div class="sheet">
-          <h3>Editar Proveedor</h3>
-          <input type="hidden" id="prov_edit_id" />
-          <div class="grid cols-2">
-            <div><label class="label">Nombre</label><input id="pe_nombre" class="input"></div>
-            <div><label class="label">RUC</label><input id="pe_ruc" class="input"></div>
-            <div><label class="label">Contacto</label><input id="pe_contacto" class="input"></div>
-            <div><label class="label">Teléfono</label><input id="pe_tel" class="input"></div>
-            <div><label class="label">País</label><input id="pe_pais" class="input"></div>
-            <div><label class="label">Ciudad</label><input id="pe_ciudad" class="input"></div>
-            <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="pe_dir" class="input"></div>
-            <div><label class="label">Estado</label>
-              <select id="pe_estado" class="input">
-                <option>Activo</option>
-                <option>Inactivo</option>
-              </select>
-            </div>
-          </div>
-          <div class="actions">
-            <button class="btn btn-success" onclick="actualizarProveedor()">Guardar cambios</button>
-            <button class="btn btn-danger" onclick="closeModal('modalProveedorEdit')">Cerrar</button>
-          </div>
-        </div>
+      <!-- RUC -->
+      <div>
+        <label class="label">RUC</label>
+
+        <input
+          id="p_ruc"
+          class="input"
+          placeholder="Ej: 1234567-8"
+        >
       </div>
+
+      <!-- CONTACTO -->
+      <div>
+        <label class="label">Contacto</label>
+
+        <input
+          id="p_contacto"
+          class="input"
+          placeholder="Nombre de contacto"
+        >
+      </div>
+
+      <!-- EMAIL -->
+      <div>
+        <label class="label">Email</label>
+
+        <input
+          id="p_email"
+          type="email"
+          class="input"
+          placeholder="proveedor@email.com"
+        >
+      </div>
+
+      <!-- TELÉFONO -->
+      <div>
+        <label class="label">Teléfono</label>
+
+        <input
+          id="p_tel"
+          class="input"
+          placeholder="Ej: 0981 123 456"
+        >
+      </div>
+
+      <!-- PAÍS -->
+      <div>
+        <label class="label">País</label>
+
+        <input
+          id="p_pais"
+          class="input"
+          value="Paraguay"
+        >
+      </div>
+
+      <!-- CIUDAD -->
+      <div>
+        <label class="label">Ciudad</label>
+
+        <input
+          id="p_ciudad"
+          class="input"
+          placeholder="Asunción"
+        >
+      </div>
+
+      <!-- DIRECCIÓN -->
+      <div style="grid-column:1/-1">
+
+        <label class="label">Dirección</label>
+
+        <input
+          id="p_dir"
+          class="input"
+          placeholder="Dirección completa"
+        >
+
+      </div>
+
+      <!-- ESTADO -->
+      <div>
+
+        <label class="label">Estado</label>
+
+        <select id="p_estado" class="input">
+          <option>Activo</option>
+          <option>Inactivo</option>
+        </select>
+
+      </div>
+
+    </div>
+
+    <!-- BOTONES -->
+    <div
+      class="actions"
+      style="margin-top:1rem"
+    >
+
+      <button
+        class="btn btn-green"
+        onclick="guardarProveedor()"
+      >
+        Guardar
+      </button>
+
+      <button
+        class="btn btn-red"
+        onclick="closeModal('modalProveedor')"
+      >
+        Cerrar
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+      <!-- Proveedor: EDITAR -->
+<div class="modal" id="modalProveedorEdit">
+
+  <div class="sheet">
+
+    <h3>Editar Proveedor</h3>
+
+    <input type="hidden" id="prov_edit_id" />
+
+    <div class="grid cols-2">
+
+      <!-- NOMBRE -->
+      <div>
+        <label class="label">Nombre</label>
+
+        <input
+          id="pe_nombre"
+          class="input"
+        >
+      </div>
+
+      <!-- RUC -->
+      <div>
+        <label class="label">RUC</label>
+
+        <input
+          id="pe_ruc"
+          class="input"
+        >
+      </div>
+
+      <!-- CONTACTO -->
+      <div>
+        <label class="label">Contacto</label>
+
+        <input
+          id="pe_contacto"
+          class="input"
+        >
+      </div>
+
+      <!-- EMAIL -->
+      <div>
+        <label class="label">Email</label>
+
+        <input
+          id="pe_email"
+          type="email"
+          class="input"
+          placeholder="proveedor@email.com"
+        >
+      </div>
+
+      <!-- TELÉFONO -->
+      <div>
+        <label class="label">Teléfono</label>
+
+        <input
+          id="pe_tel"
+          class="input"
+        >
+      </div>
+
+      <!-- PAÍS -->
+      <div>
+        <label class="label">País</label>
+
+        <input
+          id="pe_pais"
+          class="input"
+        >
+      </div>
+
+      <!-- CIUDAD -->
+      <div>
+        <label class="label">Ciudad</label>
+
+        <input
+          id="pe_ciudad"
+          class="input"
+        >
+      </div>
+
+      <!-- DIRECCIÓN -->
+      <div style="grid-column:1/-1">
+
+        <label class="label">Dirección</label>
+
+        <input
+          id="pe_dir"
+          class="input"
+        >
+
+      </div>
+
+      <!-- ESTADO -->
+      <div>
+
+        <label class="label">Estado</label>
+
+        <select id="pe_estado" class="input">
+          <option>Activo</option>
+          <option>Inactivo</option>
+        </select>
+
+      </div>
+
+    </div>
+
+    <!-- BOTONES -->
+    <div class="actions">
+
+      <button
+        class="btn btn-success"
+        onclick="actualizarProveedor()"
+      >
+        Guardar cambios
+      </button>
+
+      <button
+        class="btn btn-danger"
+        onclick="closeModal('modalProveedorEdit')"
+      >
+        Cerrar
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
 
       <div id="modalClaveEditar" class="modal">
         <div class="sheet modal-clave">
@@ -1206,6 +1648,12 @@
               Obligatorio para QR y transferencias bancarias.
             </small>
           </div>
+
+          <!-- OTRO BANCO -->
+<div id="wrapOtroBanco" style="display:none; margin-top:12px; padding: 0 16px;">
+  <label class="label">Nombre del banco</label>
+  <input type="text" id="inputOtroBanco" class="input" placeholder="Ej: Itaú, BBVA, Familiar...">
+</div>
 
           <div class="pago-layout-pro">
 
@@ -2178,7 +2626,7 @@
 
             <h2 style="margin-bottom:1rem;font-weight:700;">Agregar Producto</h2>
 
-            <label class="label">Código</label>
+            <label class="label">Producto</label>
             <input id="pp_edit_nombre" class="input" disabled>
 
             <label class="label">Cantidad</label>
@@ -2198,6 +2646,131 @@
 
           </div>
         </div>
+
+      <div id="modalEliminarCliente" class="modal-overlay" style="display:none;">
+  <div class="modal-box danger" style="max-width:420px;padding:2rem;border-radius:16px;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <div style="width:64px;height:64px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+        <i class="fa-solid fa-trash" style="font-size:1.5rem;color:#ef4444;"></i>
+      </div>
+      <h3 style="margin:0 0 .5rem;font-size:1.2rem;font-weight:700;color:#111827;">Eliminar cliente</h3>
+      <p style="margin:0;color:#6b7280;font-size:.95rem;">¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer.</p>
+    </div>
+
+    <input type="hidden" id="delete_cliente_id">
+
+    <div style="display:flex;gap:.75rem;justify-content:center;">
+      <button onclick="closeModal('modalEliminarCliente')" style="
+        flex:1;padding:.75rem;border-radius:10px;border:1.5px solid #e5e7eb;
+        background:#fff;font-weight:600;cursor:pointer;color:#374151;font-size:.95rem;">
+        Cancelar
+      </button>
+      <button onclick="confirmarEliminarCliente()" style="
+        flex:1;padding:.75rem;border-radius:10px;border:none;
+        background:#ef4444;color:#fff;font-weight:600;cursor:pointer;font-size:.95rem;
+        box-shadow:0 4px 12px rgba(239,68,68,.3);">
+        <i class="fa-solid fa-trash" style="margin-right:.4rem;"></i>Eliminar
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
+<div id="modalEliminarProveedor" class="modal-overlay" style="display:none;">
+  <div class="modal-box danger" style="max-width:420px;padding:2rem;border-radius:16px;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <div style="width:64px;height:64px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+        <i class="fa-solid fa-trash" style="font-size:1.5rem;color:#ef4444;"></i>
+      </div>
+      <h3 style="margin:0 0 .5rem;font-size:1.2rem;font-weight:700;color:#111827;">Eliminar proveedor</h3>
+      <p style="margin:0;color:#6b7280;font-size:.95rem;">¿Estás seguro de que deseas eliminar este proveedor? Esta acción no se puede deshacer.</p>
+    </div>
+
+    <input type="hidden" id="delete_proveedor_id">
+
+    <div style="display:flex;gap:.75rem;justify-content:center;">
+      <button onclick="closeModal('modalEliminarProveedor')" style="
+        flex:1;padding:.75rem;border-radius:10px;border:1.5px solid #e5e7eb;
+        background:#fff;font-weight:600;cursor:pointer;color:#374151;font-size:.95rem;">
+        Cancelar
+      </button>
+      <button onclick="confirmarEliminarProveedor()" style="
+        flex:1;padding:.75rem;border-radius:10px;border:none;
+        background:#ef4444;color:#fff;font-weight:600;cursor:pointer;font-size:.95rem;
+        box-shadow:0 4px 12px rgba(239,68,68,.3);">
+        <i class="fa-solid fa-trash" style="margin-right:.4rem;"></i>Eliminar
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
+
+<div id="modalEliminarProducto" class="modal-overlay" style="display:none;">
+  <div class="modal-box danger" style="max-width:420px;padding:2rem;border-radius:16px;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <div style="width:64px;height:64px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+        <i class="fa-solid fa-box" style="font-size:1.5rem;color:#ef4444;"></i>
+      </div>
+      <h3 style="margin:0 0 .5rem;font-size:1.2rem;font-weight:700;color:#111827;">Eliminar producto</h3>
+      <p style="margin:0;color:#6b7280;font-size:.95rem;">¿Seguro que querés eliminar este producto? Esta acción no se puede deshacer.</p>
+    </div>
+
+    <input type="hidden" id="delete_producto_id">
+
+    <div style="display:flex;gap:.75rem;justify-content:center;">
+      <button onclick="closeModal('modalEliminarProducto')" style="
+        flex:1;padding:.75rem;border-radius:10px;border:1.5px solid #e5e7eb;
+        background:#fff;font-weight:600;cursor:pointer;color:#374151;font-size:.95rem;">
+        Cancelar
+      </button>
+      <button onclick="confirmarEliminarProducto()" style="
+        flex:1;padding:.75rem;border-radius:10px;border:none;
+        background:#ef4444;color:#fff;font-weight:600;cursor:pointer;font-size:.95rem;
+        box-shadow:0 4px 12px rgba(239,68,68,.3);">
+        <i class="fa-solid fa-trash" style="margin-right:.4rem;"></i>Eliminar
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
+<div id="modalEliminarCategoria" class="modal-overlay" style="display:none;">
+  <div class="modal-box danger" style="max-width:420px;padding:2rem;border-radius:16px;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <div style="width:64px;height:64px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+        <i class="fa-solid fa-tags" style="font-size:1.5rem;color:#ef4444;"></i>
+      </div>
+      <h3 style="margin:0 0 .5rem;font-size:1.2rem;font-weight:700;color:#111827;">Eliminar categoría</h3>
+      <p style="margin:0;color:#6b7280;font-size:.95rem;">¿Estás seguro de que deseas eliminar esta categoría? Esta acción no se puede deshacer.</p>
+    </div>
+
+    <input type="hidden" id="delete_categoria_id">
+
+    <div style="display:flex;gap:.75rem;justify-content:center;">
+      <button onclick="closeModal('modalEliminarCategoria')" style="
+        flex:1;padding:.75rem;border-radius:10px;border:1.5px solid #e5e7eb;
+        background:#fff;font-weight:600;cursor:pointer;color:#374151;font-size:.95rem;">
+        Cancelar
+      </button>
+      <button onclick="confirmarEliminarCategoria()" style="
+        flex:1;padding:.75rem;border-radius:10px;border:none;
+        background:#ef4444;color:#fff;font-weight:600;cursor:pointer;font-size:.95rem;
+        box-shadow:0 4px 12px rgba(239,68,68,.3);">
+        <i class="fa-solid fa-trash" style="margin-right:.4rem;"></i>Eliminar
+      </button>
+    </div>
+
+  </div>
+</div>
+
 
         <!-- jsPDF -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
