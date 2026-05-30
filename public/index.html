@@ -204,15 +204,15 @@
           <input type="date" id="filtro-hasta" class="date-input" style="width:100%;padding:.45rem .6rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.85rem;color:#374151;outline:none;" onchange="filtrarVentasPorRango()">
         </div>
       </div>
-      <div style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1.5px solid #fed7aa;border-radius:10px;padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;">
-        <div>
-          <p style="margin:0;font-size:.72rem;font-weight:600;color:#c2410c;text-transform:uppercase;letter-spacing:.5px;">Total del período</p>
-          <p id="resultado-filtro" style="margin:0;font-size:1.25rem;font-weight:800;color:#ea580c;">— seleccioná fechas —</p>
-        </div>
-        <div style="width:38px;height:38px;border-radius:50%;background:#fed7aa;display:flex;align-items:center;justify-content:center;">
-          <i class="fa-solid fa-sack-dollar" style="color:#c2410c;font-size:.9rem;"></i>
-        </div>
-      </div>
+      <div style="background:transparent;border:1.5px solid #16a34a;border-radius:10px;padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;">
+  <div>
+    <p style="margin:0;font-size:.72rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;">Total del período</p>
+    <p id="resultado-filtro" style="margin:0;font-size:1.25rem;font-weight:800;color:#111827;">— seleccioná fechas —</p>
+  </div>
+  <div style="width:34px;height:34px;border-radius:50%;border:1.5px solid #16a34a;display:flex;align-items:center;justify-content:center;">
+    <i class="fa-solid fa-sack-dollar" style="color:#16a34a;font-size:.85rem;"></i>
+  </div>
+</div>
     </div>
 
   </div> <!-- fin .dashboard-kpis -->
@@ -1609,9 +1609,9 @@
                   Cancelar
                 </button>
 
-                <button class="btn btn-primary" type="button" onclick="abrirPago()">
-                  <i class="fa-solid fa-sack-dollar"></i> Cobrar venta
-                </button>
+                <button class="btn btn-success" type="button" onclick="abrirPago()">
+  <i class="fa-solid fa-sack-dollar"></i> Cobrar venta
+</button>
               </div>
 
             </aside>
@@ -1619,157 +1619,6 @@
         </div>
       </div>
 
-      <!-- ===== MODAL PAGO ===== -->
-      <div id="modalPago" class="modal-overlay" style="display:none;">
-        <div class="modal-content pago-modal pago-modal-pro">
-
-          <div class="pago-modal-header-pro">
-            <h3>Seleccionar Forma de Pago</h3>
-          </div>
-
-          <!-- IMPORTANTE:
-         VACÍO.
-         Los botones ahora se cargan desde la BD -->
-          <div class="pago-grid" id="gridFormasPago"></div>
-
-          <div id="mensajeFormaPago" class="mensaje-forma-pago-pro" style="display:none;">
-          </div>
-
-          <!-- COMPROBANTE -->
-          <div id="wrapComprobante" class="pago-comprobante-card" style="display:none;">
-
-            <label class="label">
-              Nro. de comprobante
-            </label>
-
-            <input type="text" id="inputComprobante" class="input" placeholder="Ej: 00012345">
-
-            <small class="pago-help-text">
-              Obligatorio para QR y transferencias bancarias.
-            </small>
-          </div>
-
-          <!-- OTRO BANCO -->
-<div id="wrapOtroBanco" style="display:none; margin-top:12px; padding: 0 16px;">
-  <label class="label">Nombre del banco</label>
-  <input type="text" id="inputOtroBanco" class="input" placeholder="Ej: Itaú, BBVA, Familiar...">
-</div>
-
-          <div class="pago-layout-pro">
-
-            <!-- EFECTIVO -->
-            <div class="pago-col">
-
-              <div id="bloqueEfectivo" class="pago-card efectivo-destacado" style="display:none;">
-
-                <label class="label" id="labelMontoRecibido">
-                  Monto recibido (Gs.)
-                </label>
-
-                <input type="text" id="montoRecibido" class="input input-efectivo" placeholder="0"
-                  oninput="formatearMontoRecibido()">
-
-                <div class="vuelto-box-pro">
-
-                  <div class="vuelto-label">
-                    Vuelto
-                  </div>
-
-                  <div id="vuelto" class="vuelto-valor">
-                    Gs. 0
-                  </div>
-
-                </div>
-
-              </div>
-
-              <!-- MONEDA -->
-              <div class="pago-col">
-
-                <div class="pago-card">
-
-                  <label class="label">
-                    Moneda
-                  </label>
-
-                  <select id="v_moneda" class="input" onchange="toggleTipoCambioVenta()">
-                    <option value="PYG">
-                      Guaraníes (Gs.)
-                    </option>
-
-                    <option value="USD">
-                      Dólar (US$)
-                    </option>
-
-                    <option value="BRL">
-                      Real (R$)
-                    </option>
-                  </select>
-
-                  <div id="wrapTipoCambio" style="display:none; margin-top:12px;">
-
-                    <label class="label">
-                      Tipo de cambio a guaraníes
-                    </label>
-
-                    <input type="number" id="v_tipo_cambio" class="input" value="6350" readonly disabled tabindex="-1"
-                      style="
-                background:#f1f5f9;
-                cursor:not-allowed;
-                color:#475569;
-              ">
-
-                  </div>
-
-                </div>
-
-              </div>
-
-              <!-- RESUMEN -->
-              <div class="pago-col">
-
-                <div id="resumenMonedaVenta" class="pago-card pago-resumen-card">
-
-                  <div class="pago-resumen-title">
-                    Resumen de moneda
-                  </div>
-
-                  <div class="pago-resumen-line">
-                    Total en moneda:
-                    <strong id="v_total_moneda">
-                      Gs. 0
-                    </strong>
-                  </div>
-
-                  <div class="pago-resumen-line">
-                    Total en guaraníes:
-                    <strong id="v_total_pyg">
-                      Gs. 0
-                    </strong>
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            <!-- BOTONES -->
-            <div class="modal-actions pago-actions-pro">
-
-              <button class="btn primary" onclick="confirmarPagoFinal()">
-                Confirmar Pago
-              </button>
-
-              <button class="btn secondary" onclick="closeModal('modalPago')">
-                Cancelar
-              </button>
-
-            </div>
-
-          </div>
-        </div>
-        </div>
         <!-- Producto: NUEVO -->
         <div class="modal" id="modalProducto">
           <div class="sheet">
@@ -2771,6 +2620,158 @@
   </div>
 </div>
 
+
+      <!-- ===== MODAL PAGO ===== -->
+      <div id="modalPago" class="modal-overlay" style="display:none;">
+        <div class="modal-content pago-modal pago-modal-pro">
+
+          <div class="pago-modal-header-pro">
+            <h3>Seleccionar Forma de Pago</h3>
+          </div>
+
+          <!-- IMPORTANTE:
+         VACÍO.
+         Los botones ahora se cargan desde la BD -->
+          <div class="pago-grid" id="gridFormasPago"></div>
+
+          <div id="mensajeFormaPago" class="mensaje-forma-pago-pro" style="display:none;">
+          </div>
+
+          <!-- COMPROBANTE -->
+          <div id="wrapComprobante" class="pago-comprobante-card" style="display:none;">
+
+            <label class="label">
+              Nro. de comprobante
+            </label>
+
+            <input type="text" id="inputComprobante" class="input" placeholder="Ej: 00012345">
+
+            <small class="pago-help-text">
+              Obligatorio para QR y transferencias bancarias.
+            </small>
+          </div>
+
+          <!-- OTRO BANCO -->
+<div id="wrapOtroBanco" style="display:none; margin-top:12px; padding: 0 16px;">
+  <label class="label">Nombre del banco</label>
+  <input type="text" id="inputOtroBanco" class="input" placeholder="Ej: Itaú, BBVA, Familiar...">
+</div>
+
+          <div class="pago-layout-pro">
+
+            <!-- EFECTIVO -->
+            <div class="pago-col">
+
+              <div id="bloqueEfectivo" class="pago-card efectivo-destacado" style="display:none;">
+
+                <label class="label" id="labelMontoRecibido">
+                  Monto recibido
+                </label>
+
+                <input type="text" id="montoRecibido" class="input input-efectivo" placeholder="0"
+                  oninput="formatearMontoRecibido()">
+
+                <div class="vuelto-box-pro">
+
+                  <div class="vuelto-label">
+                    Vuelto
+                  </div>
+
+                  <div id="vuelto" class="vuelto-valor">
+                    Gs. 0
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- MONEDA -->
+              <div class="pago-col">
+
+                <div class="pago-card">
+
+                  <label class="label">
+                    Moneda
+                  </label>
+
+                  <select id="v_moneda" class="input" onchange="toggleTipoCambioVenta()">
+                    <option value="PYG">
+                      Guaraníes (Gs.)
+                    </option>
+
+                    <option value="USD">
+                      Dólar (US$)
+                    </option>
+
+                    <option value="BRL">
+                      Real (R$)
+                    </option>
+                  </select>
+
+                  <div id="wrapTipoCambio" style="display:none; margin-top:12px;">
+
+                    <label class="label">
+                      Tipo de cambio a guaraníes
+                    </label>
+
+                    <input type="number" id="v_tipo_cambio" class="input" value="6350" readonly disabled tabindex="-1"
+                      style="
+                background:#f1f5f9;
+                cursor:not-allowed;
+                color:#475569;
+              ">
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- RESUMEN -->
+              <div class="pago-col">
+
+                <div id="resumenMonedaVenta" class="pago-card pago-resumen-card">
+
+                  <div class="pago-resumen-title">
+                    Resumen de moneda
+                  </div>
+
+                  <div class="pago-resumen-line">
+                    Total en moneda:
+                    <strong id="v_total_moneda">
+                      Gs. 0
+                    </strong>
+                  </div>
+
+                  <div class="pago-resumen-line">
+                    Total en guaraníes:
+                    <strong id="v_total_pyg">
+                      Gs. 0
+                    </strong>
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- BOTONES -->
+            <div class="modal-actions pago-actions-pro">
+
+              <button class="btn primary" onclick="confirmarPagoFinal()">
+                Confirmar Pago
+              </button>
+
+              <button class="btn secondary" onclick="closeModal('modalPago')">
+                Cancelar
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+        </div>
 
         <!-- jsPDF -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

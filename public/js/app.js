@@ -1002,8 +1002,22 @@ function closeModal(id) {
   el.classList.remove("show");
   el.style.display = "none";
   document.body.classList.remove("modal-open");
-}
 
+  // Restaurar cuando se cierra el pago
+  if (id === "modalPago") {
+    el.style.cssText = "display: none;";
+
+    const modalVenta = document.getElementById("modalVenta");
+    if (modalVenta) modalVenta.style.visibility = "visible";
+
+    document.body.style.overflow = "";
+  }
+
+  // Restaurar cuando se cierra la venta
+  if (id === "modalVenta") {
+    document.body.style.overflow = "";
+  }
+}
 window.openModal = openModal;
 window.closeModal = closeModal;
 

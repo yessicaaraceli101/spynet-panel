@@ -2575,15 +2575,6 @@ body {
   overflow: hidden;
 }
 
-.kpi-card.modern::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #2563eb, #3b82f6);
-  border-radius: 14px 14px 0 0;
-}
-
 .kpi-card.modern:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0,0,0,.09);
@@ -2784,14 +2775,187 @@ body {
   .dashboard-kpis { grid-template-columns: 1fr; }
 }
 
-#mainCompanyName {
-  border-radius: 0;
-  background: transparent;
-  border: none;
-  padding: 0;
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+
+/* ===== MODAL PAGO - LAYOUT VERTICAL PROFESIONAL ===== */
+
+#modalPago .pago-modal-pro {
+  width: min(560px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: calc(100dvh - 32px) !important;
+  overflow-y: auto !important;
+  border-radius: 20px !important;
+  background: #fff !important;
+  padding: 24px !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3) !important;
+  margin: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+/* Título centrado */
+#modalPago .pago-modal-header-pro h3 {
+  font-size: 1.3rem !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  color: #0f172a !important;
+  margin: 0 0 4px !important;
+}
+
+/* Grid de botones */
+#modalPago #gridFormasPago {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 10px !important;
+  margin: 0 !important;
+}
+
+#modalPago .btnFormaPago {
+  border-radius: 12px !important;
+  padding: 12px 8px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  min-height: 48px !important;
+}
+
+/* Layout vertical — todo apilado */
+#modalPago .pago-layout-pro {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+/* Bloque efectivo */
+#modalPago .efectivo-destacado {
+  border: 2px solid #16a34a !important;
+  border-radius: 14px !important;
+  padding: 16px !important;
+  background: #f0fdf4 !important;
+}
+
+#modalPago .input-efectivo {
+  font-size: 1.4rem !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  height: 52px !important;
+  border-radius: 10px !important;
+  width: 100% !important;
+}
+
+/* Caja vuelto */
+#modalPago .vuelto-box-pro {
+  border-radius: 12px !important;
+  padding: 14px !important;
+  text-align: center !important;
+  margin-top: 12px !important;
+  background: #16a34a !important;
+}
+
+#modalPago .vuelto-label {
+  color: #dcfce7 !important;
+  font-size: 13px !important;
+  margin-bottom: 4px !important;
+}
+
+#modalPago .vuelto-valor {
+  color: #fff !important;
+  font-size: 1.8rem !important;
+  font-weight: 900 !important;
+}
+
+/* Tarjeta moneda */
+#modalPago .pago-card {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 14px !important;
+  padding: 14px !important;
+  background: #f8fafc !important;
+}
+
+/* Resumen */
+#modalPago .pago-resumen-card {
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  border-radius: 14px !important;
+  padding: 14px !important;
+}
+
+#modalPago .pago-resumen-title {
+  font-weight: 800 !important;
+  color: #1d4ed8 !important;
+  margin-bottom: 8px !important;
+  font-size: 15px !important;
+}
+
+#modalPago .pago-resumen-line {
+  color: #374151 !important;
+  margin-top: 6px !important;
+  font-size: 14px !important;
+}
+
+/* Comprobante */
+#modalPago .pago-comprobante-card {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 14px !important;
+  padding: 14px !important;
+  background: #f9fafb !important;
+}
+
+/* Botones acción */
+#modalPago .pago-actions-pro {
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+  margin-top: 4px !important;
+}
+
+#modalPago .pago-actions-pro .btn {
+  min-width: 140px !important;
+  height: 46px !important;
+  font-weight: 800 !important;
+  border-radius: 12px !important;
+  font-size: 15px !important;
+}
+
+/* Columnas internas — forzar a 1 columna */
+#modalPago .pago-col {
+  width: 100% !important;
+}
+
+@media (max-width: 600px) {
+  #modalPago #gridFormasPago {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+/* ===== FIX VUELTO INSUFICIENTE - ROJO ===== */
+#modalPago .vuelto-box-pro.insuficiente {
+  background: #dc2626 !important;
+  border: 2px solid #b91c1c !important;
+}
+
+#modalPago .vuelto-box-pro.insuficiente .vuelto-label {
+  color: #fecaca !important;
+}
+
+#modalPago .vuelto-box-pro.insuficiente .vuelto-valor {
+  color: #fff !important;
+  font-size: 1.4rem !important;
+  white-space: nowrap !important;
+}
+
+/* Verde cuando hay vuelto positivo */
+#modalPago .vuelto-box-pro:not(.insuficiente) {
+  background: #16a34a !important;
+  border: 2px solid #15803d !important;
+}
+
+/* ===== BOTÓN CANCELAR VENTA ===== */
+#modalVenta .btn-secondary,
+#modalVenta .ec-actions .btn-secondary {
+  background: #6b7280 !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+#modalVenta .btn-secondary:hover {
+  background: #4b5563 !important;
 }

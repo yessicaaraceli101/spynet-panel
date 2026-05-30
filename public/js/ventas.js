@@ -339,18 +339,18 @@ async function cargarFormasPago() {
       btn.dataset.nombre = fp.nombre;
       btn.dataset.tipo = fp.tipo || ""; 
 
-      let icono = "💳";
-      if (fp.nombre.toLowerCase().includes("efectivo")) icono = "💵";
+      let icono = "";
+      if (fp.nombre.toLowerCase().includes("efectivo")) icono = "";
       else if (
         fp.nombre.toLowerCase().includes("banco") ||
         fp.nombre.toLowerCase().includes("bnf") ||
         fp.nombre.toLowerCase().includes("continental") ||
         fp.nombre.toLowerCase().includes("ueno")
-      ) icono = "🏦";
+      ) icono = "";
       else if (
         fp.nombre.toLowerCase().includes("qr") ||
         fp.nombre.toLowerCase().includes("mango")
-      ) icono = "📱";
+      ) icono = "";
 
       btn.innerHTML = `${icono} ${fp.nombre}`;
       btn.onclick = () => seleccionarFormaPago(fp, btn);
@@ -364,7 +364,7 @@ async function cargarFormasPago() {
 
 function seleccionarFormaPago(fp, btn) {
   formaPagoSeleccionada = fp;
-  formaPagoIdSeleccionada = Number(fp.id);  // ahora siempre es número
+  formaPagoIdSeleccionada = Number(fp.id);
   window.formaPagoTipoSeleccionada = fp.tipo || "";
 
   document.querySelectorAll(".btnFormaPago").forEach(b => b.classList.remove("active"));
@@ -372,9 +372,30 @@ function seleccionarFormaPago(fp, btn) {
 
   toggleComprobanteUI(fp);
 
-  // Cambiar esto:
+  // MOSTRAR/OCULTAR BLOQUE EFECTIVO
+  const bloqueEfectivo = document.getElementById("bloqueEfectivo");
+  const esEfectivo =
+    String(fp.tipo || "").toLowerCase() === "efectivo" ||
+    String(fp.nombre || "").toLowerCase() === "efectivo";
+
+  if (bloqueEfectivo) {
+    bloqueEfectivo.style.display = esEfectivo ? "block" : "none";
+  }
+
+  if (esEfectivo) {
+    calcularVuelto();
+  } else {
+    const mr = document.getElementById("montoRecibido");
+    if (mr) mr.value = "";
+    const v = document.getElementById("vuelto");
+    if (v) {
+      v.textContent = "0";
+      v.style.color = "";
+    }
+  }
+
+  // Otro banco
   const esOtroBanco = String(fp.nombre || "").toLowerCase().includes("otro banco");
-  
   const wrapOtro = document.getElementById("wrapOtroBanco");
   if (wrapOtro) {
     wrapOtro.style.display = esOtroBanco ? "block" : "none";
@@ -510,15 +531,36 @@ function abrirPago() {
     return;
   }
 
-  // Mover al body
+  // Mover al body para que cubra toda la pantalla
   const modalPago = document.getElementById("modalPago");
   if (modalPago && modalPago.parentElement !== document.body) {
     document.body.appendChild(modalPago);
   }
 
-  // ← OCULTAR MODAL VENTA MIENTRAS ESTÁ ABIERTO EL PAGO
+  // Forzar estilos de overlay completo
+  modalPago.style.cssText = `
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 16px !important;
+    background: rgba(15, 23, 42, 0.85) !important;
+    z-index: 2147483647 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+  `;
+
+  // Ocultar modal venta mientras está abierto el pago
   const modalVenta = document.getElementById("modalVenta");
   if (modalVenta) modalVenta.style.visibility = "hidden";
+
+  // Bloquear scroll del fondo
+  document.body.style.overflow = "hidden";
 
   formaPagoIdSeleccionada = null;
   formaPagoFinal = { id: null, nombre: null };
@@ -537,7 +579,6 @@ function abrirPago() {
   }
 
   actualizarResumenMonedaVenta();
-  openModal("modalPago");
 }
 function confirmarPago(btn, formaPagoId) {
 
@@ -923,9 +964,9 @@ if (!formaPagoIdSeleccionada && !esOtroBanco) {
       if (moneda === "USD") { simbolo = "US$"; vueltoTexto = nfDecimal(vuelto || 0); }
       else if (moneda === "BRL") { simbolo = "R$"; vueltoTexto = nfDecimal(vuelto || 0); }
       else { simbolo = "Gs."; vueltoTexto = nf(vuelto || 0); }
-      alert(`✅ Venta registrada. Vuelto: ${vueltoTexto} ${simbolo}`);
+      mostrarExitoVenta(vueltoTexto, simbolo);
     } else {
-      alert("✅ Venta registrada correctamente");
+      mostrarExitoVenta(null, null);
     }
 
     if (typeof closeModal === "function") closeModal("modalPago");
@@ -1648,6 +1689,60 @@ async function toggleEditTipoCambio() {
   recalcularEditTotales();
 }
 
+function mostrarExitoVenta(vueltoTexto, simbolo) {
+  document.getElementById("modalExitoVenta")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "modalExitoVenta";
+  overlay.style.cssText = `
+    position:fixed;inset:0;
+    background:rgba(15,23,42,0.75);
+    z-index:2147483647;
+    display:flex;align-items:center;justify-content:center;
+    padding:16px;
+  `;
+
+  const vueltoHTML = vueltoTexto !== null ? `
+    <div style="
+      background:#f0fdf4;border:2px solid #16a34a;
+      border-radius:14px;padding:16px 20px;margin-bottom:24px;
+    ">
+      <div style="font-size:.85rem;font-weight:600;color:#16a34a;margin-bottom:4px;">VUELTO</div>
+      <div style="font-size:2rem;font-weight:900;color:#15803d;">${vueltoTexto} ${simbolo}</div>
+    </div>
+  ` : `<div style="margin-bottom:24px;"></div>`;
+
+  overlay.innerHTML = `
+    <div style="
+      background:#fff;border-radius:20px;padding:36px 32px;
+      width:min(420px,100%);text-align:center;
+      box-shadow:0 24px 60px rgba(0,0,0,.25);
+      animation:popIn .25s ease;
+    ">
+      <div style="
+        width:72px;height:72px;background:#dcfce7;border-radius:50%;
+        display:flex;align-items:center;justify-content:center;
+        margin:0 auto 18px;font-size:2rem;
+      ">✅</div>
+      <h2 style="margin:0 0 8px;font-size:1.5rem;font-weight:800;color:#0f172a;">
+        ¡Venta registrada!
+      </h2>
+      <p style="margin:0 0 20px;color:#64748b;font-size:1rem;">
+        La venta fue guardada correctamente.
+      </p>
+      ${vueltoHTML}
+      <button onclick="document.getElementById('modalExitoVenta').remove()" style="
+        width:100%;height:48px;background:#16a34a;color:#fff;
+        border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;
+      ">Aceptar</button>
+    </div>
+    <style>@keyframes popIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}</style>
+  `;
+
+  document.body.appendChild(overlay);
+}
+
+window.mostrarExitoVenta = mostrarExitoVenta;
 window.imprimirTicket = imprimirTicket;
 window.imprimirPagare = imprimirPagare;
 window.nuevaVenta = nuevaVenta;

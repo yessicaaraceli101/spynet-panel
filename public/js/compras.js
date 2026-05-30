@@ -35,7 +35,7 @@ function aplicarEmpresaCompras() {
   const titulo = document.querySelector("#compras h2, #compras h3, .compras-title");
   if (titulo && !titulo.dataset.empresaAplicada) {
     titulo.dataset.empresaAplicada = "1";
-    titulo.textContent = `Compras - ${EMPRESA_NOMBRE_COMPRA}`;
+    titulo.textContent = `Compras ${EMPRESA_NOMBRE_COMPRA}`;
   }
 
   const logo = document.querySelector("#logoEmpresa, .empresa-logo");
