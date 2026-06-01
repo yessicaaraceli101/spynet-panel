@@ -1080,86 +1080,257 @@ async function cargarVentas() {
 function renderVentasPaginadas() {
   const tbody = document.getElementById("tablaVentas");
   if (!tbody) return;
-
+ 
   tbody.innerHTML = "";
  
   if (ventasCache.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:16px; color:#666;">No se encontraron ventas para esta empresa.</td></tr>`;
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align:center;padding:40px;color:#6b7280;font-size:15px;">
+          No se encontraron ventas para esta empresa.
+        </td>
+      </tr>`;
     renderPaginacionVentas();
     return;
   }
-
+ 
   const inicio = (ventasPaginaActual - 1) * ventasPorPagina;
-  const fin = inicio + ventasPorPagina;
+  const fin    = inicio + ventasPorPagina;
   const ventasPagina = ventasCache.slice(inicio, fin);
-
+ 
   ventasPagina.forEach(v => {
     const tr = document.createElement("tr");
-
-    const fecha = (typeof fmtDate === "function")
-      ? fmtDate(v.fecha)
-      : String(v.fecha || "").slice(0, 10);
-
+ 
+    // ── Fecha  dd/mm/yyyy ──────────────────────────────
+    let fecha = "-";
+    if (v.fecha) {
+      const d = new Date(String(v.fecha).slice(0, 10) + "T12:00:00");
+      if (!isNaN(d)) {
+        const dd   = String(d.getDate()).padStart(2, "0");
+        const mm   = String(d.getMonth() + 1).padStart(2, "0");
+        const yyyy = d.getFullYear();
+        fecha = `${dd}/${mm}/${yyyy}`;
+      }
+    }
+ 
+    // ── Total ──────────────────────────────────────────
     const moneda = (v.moneda || "PYG").toUpperCase();
-
     let totalMostrar = "";
+    let totalGs      = "";
+ 
     if (moneda === "USD") {
       totalMostrar = `US$ ${nfDecimal(v.total_moneda ?? 0)}`;
+      totalGs      = `Gs. ${nf(v.total_pyg ?? v.total ?? 0)}`;
     } else if (moneda === "BRL") {
       totalMostrar = `R$ ${nfDecimal(v.total_moneda ?? 0)}`;
+      totalGs      = `Gs. ${nf(v.total_pyg ?? v.total ?? 0)}`;
     } else {
       totalMostrar = `Gs. ${nf(v.total_pyg ?? v.total ?? 0)}`;
+      totalGs      = "";
     }
-
+ 
+    // ── Método de pago ─────────────────────────────────
+    const metodoBruto  = v.banco_nombre
+      ? `${v.forma_pago_nombre} - ${v.banco_nombre}`
+      : (v.forma_pago_nombre || "-");
+ 
+    const nombreMetodo = (v.forma_pago_nombre || "").toLowerCase();
+    let iconoMetodo = "ti-credit-card";
+    if (nombreMetodo.includes("efectivo"))                                       iconoMetodo = "ti-cash";
+    else if (nombreMetodo.includes("qr") || nombreMetodo.includes("mango"))      iconoMetodo = "ti-qrcode";
+    else if (
+      nombreMetodo.includes("banco")       || nombreMetodo.includes("bnf")   ||
+      nombreMetodo.includes("continental") || nombreMetodo.includes("ueno")  ||
+      nombreMetodo.includes("basa")        || nombreMetodo.includes("familiar")
+    ) iconoMetodo = "ti-building-bank";
+ 
+    // ── Estado ─────────────────────────────────────────
+    const estado = (v.estado_pago || "").toLowerCase();
+    let badgeBg    = "#dcfce7";
+    let badgeColor = "#166534";
+    let badgeIcon  = "ti-check";
+ 
+    if (estado === "pendiente") {
+      badgeBg = "#fef9c3"; badgeColor = "#854d0e"; badgeIcon = "ti-clock";
+    } else if (estado === "anulado") {
+      badgeBg = "#fee2e2"; badgeColor = "#991b1b"; badgeIcon = "ti-x";
+    }
+ 
+    // ── Helper botón ───────────────────────────────────
+    // Cada botón tiene un borde de color fijo (no solo en hover)
+    // para que se distingan a simple vista sin ser "colorinches"
+    const btn = (onclick, title, icon, borderColor, hoverBg, hoverColor) => `
+      <button
+        onclick="${onclick}"
+        title="${title}"
+        style="
+          width:34px;height:34px;border-radius:8px;
+          border:1.5px solid ${borderColor};
+          background:#fff;cursor:pointer;
+          display:inline-flex;align-items:center;
+          justify-content:center;color:${hoverColor};
+          font-size:16px;padding:0;
+          transition:background .15s ease, transform .1s ease;"
+        onmouseover="
+          this.style.background='${hoverBg}';
+          this.style.transform='translateY(-1px)';"
+        onmouseout="
+          this.style.background='#fff';
+          this.style.transform='translateY(0)';">
+        <i class="ti ${icon}" aria-hidden="true"></i>
+      </button>`;
+ 
     tr.innerHTML = `
-      <td>${v.id ?? "-"}</td>
-      <td>${fecha}</td>
-      <td>${v.cliente_nombre || "Consumidor Final"}</td>
-      <td>${v.productos || "-"}</td>
-      <td>${v.banco_nombre? `${v.forma_pago_nombre} - ${v.banco_nombre}`: (v.forma_pago_nombre || "-")}
-</td>
-      <td>
-        ${totalMostrar}
-        <br>
-        <small style="color:#666;">Gs. ${nf(v.total_pyg ?? v.total ?? 0)}</small>
+      <!-- ID -->
+      <td style="padding:14px 12px;color:#9ca3af;font-size:13px;font-weight:600;white-space:nowrap;">
+        #${v.id ?? "-"}
       </td>
-      <td>
-        <span class="estado-badge ${v.estado_pago || ""}">
+ 
+      <!-- Fecha -->
+      <td style="padding:14px 12px;font-size:14px;color:#374151;white-space:nowrap;font-weight:500;letter-spacing:.3px;">
+        ${fecha}
+      </td>
+ 
+      <!-- Cliente -->
+      <td style="padding:14px 12px;font-weight:700;font-size:14px;color:#111827;">
+        ${v.cliente_nombre || "Consumidor Final"}
+      </td>
+ 
+      <!-- Productos -->
+      <td style="padding:14px 12px;font-size:13px;color:#4b5563;
+                 max-width:170px;white-space:nowrap;
+                 overflow:hidden;text-overflow:ellipsis;">
+        ${v.productos || "-"}
+      </td>
+ 
+      
+      <!-- Método -->
+      <td style="padding:14px 12px;font-size:13px;color:#374151;font-weight:500;">
+        ${metodoBruto}
+      </td>
+ 
+      <!-- Total -->
+      <td style="text-align:right;padding:14px 12px;">
+        <span style="font-weight:700;font-size:15px;color:#111827;">${totalMostrar}</span>
+        ${totalGs
+          ? `<br><small style="font-size:12px;color:#9ca3af;font-weight:400;">${totalGs}</small>`
+          : ""}
+      </td>
+ 
+      <!-- Estado -->
+      <td style="text-align:center;padding:14px 12px;">
+        <span style="
+          display:inline-flex;align-items:center;gap:5px;
+          padding:5px 13px;border-radius:20px;
+          font-size:12px;font-weight:700;letter-spacing:.3px;
+          background:${badgeBg};color:${badgeColor};">
+          <i class="ti ${badgeIcon}" style="font-size:12px;" aria-hidden="true"></i>
           ${v.estado_pago || "-"}
         </span>
       </td>
-      <td style="text-align:center;">
-        <button class="btn-icon print-ticket" onclick="imprimirTicket(${v.id})" title="Ticket">🧾</button>
-        <button class="btn-icon print-pagare" onclick="imprimirPagare(${v.id})" title="Pagaré">📄</button>
-        <button class="btn-icon edit" onclick="editarVenta(${v.id})" title="Editar">✏️</button>
-        <button class="btn-icon delete" onclick="confirmarEliminarVenta(${v.id})" title="Eliminar">🗑</button>
+ 
+      <!-- Acciones -->
+      <td style="text-align:center;padding:14px 12px;">
+        <div style="display:inline-flex;align-items:center;gap:6px;">
+ 
+          <!-- Ticket: azul profundo -->
+          ${btn(
+            `imprimirTicket(${v.id})`,
+            "Imprimir ticket",
+            "ti-receipt",
+            "#93c5fd",   /* borde azul claro */
+            "#eff6ff",   /* hover fondo */
+            "#1d4ed8"    /* color ícono */
+          )}
+ 
+          <!-- Pagaré: verde sobrio -->
+          ${btn(
+            `imprimirPagare(${v.id})`,
+            "Imprimir Factura",
+            "ti-file-text",
+            "#6ee7b7",   /* borde verde claro */
+            "#f0fdf4",
+            "#065f46"
+          )}
+ 
+          <!-- Editar: celeste / cyan -->
+          ${btn(
+            `editarVenta(${v.id})`,
+            "Editar venta",
+            "ti-pencil",
+            "#38bdf8",   /* borde celeste */
+            "#e0f2fe",
+            "#0369a1"
+          )}
+ 
+          <!-- Eliminar: rojo -->
+          ${btn(
+            `confirmarEliminarVenta(${v.id})`,
+            "Eliminar venta",
+            "ti-trash",
+            "#fca5a5",   /* borde rojo claro */
+            "#fee2e2",
+            "#b91c1c"
+          )}
+ 
+        </div>
       </td>
     `;
-
+ 
     tbody.appendChild(tr);
   });
-
+ 
   renderPaginacionVentas();
 }
-
+ 
 function renderPaginacionVentas() {
   const div = document.getElementById("ventas-paginacion");
   if (!div) return;
-
+ 
   const total = Math.ceil(ventasCache.length / ventasPorPagina);
   div.innerHTML = "";
-
   if (total <= 1) return;
-
-  div.innerHTML = `
-    <button class="pag-btn" onclick="cambiarPaginaVentas(${ventasPaginaActual - 1})"
-      ${ventasPaginaActual === 1 ? "disabled" : ""}>‹</button>
-
-    <span style="padding:0 10px;">Página ${ventasPaginaActual} de ${total}</span>
-
-    <button class="pag-btn" onclick="cambiarPaginaVentas(${ventasPaginaActual + 1})"
-      ${ventasPaginaActual === total ? "disabled" : ""}>›</button>
-  `;
+ 
+  div.style.cssText = `
+    display:flex;align-items:center;gap:8px;
+    justify-content:center;padding:20px 0 8px;`;
+ 
+  const mkBtn = (html, disabled, onclick) => {
+    const b = document.createElement("button");
+    b.innerHTML = html;
+    b.disabled  = disabled;
+    b.style.cssText = `
+      width:36px;height:36px;border-radius:8px;
+      border:1.5px solid #e2e8f0;background:#fff;
+      cursor:${disabled ? "not-allowed" : "pointer"};
+      display:inline-flex;align-items:center;
+      justify-content:center;color:#374151;
+      font-size:16px;transition:all .15s ease;
+      opacity:${disabled ? "0.35" : "1"};`;
+    if (!disabled) {
+      b.onmouseover = () => {
+        b.style.background    = "#eff6ff";
+        b.style.borderColor   = "#93c5fd";
+        b.style.color         = "#1d4ed8";
+      };
+      b.onmouseout = () => {
+        b.style.background    = "#fff";
+        b.style.borderColor   = "#e2e8f0";
+        b.style.color         = "#374151";
+      };
+      b.onclick = onclick;
+    }
+    return b;
+  };
+ 
+  div.appendChild(mkBtn(`<i class="ti ti-chevron-left"></i>`,  ventasPaginaActual === 1,     () => cambiarPaginaVentas(ventasPaginaActual - 1)));
+ 
+  const info = document.createElement("span");
+  info.style.cssText = "font-size:14px;color:#6b7280;padding:0 8px;";
+  info.innerHTML     = `Página <strong style="color:#111827;font-weight:700;">${ventasPaginaActual}</strong> de ${total}`;
+  div.appendChild(info);
+ 
+  div.appendChild(mkBtn(`<i class="ti ti-chevron-right"></i>`, ventasPaginaActual === total, () => cambiarPaginaVentas(ventasPaginaActual + 1)));
 }
 
 function cambiarPaginaVentas(pagina) {
@@ -1529,10 +1700,12 @@ window.addEventListener("hashchange", () => {
 });
 
 function imprimirTicket(id) {
+  mostrarToastAccion("🧾 Imprimiendo ticket...");
   window.open(`/ventas/${id}/ticket`, "_blank");
 }
 
 function imprimirPagare(id) {
+  mostrarToastAccion("📄 Imprimiendo factura...");
   window.open(`/ventas/${id}/pagare`, "_blank");
 }
 
@@ -1742,6 +1915,229 @@ function mostrarExitoVenta(vueltoTexto, simbolo) {
   document.body.appendChild(overlay);
 }
 
+function mostrarToastAccion(mensaje) {
+  // Eliminar toast anterior si existe
+  document.querySelectorAll(".toast-accion-venta").forEach(t => t.remove());
+
+  const toast = document.createElement("div");
+  toast.className = "toast-accion-venta";
+  toast.textContent = mensaje;
+  toast.style.cssText = `
+    position:fixed;
+    bottom:28px;
+    left:50%;
+    transform:translateX(-50%) translateY(10px);
+    background:#1e293b;
+    color:#fff;
+    padding:10px 22px;
+    border-radius:10px;
+    font-size:14px;
+    font-weight:500;
+    z-index:999999;
+    opacity:0;
+    transition:opacity .2s ease, transform .2s ease;
+    pointer-events:none;
+    box-shadow:0 8px 24px rgba(0,0,0,.2);
+  `;
+
+  document.body.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateX(-50%) translateY(0)";
+  });
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(-50%) translateY(10px)";
+    setTimeout(() => toast.remove(), 250);
+  }, 1800);
+}
+async function imprimirTicket(id) {
+  const venta = ventasCache.find(v => v.id === id);
+  if (!venta) { window.open(`/ventas/${id}/ticket`, "_blank"); return; }
+
+  const fecha = venta.fecha
+    ? (() => {
+        const d = new Date(String(venta.fecha).slice(0,10) + "T12:00:00");
+        return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+      })()
+    : "-";
+
+  mostrarModalImpresion({
+    tipo:    "Ticket",
+    icono:   "ti-receipt",
+    color:   "#1d4ed8",
+    bgColor: "#eff6ff",
+    venta,
+    fecha,
+    onConfirm: () => window.open(`/ventas/${id}/ticket`, "_blank")
+  });
+}
+
+async function imprimirPagare(id) {
+  const venta = ventasCache.find(v => v.id === id);
+  if (!venta) { window.open(`/ventas/${id}/pagare`, "_blank"); return; }
+
+  const fecha = venta.fecha
+    ? (() => {
+        const d = new Date(String(venta.fecha).slice(0,10) + "T12:00:00");
+        return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+      })()
+    : "-";
+
+  mostrarModalImpresion({
+    tipo:    "Factura",
+    icono:   "ti-file-invoice",
+    color:   "#065f46",
+    bgColor: "#f0fdf4",
+    venta,
+    fecha,
+    onConfirm: () => window.open(`/ventas/${id}/pagare`, "_blank")
+  });
+}
+
+function mostrarModalImpresion({ tipo, icono, color, bgColor, venta, fecha, onConfirm }) {
+  document.getElementById("modalImpresionVenta")?.remove();
+
+  const moneda = (venta.moneda || "PYG").toUpperCase();
+  let totalTexto = "";
+  if (moneda === "USD")      totalTexto = `US$ ${nfDecimal(venta.total_moneda ?? 0)} (Gs. ${nf(venta.total_pyg ?? 0)})`;
+  else if (moneda === "BRL") totalTexto = `R$ ${nfDecimal(venta.total_moneda ?? 0)} (Gs. ${nf(venta.total_pyg ?? 0)})`;
+  else                       totalTexto = `Gs. ${nf(venta.total_pyg ?? venta.total ?? 0)}`;
+
+  const overlay = document.createElement("div");
+  overlay.id = "modalImpresionVenta";
+  overlay.style.cssText = `
+    position:fixed;inset:0;
+    background:rgba(15,23,42,.55);
+    display:flex;align-items:center;justify-content:center;
+    padding:16px;z-index:2147483647;
+    animation:fadeInOverlay .2s ease;
+  `;
+
+  overlay.innerHTML = `
+    <style>
+      @keyframes fadeInOverlay { from{opacity:0} to{opacity:1} }
+      @keyframes popUp { from{opacity:0;transform:scale(.94) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    </style>
+
+    <div style="
+      background:#fff;border-radius:20px;
+      width:min(440px,100%);
+      box-shadow:0 24px 60px rgba(0,0,0,.22);
+      overflow:hidden;
+      animation:popUp .22s ease;
+    ">
+
+      <!-- Header -->
+      <div style="
+        background:${bgColor};
+        padding:22px 24px 18px;
+        border-bottom:1px solid ${color}22;
+        display:flex;align-items:center;gap:14px;
+      ">
+        <div style="
+          width:48px;height:48px;border-radius:14px;
+          background:${color}18;border:1.5px solid ${color}44;
+          display:flex;align-items:center;justify-content:center;
+          font-size:22px;color:${color};flex-shrink:0;
+        ">
+          <i class="ti ${icono}"></i>
+        </div>
+        <div>
+          <div style="font-size:17px;font-weight:800;color:#0f172a;">
+            Imprimir ${tipo}
+          </div>
+          <div style="font-size:13px;color:#64748b;margin-top:2px;">
+            Confirmá los datos antes de imprimir
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos -->
+      <div style="padding:20px 24px;">
+
+        <div style="
+          background:#f8fafc;border:1px solid #e2e8f0;
+          border-radius:14px;overflow:hidden;
+        ">
+
+          ${fila("# Venta",    `#${venta.id}`)}
+          ${fila("Fecha",      fecha)}
+          ${fila("Cliente",    venta.cliente_nombre || "Consumidor Final")}
+          ${fila("Productos",  venta.productos || "-")}
+          ${fila("Método",     venta.forma_pago_nombre || "-")}
+          ${fila("Total",      totalTexto, true)}
+          ${fila("Estado",     venta.estado_pago || "-")}
+
+        </div>
+
+      </div>
+
+      <!-- Botones -->
+      <div style="
+        padding:0 24px 22px;
+        display:flex;gap:10px;justify-content:flex-end;
+      ">
+        <button
+          onclick="document.getElementById('modalImpresionVenta').remove()"
+          style="
+            height:42px;padding:0 20px;border-radius:10px;
+            border:1.5px solid #e2e8f0;background:#fff;
+            color:#374151;font-size:14px;font-weight:600;cursor:pointer;
+          ">
+          Cancelar
+        </button>
+        <button
+          id="btnConfirmarImpresion"
+          style="
+            height:42px;padding:0 22px;border-radius:10px;
+            border:none;background:${color};
+            color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+            display:inline-flex;align-items:center;gap:8px;
+            box-shadow:0 8px 20px ${color}44;
+          ">
+          <i class="ti ${icono}" style="font-size:16px;"></i>
+          Imprimir ${tipo}
+        </button>
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Cerrar al click en el fondo
+  overlay.addEventListener("click", e => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  // Confirmar
+  document.getElementById("btnConfirmarImpresion").onclick = () => {
+    overlay.remove();
+    onConfirm();
+  };
+}
+
+// Helper fila de datos
+function fila(label, valor, destacado = false) {
+  return `
+    <div style="
+      display:flex;justify-content:space-between;align-items:center;
+      padding:10px 14px;border-bottom:1px solid #e2e8f0;
+    ">
+      <span style="font-size:13px;color:#64748b;font-weight:500;">${label}</span>
+      <span style="
+        font-size:${destacado ? "15px" : "13px"};
+        font-weight:${destacado ? "800" : "600"};
+        color:${destacado ? "#0f172a" : "#334155"};
+        text-align:right;max-width:220px;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      ">${valor}</span>
+    </div>
+  `;
+}
 window.mostrarExitoVenta = mostrarExitoVenta;
 window.imprimirTicket = imprimirTicket;
 window.imprimirPagare = imprimirPagare;

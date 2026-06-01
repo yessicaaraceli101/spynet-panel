@@ -4927,14 +4927,17 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
         c.ci,
         fp.nombre AS forma_pago_nombre,
         e.nombre AS empresa_nombre,
-        e.logo AS empresa_logo
+        e.direccion AS empresa_direccion,
+        e.telefono AS empresa_telefono,
+        e.ciudad AS empresa_ciudad,
+        e.ruc AS empresa_ruc,
+        e.email AS empresa_email,
+        e.pie_ticket AS empresa_pie
       FROM ventas v
-      LEFT JOIN clientes c 
-        ON c.id = v.cliente_id
-       AND c.empresa_id = $2
-      LEFT JOIN formas_pago fp 
-        ON fp.id = v.forma_pago_id
-       AND fp.empresa_id = $2
+      LEFT JOIN clientes c
+        ON c.id = v.cliente_id AND c.empresa_id = $2
+      LEFT JOIN formas_pago fp
+        ON fp.id = v.forma_pago_id AND fp.empresa_id = $2
       LEFT JOIN empresas e
         ON e.id = v.empresa_id
       WHERE v.id = $1
@@ -4944,9 +4947,7 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
       [ventaId, empresaId]
     );
 
-    if (v.rows.length === 0) {
-      return res.status(404).send("Venta no encontrada");
-    }
+    if (v.rows.length === 0) return res.status(404).send("Venta no encontrada");
 
     const venta = v.rows[0];
 
@@ -4954,11 +4955,11 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
       `
       SELECT
         vi.*,
-        p.nombre AS producto_nombre
+        p.nombre AS producto_nombre,
+        p.codigo AS producto_codigo
       FROM ventas_items vi
-      JOIN productos p 
-        ON p.id = vi.producto_id
-       AND p.empresa_id = $2
+      JOIN productos p
+        ON p.id = vi.producto_id AND p.empresa_id = $2
       WHERE vi.venta_id = $1
         AND vi.empresa_id = $2
       ORDER BY vi.id ASC
@@ -4966,132 +4967,210 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
       [ventaId, empresaId]
     );
 
-    const ticketWidth = 226;
-    const ticketHeight = 350 + items.rows.length * 32;
+    // ── Cálculo de altura preciso ──────────────────────────
+    const TW = 226;   // ticket width
+    const L  = 10;    // margen
+    const W  = TW - L * 2;
+
+    // Líneas extra del encabezado según datos disponibles
+    const extraHeader = [
+      venta.empresa_direccion,
+      venta.empresa_ruc,
+      venta.empresa_telefono,
+      venta.empresa_email,
+      venta.empresa_ciudad
+    ].filter(Boolean).length * 11;
+
+    const H_HEADER   = 38 + extraHeader; // nombre empresa + separador
+    const H_FACTURA  = 26;               // "FACTURA DE VENTA 00078"
+    const H_DATOS    = 58;               // fecha/hora, cliente, ci, cajero
+    const H_THEAD    = 24;               // cabecera tabla
+    const H_ITEMS    = items.rows.length * 24; // cada item ~24px (sin código siempre)
+    const H_CODIGOS  = items.rows.filter(i => i.producto_codigo).length * 11;
+    const H_TOTALES  = 52;               // total + forma pago + separador
+    const H_PIE      = 36;               // pie de página
+    const H_PADDING  = 24;              // respiro final
+
+    const ticketHeight =
+      H_HEADER + H_FACTURA + H_DATOS + H_THEAD +
+      H_ITEMS + H_CODIGOS + H_TOTALES + H_PIE + H_PADDING;
 
     const doc = new PDFDocument({
-      size: [ticketWidth, ticketHeight],
-      margins: { top: 8, left: 10, right: 10, bottom: 10 }
+      size: [TW, ticketHeight],
+      margins: { top: 0, left: 0, right: 0, bottom: 0 }
     });
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=ticket_${empresaId}_${ventaId}.pdf`);
-
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename=ticket_${empresaId}_${ventaId}.pdf`
+    );
     doc.pipe(res);
 
-    const fmtGs = (n) => Number(n || 0).toLocaleString("es-PY");
+    const fmt = (n) => Number(n || 0).toLocaleString("es-PY");
 
-    const fechaTexto = venta.fecha
-      ? new Date(venta.fecha).toISOString().slice(0, 10)
+    let y = 12;
+
+    // ── ENCABEZADO EMPRESA ────────────────────────────────
+    doc.font("Helvetica-Bold").fontSize(10)
+       .text((venta.empresa_nombre || "MI EMPRESA").toUpperCase(), L, y, {
+         width: W, align: "center"
+       });
+    y += 14;
+
+    doc.font("Helvetica").fontSize(7.5);
+
+    if (venta.empresa_direccion) {
+      doc.text(venta.empresa_direccion, L, y, { width: W, align: "center" }); y += 11;
+    }
+    if (venta.empresa_ruc) {
+      doc.text(`RUC: ${venta.empresa_ruc}`, L, y, { width: W, align: "center" }); y += 11;
+    }
+    if (venta.empresa_ciudad && venta.empresa_telefono) {
+      doc.text(
+        `Tel: ${venta.empresa_telefono}    ${venta.empresa_ciudad.toUpperCase()}`,
+        L, y, { width: W, align: "center" }
+      ); y += 11;
+    } else if (venta.empresa_telefono) {
+      doc.text(`Tel: ${venta.empresa_telefono}`, L, y, { width: W, align: "center" }); y += 11;
+    } else if (venta.empresa_ciudad) {
+      doc.text(venta.empresa_ciudad.toUpperCase(), L, y, { width: W, align: "center" }); y += 11;
+    }
+    if (venta.empresa_email) {
+      doc.text(venta.empresa_email.toLowerCase(), L, y, { width: W, align: "center" }); y += 11;
+    }
+
+    y += 5;
+    // separador punteado
+    const dash = () => doc.moveTo(L, y).lineTo(L + W, y).dash(1.5, { space: 2 }).stroke().undash();
+    dash(); y += 7;
+
+    // ── FACTURA DE VENTA + NÚMERO ─────────────────────────
+    doc.font("Helvetica-Bold").fontSize(8.5)
+       .text("FACTURA DE VENTA", L, y, { width: W * 0.58 });
+    doc.text(String(ventaId).padStart(5, "0"), L, y, { width: W, align: "right" });
+    y += 13;
+
+    dash(); y += 7;
+
+    // ── DATOS VENTA ───────────────────────────────────────
+    const fechaStr = venta.fecha
+      ? new Date(venta.fecha).toLocaleDateString("es-PY", {
+          day: "2-digit", month: "short", year: "numeric",
+          timeZone: "America/Asuncion"
+        }).toUpperCase()
       : "";
 
-    const logoPath = path.join(process.cwd(), "public", "img", "logo2.png");
-
-    if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 10, 8, { width: 58 });
-    }
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(10)
-      .text(venta.empresa_nombre || "SPYNET", 72, 10, {
-        width: 135,
-        align: "center"
+    const horaStr = (() => {
+      const d = venta.created_at ? new Date(venta.created_at) : null;
+      if (!d || isNaN(d)) return "";
+      return d.toLocaleTimeString("es-PY", {
+        hour: "2-digit", minute: "2-digit",
+        timeZone: "America/Asuncion"
       });
+    })();
 
-    doc
-      .font("Helvetica-Oblique")
-      .fontSize(7)
-      .text("Telefono: 0983 399 215", 72, 24, {
-        width: 135,
-        align: "center"
-      })
-      .text("info@spynet.com.py", 72, 34, {
-        width: 135,
-        align: "center"
-      });
-
-    doc.moveDown(2.2);
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(9)
-      .text("RECIBO DE DINERO", { align: "center" });
-
-    doc
-      .fontSize(8)
-      .text(`** ${String(ventaId).padStart(3, "0")} **`, {
-        align: "center"
-      });
-
-    doc.moveDown(0.6);
-
-    const cliente = `${venta.nombre || "Consumidor Final"} ${venta.apellido || ""}`.trim();
-    const ruc = venta.ci || "—";
-    const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
+    const clienteNombre = `${venta.nombre || "Consumidor Final"} ${venta.apellido || ""}`.trim();
+    const ciStr  = venta.ci || "—";
     const cajero = venta.cajero_nombre || "Sin usuario";
 
-    const yBox = doc.y;
-    doc.rect(10, yBox, ticketWidth - 20, 105).stroke();
+    doc.font("Helvetica").fontSize(7.5);
 
-    const productosTexto = items.rows
-      .map(it => {
-        const cantidad = Number(it.cantidad || 0);
-        const nombre = it.producto_nombre || "-";
-        return `${nombre} x${cantidad}`;
-      })
-      .join(", ");
+    // Fecha y hora en la misma línea
+    doc.text(`Fecha: ${fechaStr}`, L, y, { width: W * 0.58 });
+    if (horaStr) doc.text(`Hora: ${horaStr}`, L, y, { width: W, align: "right" });
+    y += 12;
 
-    doc
-      .font("Helvetica")
-      .fontSize(8)
-      .text(
-        `Recibí (mos) de ${cliente}, RUC ${ruc}, la cantidad de Gs ${fmtGs(totalPyg)} en concepto de COMPRA de: ${productosTexto}.`,
-        14,
-        yBox + 8,
-        { width: ticketWidth - 28, align: "left" }
-      );
+    doc.text(`Cliente: ${clienteNombre}`, L, y, { width: W }); y += 12;
+    doc.text(`RUC/CI: ${ciStr}`, L, y, { width: W }); y += 12;
 
-    doc.text(`Fecha: ${fechaTexto}`, 14, yBox + 58, {
-      width: ticketWidth - 28,
-      align: "left"
-    });
+    // Cajero en negrita para que resalte
+    doc.font("Helvetica-Bold").text("Cajero: ", L, y, { continued: true, width: W });
+    doc.font("Helvetica").text(cajero, { width: W });
+    y += 12;
 
-    doc.text(`Cajero: ${cajero}`, 14, yBox + 70, {
-      width: ticketWidth - 28,
-      align: "left"
-    });
+    y += 4;
+    dash(); y += 7;
 
-    if (venta.nro_comprobante) {
-      doc.text(`Comprobante: ${venta.nro_comprobante}`, 14, yBox + 82, {
-        width: ticketWidth - 28,
-        align: "left"
-      });
+    // ── CABECERA TABLA ────────────────────────────────────
+    // Columnas: ARTÍCULO(90) | UND(28) | CANT(28) | TOTAL(resto)
+    const C1 = L;
+    const C2 = L + 88;
+    const C3 = L + 116;
+    const C4 = L + 144;
+
+    doc.font("Helvetica-Bold").fontSize(7);
+    doc.text("ARTÍCULO", C1, y, { width: 86 });
+    doc.text("UND",      C2, y, { width: 26, align: "center" });
+    doc.text("CANT",     C3, y, { width: 26, align: "center" });
+    doc.text("TOTAL",    C4, y, { width: W - 144, align: "right" });
+    y += 10;
+
+    dash(); y += 5;
+
+    // ── ITEMS ─────────────────────────────────────────────
+    doc.font("Helvetica").fontSize(7.5);
+
+    for (const it of items.rows) {
+      const nombre   = (it.producto_nombre || "-").toUpperCase();
+      const codigo   = it.producto_codigo || "";
+      const unidad   = (it.unidad || "UND").toUpperCase();
+      const cantidad = Number(it.cantidad || 0);
+      const subtotal = Number(it.subtotal ?? (it.precio * it.cantidad) ?? 0);
+
+      doc.font("Helvetica").fontSize(7.5);
+      doc.text(nombre,               C1, y, { width: 86 });
+      doc.text(unidad,               C2, y, { width: 26, align: "center" });
+      doc.text(cantidad.toFixed(2),  C3, y, { width: 26, align: "center" });
+      doc.text(fmt(subtotal),        C4, y, { width: W - 144, align: "right" });
+      y += 13;
+
+      if (codigo) {
+        doc.font("Helvetica").fontSize(6.5)
+           .fillColor("#555555")
+           .text(codigo, C1, y, { width: 86 })
+           .fillColor("#000000");
+        y += 11;
+      }
     }
 
-    doc.y = yBox + 118;
+    y += 4;
+    // línea sólida antes del total
+    doc.moveTo(L, y).lineTo(L + W, y).lineWidth(0.8).stroke().lineWidth(0.5);
+    y += 7;
 
-    doc
-      .font("Helvetica")
-      .fontSize(8)
-      .text(new Date().toLocaleDateString("es-PY", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric"
-      }), { align: "center" });
+    // ── TOTAL ─────────────────────────────────────────────
+    const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
 
-    doc.moveDown(2.8);
+    doc.font("Helvetica-Bold").fontSize(9);
+    doc.text("T O T A L . . .", L, y, { width: W * 0.55 });
+    doc.text(fmt(totalPyg),     L, y, { width: W, align: "right" });
+    y += 15;
 
-    doc
-      .fontSize(8)
-      .text("Firma", { align: "center" });
+    // ── FORMA DE PAGO ─────────────────────────────────────
+    if (venta.forma_pago_nombre) {
+      doc.font("Helvetica").fontSize(8);
 
-    doc.moveDown(0.3);
+      let labelFP = venta.forma_pago_nombre.toUpperCase();
+      if (venta.banco_nombre) labelFP += ` (${venta.banco_nombre.toUpperCase()})`;
+      if (venta.nro_comprobante) {
+        labelFP += `  ${String(venta.nro_comprobante).padStart(8, "0")}`;
+      }
 
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(9)
-      .text(String(ventaId).padStart(5, "0"), { align: "center" });
+      doc.text(labelFP,      L, y, { width: W * 0.65 });
+      doc.text(fmt(totalPyg), L, y, { width: W, align: "right" });
+      y += 12;
+    }
+
+    y += 5;
+    dash(); y += 10;
+
+    // ── PIE ───────────────────────────────────────────────
+    const pie = venta.empresa_pie
+      || "MUCHAS GRACIAS POR SU COMPRA.\nVUELVA PRONTO.";
+
+    doc.font("Helvetica").fontSize(7)
+       .text(pie, L, y, { width: W, align: "center" });
 
     doc.end();
 

@@ -2959,3 +2959,161 @@ body {
 #modalVenta .btn-secondary:hover {
   background: #4b5563 !important;
 }
+
+
+
+
+/* =============================================
+   VENTAS - TABLA REDISEÑO PROFESIONAL
+   ============================================= */
+
+/* Fila hover suave */
+#ventas tbody tr:hover {
+  background: #f8fafc !important;
+}
+
+/* Fecha: muted */
+#ventas .col-fecha {
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* Cliente: bold */
+#ventas .col-cliente {
+  font-weight: 600;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+/* Productos: muted pequeño */
+#ventas .col-producto {
+  color: #64748b;
+  font-size: 12px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Método pill */
+#ventas .metodo-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 3px 10px !important;
+  border-radius: 20px !important;
+  font-size: 11px !important;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+}
+
+/* Total */
+#ventas .col-total {
+  text-align: right !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  color: #0f172a !important;
+}
+
+#ventas .col-total small {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+/* Badges estado — sobrescriben los del CSS viejo */
+#ventas .badge-pagado,
+.estado-badge.badge-pagado {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 4px 10px !important;
+  border-radius: 20px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border: none !important;
+}
+
+#ventas .badge-pendiente,
+.estado-badge.badge-pendiente {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 4px 10px !important;
+  border-radius: 20px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  background: #fef3c7 !important;
+  color: #92400e !important;
+  border: none !important;
+}
+
+#ventas .badge-anulado,
+.estado-badge.badge-anulado {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 4px 10px !important;
+  border-radius: 20px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: none !important;
+}
+
+/* Botones acción — cuadraditos con hover de color */
+#ventas .btn-venta-action {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 7px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #fff !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #64748b !important;
+  transition: all .15s ease !important;
+  padding: 0 !important;
+  font-size: 14px !important;
+}
+
+/* Colores específicos por tipo */
+#ventas .btn-venta-action.ticket:hover  { background: #dbeafe !important; color: #1d4ed8 !important; border-color: #93c5fd !important; }
+#ventas .btn-venta-action.pagare:hover  { background: #d1fae5 !important; color: #065f46 !important; border-color: #6ee7b7 !important; }
+#ventas .btn-venta-action.editar:hover  { background: #fef3c7 !important; color: #92400e !important; border-color: #fcd34d !important; }
+#ventas .btn-venta-action.eliminar:hover{ background: #fee2e2 !important; color: #b91c1c !important; border-color: #fca5a5 !important; }
+
+/* Paginación limpia */
+#ventas-paginacion .pag-btn {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #fff !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #475569 !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: all .15s !important;
+}
+
+#ventas-paginacion .pag-btn:hover:not([disabled]) {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  border-color: #bfdbfe !important;
+}
+
+#ventas-paginacion .pag-btn[disabled] {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+}
