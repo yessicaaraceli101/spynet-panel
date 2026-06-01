@@ -4967,12 +4967,45 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
       [ventaId, empresaId]
     );
 
+    // ── Moneda de la venta ─────────────────────────────────
+    const moneda      = String(venta.moneda || "PYG").trim().toUpperCase();
+    const tipoCambio  = Number(venta.tipo_cambio || 1);
+    const totalPyg    = Number(venta.total_pyg ?? venta.total ?? 0);
+    const totalMoneda = Number(venta.total_moneda ?? totalPyg);
+
+    // Símbolo y función de formato según moneda
+    let simbolo = "Gs.";
+    const fmtGs = (n) => Number(n || 0).toLocaleString("es-PY");
+
+    const fmtMoneda = (n) => {
+      if (moneda === "USD") return `US$ ${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      if (moneda === "BRL") return `R$ ${Number(n || 0).toLocaleString("pt-BR",  { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return `Gs. ${fmtGs(n)}`;
+    };
+
+    // Total a mostrar: en moneda extranjera si aplica, siempre también Gs.
+    const totalDisplay        = fmtMoneda(totalMoneda);
+    const totalGsDisplay      = moneda !== "PYG" ? `Gs. ${fmtGs(totalPyg)}` : null;
+    const tipoCambioDisplay   = moneda !== "PYG" ? `TC: 1 ${moneda} = Gs. ${fmtGs(tipoCambio)}` : null;
+
+    // Precio unitario de cada ítem en moneda extranjera
+    const precioItemEnMoneda = (precio) => {
+      if (moneda === "PYG") return null;
+      const enMoneda = tipoCambio > 0 ? Number(precio) / tipoCambio : 0;
+      return fmtMoneda(enMoneda);
+    };
+
+    const subtotalItemEnMoneda = (subtotal) => {
+      if (moneda === "PYG") return null;
+      const enMoneda = tipoCambio > 0 ? Number(subtotal) / tipoCambio : 0;
+      return fmtMoneda(enMoneda);
+    };
+
     // ── Cálculo de altura preciso ──────────────────────────
-    const TW = 226;   // ticket width
-    const L  = 10;    // margen
+    const TW = 226;
+    const L  = 10;
     const W  = TW - L * 2;
 
-    // Líneas extra del encabezado según datos disponibles
     const extraHeader = [
       venta.empresa_direccion,
       venta.empresa_ruc,
@@ -4981,18 +5014,19 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
       venta.empresa_ciudad
     ].filter(Boolean).length * 11;
 
-    const H_HEADER   = 38 + extraHeader; // nombre empresa + separador
-    const H_FACTURA  = 26;               // "FACTURA DE VENTA 00078"
-    const H_DATOS    = 58;               // fecha/hora, cliente, ci, cajero
-    const H_THEAD    = 24;               // cabecera tabla
-    const H_ITEMS    = items.rows.length * 24; // cada item ~24px (sin código siempre)
-    const H_CODIGOS  = items.rows.filter(i => i.producto_codigo).length * 11;
-    const H_TOTALES  = 52;               // total + forma pago + separador
-    const H_PIE      = 36;               // pie de página
-    const H_PADDING  = 24;              // respiro final
+    const H_HEADER  = 38 + extraHeader;
+    const H_FACTURA = 26;
+    const H_DATOS   = 58;
+    const H_MONEDA  = moneda !== "PYG" ? 22 : 0; // línea de tipo de cambio
+    const H_THEAD   = 24;
+    const H_ITEMS   = items.rows.length * (moneda !== "PYG" ? 30 : 24);
+    const H_CODIGOS = items.rows.filter(i => i.producto_codigo).length * 11;
+    const H_TOTALES = 52 + (moneda !== "PYG" ? 22 : 0); // línea extra en moneda
+    const H_PIE     = 36;
+    const H_PADDING = 24;
 
     const ticketHeight =
-      H_HEADER + H_FACTURA + H_DATOS + H_THEAD +
+      H_HEADER + H_FACTURA + H_DATOS + H_MONEDA + H_THEAD +
       H_ITEMS + H_CODIGOS + H_TOTALES + H_PIE + H_PADDING;
 
     const doc = new PDFDocument({
@@ -5007,11 +5041,9 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
     );
     doc.pipe(res);
 
-    const fmt = (n) => Number(n || 0).toLocaleString("es-PY");
-
     let y = 12;
 
-    // ── ENCABEZADO EMPRESA ────────────────────────────────
+    // ── ENCABEZADO EMPRESA ─────────────────────────────────
     doc.font("Helvetica-Bold").fontSize(10)
        .text((venta.empresa_nombre || "MI EMPRESA").toUpperCase(), L, y, {
          width: W, align: "center"
@@ -5041,11 +5073,10 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
     }
 
     y += 5;
-    // separador punteado
     const dash = () => doc.moveTo(L, y).lineTo(L + W, y).dash(1.5, { space: 2 }).stroke().undash();
     dash(); y += 7;
 
-    // ── FACTURA DE VENTA + NÚMERO ─────────────────────────
+    // ── FACTURA DE VENTA + NÚMERO ──────────────────────────
     doc.font("Helvetica-Bold").fontSize(8.5)
        .text("FACTURA DE VENTA", L, y, { width: W * 0.58 });
     doc.text(String(ventaId).padStart(5, "0"), L, y, { width: W, align: "right" });
@@ -5053,13 +5084,26 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
 
     dash(); y += 7;
 
-    // ── DATOS VENTA ───────────────────────────────────────
-    const fechaStr = venta.fecha
-      ? new Date(venta.fecha).toLocaleDateString("es-PY", {
-          day: "2-digit", month: "short", year: "numeric",
-          timeZone: "America/Asuncion"
-        }).toUpperCase()
-      : "";
+    // ── DATOS VENTA ────────────────────────────────────────
+    // Fecha en formato dd/mm/yyyy
+    // venta.fecha puede ser: Date object (pg), "2026-05-27", "2026-05-27T..."
+    const fechaStr = (() => {
+      if (!venta.fecha) return "—";
+      let d;
+      if (venta.fecha instanceof Date) {
+        // PostgreSQL ya lo parsea como objeto Date
+        d = venta.fecha;
+      } else {
+        // String: tomamos solo los primeros 10 chars y forzamos mediodía
+        const str = String(venta.fecha).slice(0, 10);
+        d = new Date(str + "T12:00:00");
+      }
+      if (!d || isNaN(d.getTime())) return "—";
+      const dd   = String(d.getDate()).padStart(2, "0");
+      const mm   = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    })();
 
     const horaStr = (() => {
       const d = venta.created_at ? new Date(venta.created_at) : null;
@@ -5076,7 +5120,6 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
 
     doc.font("Helvetica").fontSize(7.5);
 
-    // Fecha y hora en la misma línea
     doc.text(`Fecha: ${fechaStr}`, L, y, { width: W * 0.58 });
     if (horaStr) doc.text(`Hora: ${horaStr}`, L, y, { width: W, align: "right" });
     y += 12;
@@ -5084,16 +5127,23 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
     doc.text(`Cliente: ${clienteNombre}`, L, y, { width: W }); y += 12;
     doc.text(`RUC/CI: ${ciStr}`, L, y, { width: W }); y += 12;
 
-    // Cajero en negrita para que resalte
-    doc.font("Helvetica-Bold").text("Cajero: ", L, y, { continued: true, width: W });
+    doc.font("Helvetica-Bold").text("Cajero: ", L, y, { continued: true });
     doc.font("Helvetica").text(cajero, { width: W });
     y += 12;
+
+    // ── TIPO DE CAMBIO (solo si no es PYG) ─────────────────
+    if (tipoCambioDisplay) {
+      doc.font("Helvetica").fontSize(7)
+         .fillColor("#444444")
+         .text(tipoCambioDisplay, L, y, { width: W, align: "center" })
+         .fillColor("#000000");
+      y += 13;
+    }
 
     y += 4;
     dash(); y += 7;
 
-    // ── CABECERA TABLA ────────────────────────────────────
-    // Columnas: ARTÍCULO(90) | UND(28) | CANT(28) | TOTAL(resto)
+    // ── CABECERA TABLA ─────────────────────────────────────
     const C1 = L;
     const C2 = L + 88;
     const C3 = L + 116;
@@ -5108,9 +5158,7 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
 
     dash(); y += 5;
 
-    // ── ITEMS ─────────────────────────────────────────────
-    doc.font("Helvetica").fontSize(7.5);
-
+    // ── ITEMS ──────────────────────────────────────────────
     for (const it of items.rows) {
       const nombre   = (it.producto_nombre || "-").toUpperCase();
       const codigo   = it.producto_codigo || "";
@@ -5118,12 +5166,26 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
       const cantidad = Number(it.cantidad || 0);
       const subtotal = Number(it.subtotal ?? (it.precio * it.cantidad) ?? 0);
 
+      // Mostrar subtotal: en moneda extranjera si aplica, si no en Gs.
+      const subtotalTexto = moneda !== "PYG"
+        ? subtotalItemEnMoneda(subtotal)
+        : fmtGs(subtotal);
+
       doc.font("Helvetica").fontSize(7.5);
-      doc.text(nombre,               C1, y, { width: 86 });
-      doc.text(unidad,               C2, y, { width: 26, align: "center" });
-      doc.text(cantidad.toFixed(2),  C3, y, { width: 26, align: "center" });
-      doc.text(fmt(subtotal),        C4, y, { width: W - 144, align: "right" });
+      doc.text(nombre,              C1, y, { width: 86 });
+      doc.text(unidad,              C2, y, { width: 26, align: "center" });
+      doc.text(cantidad.toFixed(2), C3, y, { width: 26, align: "center" });
+      doc.text(subtotalTexto,       C4, y, { width: W - 144, align: "right" });
       y += 13;
+
+      // Si hay moneda extranjera, mostrar equivalente en Gs. debajo
+      if (moneda !== "PYG") {
+        doc.font("Helvetica").fontSize(6.5)
+           .fillColor("#666666")
+           .text(`(Gs. ${fmtGs(subtotal)})`, C4, y, { width: W - 144, align: "right" })
+           .fillColor("#000000");
+        y += 10;
+      }
 
       if (codigo) {
         doc.font("Helvetica").fontSize(6.5)
@@ -5135,39 +5197,48 @@ app.get("/ventas/:id/ticket", requireEmpresa, async (req, res) => {
     }
 
     y += 4;
-    // línea sólida antes del total
     doc.moveTo(L, y).lineTo(L + W, y).lineWidth(0.8).stroke().lineWidth(0.5);
     y += 7;
 
-    // ── TOTAL ─────────────────────────────────────────────
-    const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
-
+    // ── TOTAL ──────────────────────────────────────────────
     doc.font("Helvetica-Bold").fontSize(9);
-    doc.text("T O T A L . . .", L, y, { width: W * 0.55 });
-    doc.text(fmt(totalPyg),     L, y, { width: W, align: "right" });
-    y += 15;
 
-    // ── FORMA DE PAGO ─────────────────────────────────────
+    if (moneda !== "PYG") {
+      // Línea 1: total en moneda extranjera (destacado)
+      doc.text("T O T A L . . .", L, y, { width: W * 0.55 });
+      doc.text(totalDisplay, L, y, { width: W, align: "right" });
+      y += 13;
+
+      // Línea 2: equivalente en Gs. (más chico)
+      doc.font("Helvetica").fontSize(7.5)
+         .fillColor("#444444")
+         .text(`Equivalente: ${totalGsDisplay}`, L, y, { width: W, align: "right" })
+         .fillColor("#000000");
+      y += 12;
+    } else {
+      doc.text("T O T A L . . .", L, y, { width: W * 0.55 });
+      doc.text(fmtGs(totalPyg), L, y, { width: W, align: "right" });
+      y += 15;
+    }
+
+    // ── FORMA DE PAGO ──────────────────────────────────────
     if (venta.forma_pago_nombre) {
       doc.font("Helvetica").fontSize(8);
 
       let labelFP = venta.forma_pago_nombre.toUpperCase();
-      if (venta.banco_nombre) labelFP += ` (${venta.banco_nombre.toUpperCase()})`;
-      if (venta.nro_comprobante) {
-        labelFP += `  ${String(venta.nro_comprobante).padStart(8, "0")}`;
-      }
+      if (venta.banco_nombre)    labelFP += ` (${venta.banco_nombre.toUpperCase()})`;
+      if (venta.nro_comprobante) labelFP += `  ${String(venta.nro_comprobante).padStart(8, "0")}`;
 
       doc.text(labelFP,      L, y, { width: W * 0.65 });
-      doc.text(fmt(totalPyg), L, y, { width: W, align: "right" });
+      doc.text(totalDisplay, L, y, { width: W, align: "right" });
       y += 12;
     }
 
     y += 5;
     dash(); y += 10;
 
-    // ── PIE ───────────────────────────────────────────────
-    const pie = venta.empresa_pie
-      || "MUCHAS GRACIAS POR SU COMPRA.\nVUELVA PRONTO.";
+    // ── PIE ────────────────────────────────────────────────
+    const pie = venta.empresa_pie || "MUCHAS GRACIAS POR SU COMPRA.\nVUELVA PRONTO.";
 
     doc.font("Helvetica").fontSize(7)
        .text(pie, L, y, { width: W, align: "center" });
