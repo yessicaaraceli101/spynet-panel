@@ -61,21 +61,29 @@
   <!-- NAV -->
   <nav class="sidebar-nav">
 
+
     <p class="sidebar-section-label">PRINCIPAL</p>
 
-    <a href="#dashboard" data-link class="active">
+    <a href="#accesos" data-link class="active">
       <i class="fa-solid fa-gauge"></i>
-      Dashboard
+      Accesos rápidos
     </a>
 
     <a href="#ventas" data-link>
       <i class="fa-solid fa-basket-shopping"></i>
-      Ventas
+      Historial de Ventas
     </a>
 
     <a href="#caja" data-link>
       <i class="fa-solid fa-cash-register"></i>
       Caja
+    </a>
+
+    <p class="sidebar-section-label">Reportes</p>
+
+    <a href="#dashboard" data-link class="active">
+      <i class="fa-solid fa-gauge"></i>
+      Dashboard
     </a>
 
     <p class="sidebar-section-label">GESTIÓN</p>
@@ -146,13 +154,13 @@
 
     <main>
 
-      <section id="dashboard" class="view active">
+<section id="accesos" class="view active">
 
   <!-- HEADER -->
   <div class="dashboard-header">
     <div class="header-top">
       <div>
-        <h1 class="page-title">Dashboard</h1>
+        <h1 class="page-title">Accesos rápidos</h1>
         <p class="page-subtitle">Resumen general del sistema y accesos principales</p>
       </div>
       <div class="top-right-actions">
@@ -161,6 +169,123 @@
           <span id="notifCount">0</span>
         </button>
         <div id="notifDropdown" class="notif-dropdown hidden"><h4>Notificaciones</h4></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="dashboard-kpis"></div>
+
+  <!-- ACCESOS RÁPIDOS CARDS -->
+<div style="margin-top:1.5rem;">
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+
+    <!-- Nueva Venta - CELESTE -->
+    <button onclick="nav('#ventas'); setTimeout(()=>nuevaVenta(),200)"
+      style="background:#2596be;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;"
+      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
+      <i class="fa-solid fa-cart-shopping" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <div>
+        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Nueva venta</span>
+        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Registrar una venta</small>
+      </div>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+    </button>
+
+    <!-- Nueva Compra - NARANJA -->
+    <button onclick="nav('#compras'); setTimeout(()=>abrirNuevaCompra(),200)"
+      style="background:#e07c24;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;"
+      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
+      <i class="fa-solid fa-receipt" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <div>
+        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Nueva compra</span>
+        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Registrar una compra</small>
+      </div>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+    </button>
+
+    <!-- Gestionar Productos - AZUL -->
+    <button onclick="nav('#productos')"
+      style="background:#3a82c8;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;"
+      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
+      <i class="fa-solid fa-box" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <div>
+        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Gestionar productos</span>
+        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Editar y controlar stock</small>
+      </div>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+    </button>
+
+    <!-- Cuentas a Pagar - AMARILLO -->
+    <button onclick="nav('#cuentas-pagar')"
+      style="background:#c9a000;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;"
+      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
+      <i class="fa-solid fa-file-invoice-dollar" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <div>
+        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Cuentas a pagar</span>
+        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Facturas pendientes</small>
+      </div>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+    </button>
+
+    <!-- Caja - VERDE -->
+    <button onclick="nav('#caja')"
+      style="background:#1e8c42;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;"
+      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
+      <i class="fa-solid fa-cash-register" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <div>
+        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Caja</span>
+        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Control de efectivo</small>
+      </div>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+    </button>
+
+    <!-- Dashboard - VERDE CLARO -->
+    <button onclick="nav('#dashboard')"
+      style="background:#40b878;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;"
+      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
+      <i class="fa-solid fa-chart-column" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <div>
+        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Dashboard</span>
+        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Resumen general</small>
+      </div>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+    </button>
+
+  </div>
+</div>
+
+</section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      <section id="dashboard" class="view active">
+
+  <!-- HEADER -->
+  <div class="dashboard-header">
+    <div class="header-top">
+      <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Resumen general del sistema y accesos principales</p>
       </div>
     </div>
   </div>
@@ -221,34 +346,7 @@
   <!-- GRILLA -->
   <div class="dashboard-grid dashboard-grid-2">
 
-    <div class="card modern-card quick-card">
-      <div class="card-head">
-        <div class="card-head-left">
-          <div class="section-icon"><i class="fa-solid fa-bolt"></i></div>
-          <div>
-            <h3>Accesos rápidos</h3>
-            <p>Acciones principales del panel</p>
-          </div>
-        </div>
-      </div>
-      <div class="quick-actions-grid">
-        <button class="quick-btn primary" onclick="nav('#ventas')">
-          <div class="quick-btn-icon"><i class="fa-solid fa-cart-shopping"></i></div>
-          <div class="quick-btn-text"><span>Nueva Venta</span><small>Registrar una venta</small></div>
-          <i class="fa-solid fa-arrow-right"></i>
-        </button>
-        <button class="quick-btn success" onclick="nav('#compras')">
-          <div class="quick-btn-icon"><i class="fa-solid fa-receipt"></i></div>
-          <div class="quick-btn-text"><span>Nueva Compra</span><small>Registrar una compra</small></div>
-          <i class="fa-solid fa-arrow-right"></i>
-        </button>
-        <button class="quick-btn warning" onclick="nav('#productos')">
-          <div class="quick-btn-icon"><i class="fa-solid fa-box"></i></div>
-          <div class="quick-btn-text"><span>Gestionar Productos</span><small>Editar y controlar stock</small></div>
-          <i class="fa-solid fa-arrow-right"></i>
-        </button>
-      </div>
-    </div>
+    
 
     <div class="card modern-card sales-chart-card">
       <div class="card-head">

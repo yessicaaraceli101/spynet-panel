@@ -802,7 +802,6 @@ function getEmpresaActual() {
           </div>
         </div>
       </div>
-
       <section class="panel-grid">
         <div class="card pretty-access">
           <div class="title-row">
@@ -1559,6 +1558,89 @@ document.addEventListener(
   verificarAdmin
 );
 </script>
+
+
+<script>
+
+new Chart(
+  document.getElementById("chartVentasMes"),
+  {
+    type:"doughnut",
+    data:{
+      labels:[
+        "Ene","Feb","Mar","Abr",
+        "May","Jun","Jul","Ago",
+        "Sep","Oct","Nov","Dic"
+      ],
+      datasets:[{
+        data:[
+          1200000,
+          1800000,
+          2200000,
+          900000,
+          1500000,
+          3000000,
+          0,0,0,0,0,0
+        ]
+      }]
+    }
+  }
+);
+
+new Chart(
+  document.getElementById("chartGastosCategoria"),
+  {
+    type:"pie",
+    data:{
+      labels:[
+        "Mercadería",
+        "Servicios",
+        "Combustible",
+        "Marketing"
+      ],
+      datasets:[{
+        data:[
+          5000000,
+          1500000,
+          900000,
+          600000
+        ]
+      }]
+    }
+  }
+);
+
+new Chart(
+  document.getElementById("chartGastosDia"),
+  {
+    type:"bar",
+    data:{
+      labels:[
+        "01","02","03","04","05",
+        "06","07","08","09","10"
+      ],
+      datasets:[{
+        label:"Gastos",
+        data:[
+          150000,
+          320000,
+          100000,
+          450000,
+          80000,
+          220000,
+          500000,
+          300000,
+          120000,
+          600000
+        ]
+      }]
+    }
+  }
+);
+
+</script>
+
+
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
