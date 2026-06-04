@@ -891,7 +891,7 @@ const escapeHtml = (str) =>
    NAVEGACIÓN DE SECCIONES
 ========================================= */
 function show(hash) {
-  const targetHash = hash || "#dashboard";
+  const targetHash = hash || "#accesos";
 
   qsa("section.view").forEach(sec => {
     sec.classList.add("hidden");
@@ -6022,7 +6022,7 @@ window.exportarPDF_Pedido = exportarPDF_Pedido;
 
 /* ================== NAVEGACIÓN ================== */
 window.addEventListener("hashchange", () => {
-  show(location.hash || "#dashboard");
+  show(location.hash || "#accesos");
 
   if (location.hash === "#compras" && typeof cargarComprasLista === "function") {
     cargarComprasLista();
@@ -6036,7 +6036,7 @@ window.addEventListener("load", async () => {
     console.warn("No cargó logos:", e);
   }
 
-  show(location.hash || "#dashboard");
+  show(location.hash || "#accesos");
 
   if (location.hash === "#compras") {
     if (typeof cargarComprasLista === "function") cargarComprasLista();
@@ -7416,7 +7416,7 @@ async function confirmLogout() {
   window.location.href = "login.html";
 }
 
-let LAST_HASH = "#dashboard";
+let LAST_HASH = "#accesos";
 
 window.addEventListener("hashchange", () => {
   if (location.hash === "#logout") {
@@ -7425,7 +7425,7 @@ window.addEventListener("hashchange", () => {
     return;
   }
 
-  LAST_HASH = location.hash || "#dashboard";
+  LAST_HASH = location.hash || "#accesos";
   show(LAST_HASH);
 });
 
@@ -7734,18 +7734,18 @@ window.addEventListener("load", async () => {
 
   await mostrarUsuarioLogueado();
 
-  LAST_HASH = location.hash || "#dashboard";
+  LAST_HASH = location.hash || "#accesos";
   show(LAST_HASH);
 
   if (typeof cargarKpis === "function") cargarKpis();
 
-  if (LAST_HASH === "#dashboard") {
+  if (LAST_HASH === "#accesos") {
     cargarVentasComparadas();
   }
 });
 
 window.addEventListener("hashchange", () => {
-  show(location.hash || "#dashboard");
+  show(location.hash || "#accesos");
 });
 
 window.logout = logout;
