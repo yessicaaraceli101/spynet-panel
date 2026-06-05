@@ -2700,16 +2700,15 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
     proveedor_id,
     fecha_pedido,
     observacion,
-    items
+    items,
+    enviar_email  // ✅ tomamos el flag del frontend
   } = req.body || {};
 
   if (!proveedor_id || !Array.isArray(items) || !items.length) {
-
     return res.status(400).json({
       ok: false,
       msg: "Proveedor e ítems son obligatorios."
     });
-
   }
 
   const client = await pool.connect();
@@ -2719,148 +2718,85 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
     await client.query("BEGIN");
 
     const provQ = await client.query(
-      `
-      SELECT id
-      FROM proveedores
-      WHERE id = $1
-        AND empresa_id = $2
-      LIMIT 1
-      `,
+      `SELECT id FROM proveedores
+       WHERE id = $1 AND empresa_id = $2 LIMIT 1`,
       [proveedor_id, empresaId]
     );
 
     if (!provQ.rowCount) {
-
       await client.query("ROLLBACK");
-
       return res.status(404).json({
         ok: false,
         msg: "Proveedor no encontrado o no pertenece a esta empresa"
       });
-
     }
 
     const fechaPedidoFinal = fecha_pedido || hoyStr();
 
     const { rows: rp } = await client.query(
-      `
-      INSERT INTO pedidos_prov (
-        proveedor_id,
-        fecha_pedido,
-        fecha_recepcion,
-        observacion,
-        estado,
-        empresa_id
-      )
-      VALUES ($1, $2, NULL, $3, 'pendiente', $4)
-      RETURNING id
-      `,
-      [
-        proveedor_id,
-        fechaPedidoFinal,
-        observacion || "",
-        empresaId
-      ]
+      `INSERT INTO pedidos_prov (
+        proveedor_id, fecha_pedido, fecha_recepcion,
+        observacion, estado, empresa_id
+       )
+       VALUES ($1, $2, NULL, $3, 'pendiente', $4)
+       RETURNING id`,
+      [proveedor_id, fechaPedidoFinal, observacion || "", empresaId]
     );
 
     const pedidoId = rp[0].id;
-
     let subtotal = 0;
 
     for (const it of items) {
 
       const productoId = Number(it.producto_id || 0);
-
       const cantidad = Number(it.cantidad || 0);
-
-      const precioUnit = Number(
-        it.costo_estimado ?? it.precio_unit ?? 0
-      );
+      const precioUnit = Number(it.costo_estimado ?? it.precio_unit ?? 0);
 
       if (!productoId || cantidad <= 0 || precioUnit < 0) {
-
         await client.query("ROLLBACK");
-
         return res.status(400).json({
           ok: false,
           msg: "Ítem inválido en el pedido"
         });
-
       }
 
       const prodQ = await client.query(
-        `
-        SELECT id
-        FROM productos
-        WHERE id = $1
-          AND empresa_id = $2
-          AND COALESCE(activo, true) = true
-        LIMIT 1
-        `,
+        `SELECT id FROM productos
+         WHERE id = $1 AND empresa_id = $2
+         AND COALESCE(activo, true) = true LIMIT 1`,
         [productoId, empresaId]
       );
 
       if (!prodQ.rowCount) {
-
         await client.query("ROLLBACK");
-
         return res.status(404).json({
           ok: false,
           msg: `Producto ${productoId} no encontrado o no pertenece a esta empresa`
         });
-
       }
 
       const totalLinea = cantidad * precioUnit;
-
       subtotal += totalLinea;
 
       await client.query(
-        `
-        INSERT INTO pedidos_prov_items (
-          pedido_id,
-          producto_id,
-          descripcion,
-          cantidad,
-          precio_unit,
-          total,
-          empresa_id
-        )
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
-        `,
-        [
-          pedidoId,
-          productoId,
-          it.descripcion || "",
-          cantidad,
-          precioUnit,
-          totalLinea,
-          empresaId
-        ]
+        `INSERT INTO pedidos_prov_items (
+          pedido_id, producto_id, descripcion,
+          cantidad, precio_unit, total, empresa_id
+         )
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [pedidoId, productoId, it.descripcion || "",
+         cantidad, precioUnit, totalLinea, empresaId]
       );
-
     }
 
     const iva = Math.round(subtotal * 0.10);
-
     const total = subtotal + iva;
 
     await client.query(
-      `
-      UPDATE pedidos_prov
-      SET subtotal = $1,
-          iva = $2,
-          total = $3
-      WHERE id = $4
-        AND empresa_id = $5
-      `,
-      [
-        subtotal,
-        iva,
-        total,
-        pedidoId,
-        empresaId
-      ]
+      `UPDATE pedidos_prov
+       SET subtotal = $1, iva = $2, total = $3
+       WHERE id = $4 AND empresa_id = $5`,
+      [subtotal, iva, total, pedidoId, empresaId]
     );
 
     await client.query("COMMIT");
@@ -2868,151 +2804,73 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
     /* =========================================================
        GENERAR PDF
     ========================================================= */
-
-    const pdf = await generarPDFPedido(
-      pool,
-      pedidoId,
-      empresaId
-    );
+    const pdf = await generarPDFPedido(pool, pedidoId, empresaId);
 
     /* =========================================================
-       OBTENER DATOS DEL PROVEEDOR + EMPRESA
+       ✅ RESPONDE AL CLIENTE INMEDIATAMENTE
+          El email se envía después, sin que el usuario espere
     ========================================================= */
-
-    const { rows: provRows } = await pool.query(
-      `
-      SELECT
-
-        pr.nombre,
-        pr.email,
-
-        e.nombre AS empresa_nombre,
-        e.smtp_host,
-        e.smtp_port,
-        e.smtp_secure,
-        e.smtp_user,
-        e.smtp_pass,
-        e.smtp_from
-
-      FROM proveedores pr
-
-      INNER JOIN empresas e
-        ON e.id = pr.empresa_id
-
-      WHERE pr.id = $1
-        AND pr.empresa_id = $2
-
-      LIMIT 1
-      `,
-      [proveedor_id, empresaId]
-    );
-
-    const provData = provRows[0];
-
-    /* =========================================================
-       ENVIAR EMAIL AUTOMÁTICO
-    ========================================================= */
-
-    if (
-      provData?.email &&
-      provData?.smtp_user &&
-      provData?.smtp_pass
-    ) {
-
-      try {
-
-        const transporter = nodemailer.createTransport({
-
-  host: "smtp.gmail.com",
-
-  port: 587,
-
-  secure: false,
-
-  requireTLS: true,
-
-  tls: {
-    rejectUnauthorized: false,
-    family: 4
-  },
-
-  auth: {
-
-    user: provData.smtp_user,
-
-    pass: provData.smtp_pass
-  }
-
-});
-
-await transporter.sendMail({
-
-  from: `"${provData.empresa_nombre}" <${provData.smtp_from || provData.smtp_user}>`,
-
-  to: provData.email,
-
-  subject: `Pedido #${pedidoId}`,
-
-  html: `
-    <div style="font-family:Arial,sans-serif">
-
-      <h2>
-        Orden de Compra
-      </h2>
-
-      <p>
-        Hola ${provData.nombre || ""}.
-      </p>
-
-      <p>
-        Adjuntamos el pedido N° <b>#${pedidoId}</b>.
-      </p>
-
-      <p>
-        Favor revisar el PDF adjunto.
-      </p>
-
-    </div>
-  `,
-
-  attachments: [
-    {
-      filename: `pedido_${pedidoId}.pdf`,
-      path: pdf?.fullPath || pdf?.path || pdf?.file
-    }
-  ]
-
-});
-        console.log(
-          "✅ Pedido enviado al proveedor:",
-          provData.email
-        );
-
-      } catch (mailError) {
-
-        console.error(
-          "❌ ERROR ENVIANDO EMAIL:",
-          mailError
-        );
-
-      }
-
-    }
-
     res.status(201).json({
       ok: true,
       pedidoId,
       pdf_file: pdf?.file
     });
 
+    /* =========================================================
+       ENVIAR EMAIL EN SEGUNDO PLANO (no bloquea la respuesta)
+    ========================================================= */
+    if (!enviar_email) return; // si no pidió enviar, terminamos
+
+    // Obtener datos del proveedor + empresa
+    const { rows: provRows } = await pool.query(
+      `SELECT
+        pr.nombre, pr.email,
+        e.nombre AS empresa_nombre,
+        e.smtp_host, e.smtp_port, e.smtp_secure,
+        e.smtp_user, e.smtp_pass, e.smtp_from
+       FROM proveedores pr
+       INNER JOIN empresas e ON e.id = pr.empresa_id
+       WHERE pr.id = $1 AND pr.empresa_id = $2 LIMIT 1`,
+      [proveedor_id, empresaId]
+    );
+
+    const provData = provRows[0];
+
+    if (!provData?.email || !provData?.smtp_user || !provData?.smtp_pass) return;
+
+    // ✅ Sin await — corre en segundo plano
+    nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      tls: { rejectUnauthorized: false, family: 4 },
+      auth: { user: provData.smtp_user, pass: provData.smtp_pass }
+    })
+    .sendMail({
+      from: `"${provData.empresa_nombre}" <${provData.smtp_from || provData.smtp_user}>`,
+      to: provData.email,
+      subject: `Pedido #${pedidoId}`,
+      html: `
+        <div style="font-family:Arial,sans-serif">
+          <h2>Orden de Compra</h2>
+          <p>Hola ${provData.nombre || ""}.</p>
+          <p>Adjuntamos el pedido N° <b>#${pedidoId}</b>.</p>
+          <p>Favor revisar el PDF adjunto.</p>
+        </div>
+      `,
+      attachments: [{
+        filename: `pedido_${pedidoId}.pdf`,
+        path: pdf?.fullPath || pdf?.path || pdf?.file
+      }]
+    })
+    .then(() => console.log("✅ Pedido enviado al proveedor:", provData.email))
+    .catch(err => console.error("❌ ERROR ENVIANDO EMAIL:", err));
+
   } catch (e) {
 
     await client.query("ROLLBACK");
-
-    console.error(
-      "POST /api/pedidos ERROR:",
-      e
-    );
+    console.error("POST /api/pedidos ERROR:", e);
 
     res.status(500).json({
       ok: false,
@@ -3020,11 +2878,8 @@ await transporter.sendMail({
     });
 
   } finally {
-
     client.release();
-
   }
-
 });
 /* ---------- CAMBIAR estado genérico ---------- */
 app.put("/api/pedidos/:id/estado", requireEmpresa, async (req, res) => {

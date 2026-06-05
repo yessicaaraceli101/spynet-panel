@@ -209,6 +209,8 @@ function fmtDate(d) {
 ========================================= */
 async function listarPedidos() {
 
+  console.time("TOTAL_LISTAR_PEDIDOS");
+
   const tabla = document.getElementById("tabla_pedidos");
 
   if (!tabla) return;
@@ -222,8 +224,13 @@ async function listarPedidos() {
   `;
 
   try {
+    
+    console.log("ANTES DE API");
+
 
     const pedidos = await jget("/api/pedidos");
+     console.log("DESPUES DE API");
+  console.log(pedidos);
 
     if (!Array.isArray(pedidos) || !pedidos.length) {
 
@@ -971,7 +978,10 @@ function esDelMesActual(fecha) {
 }
 
 function nav(hash) {
+  console.log("NAV", hash);
+
   location.hash = hash;
+
   show(hash);
 }
 
@@ -1026,13 +1036,10 @@ window.closeModal = closeModal;
 ========================================= */
 async function abrirModalSelProducto() {
   openModal("modalSelProducto");
-
-  await listarProductos();
-
-  renderProductosPedidoModal(PROD_CACHE);
+  await cargarProductosModalPP();
 }
 
-window.seleccionarProductoPP = seleccionarProductoPP;
+window.abrirModalSelProducto = abrirModalSelProducto;
 
 /* =========================================
    AGREGAR PRODUCTO AL PEDIDO
@@ -1103,65 +1110,56 @@ function agregarProductoAlPedido() {
 window.agregarProductoAlPedido = agregarProductoAlPedido;
 
 async function cargarProductosModalPP() {
-  const tbody = document.getElementById("tablaSelProductos");
+  const grid = document.getElementById("tablaSelProductos");
+  if (!grid) return console.error("❌ No existe #tablaSelProductos");
 
-  if (!tbody) {
-    return console.error("❌ No existe #tablaSelProductos");
-  }
-
-  tbody.innerHTML = `
-    <tr>
-      <td colspan="6" style="padding:12px;color:#6b7280">
-        Cargando...
-      </td>
-    </tr>
+  grid.innerHTML = `
+    <p style="color:#aaa;font-size:13px;grid-column:1/-1;text-align:center;padding:20px 0;">
+      Cargando...
+    </p>
   `;
 
   try {
     const data = await jget("/productos");
+    if (!Array.isArray(data)) throw new Error("Respuesta inválida /productos");
 
-    if (!Array.isArray(data)) {
-      throw new Error("Respuesta inválida /productos");
-    }
-
-    PROD_CACHE = (data || []).map(p => ({
+    PROD_CACHE = data.map(p => ({
       ...p,
-      id: Number(p.id),
-      nombre: p.nombre || "",
-      codigo: p.codigo || "",
-      marca: p.marca || "",
-      categoria: p.categoria || "",
+      id:               Number(p.id),
+      nombre:           p.nombre || "",
+      codigo:           p.codigo || "",
+      marca:            p.marca || "",
+      categoria:        p.categoria || "",
       categoria_nombre: p.categoria || p.categoria_nombre || "",
-      costo: Number(p.costo || 0),
-      precio: Number(p.precio || 0),
-      stock: Number(p.stock || 0)
+      costo:            Number(p.costo  || 0),
+      precio:           Number(p.precio || 0),
+      stock:            Number(p.stock  || 0)
     }));
 
-    if (!PROD_CACHE.length) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" style="padding:12px;color:#6b7280">
-            No hay productos registrados para esta empresa.
-          </td>
-        </tr>
-      `;
-      return;
-    }
+    // badge contador
+    const badge = document.getElementById("badge-total-productos");
+    if (badge) badge.textContent = `${PROD_CACHE.length} productos`;
 
-    renderProductosPedidoModal(PROD_CACHE);
+    // limpiar búsqueda y arrancar paginación
+    const input = document.getElementById("buscarProductoPedido");
+    if (input) input.value = "";
+
+    window.listaProductosPOS = [...PROD_CACHE];
+    posFiltrados = [...PROD_CACHE];
+    posPagina    = 1;
+    aplicarPaginaPOS();
 
   } catch (err) {
     console.error("❌ Error cargando productos:", err);
-
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="padding:12px;color:#ef4444">
-          Error al cargar productos.
-        </td>
-      </tr>
+    grid.innerHTML = `
+      <p style="color:#ef4444;font-size:13px;grid-column:1/-1;text-align:center;padding:20px 0;">
+        Error al cargar productos.
+      </p>
     `;
   }
 }
+
+window.cargarProductosModalPP = cargarProductosModalPP;
 
 /* ================== FETCH HELPERS (cookies / multiempresa) ================== */
 async function jget(url) {
@@ -5291,8 +5289,7 @@ function editarPP_Campo(i, campo, valor) {
 
 async function listarPedidosProveedor() {
   try {
-    const pedidos = await jget("/api/pedidos");
-    renderPedidosProveedor(pedidos);
+    await listarPedidos();
   } catch (err) {
     console.error("Error listando pedidos:", err);
   }
@@ -5301,7 +5298,6 @@ async function listarPedidosProveedor() {
 if (window.location.hash === "#lista_pedidos") {
   listarPedidosProveedor();
 }
-
 function editarPP_Item(i) {
   const row = qs("#pp_items")?.children?.[i];
   if (!row) return;
@@ -5354,113 +5350,74 @@ function calcularTotalesPP() {
     el.textContent = money(total);
   });
 }
+let _guardando = false;
 
 async function guardarPedido(enviar = false) {
+  // ✅ FIX 1: bloquea doble clic / doble tap en móvil
+  if (_guardando) return;
+  _guardando = true;
 
   const items = Array.isArray(window.pp_items)
     ? window.pp_items
     : (window.pp_items = []);
 
   if (!items.length) {
-    return alert(
-      "Debe agregar al menos un producto."
-    );
+    _guardando = false; // liberá el flag si salís antes
+    return alert("Debe agregar al menos un producto.");
   }
 
-  const proveedor_id =
-    qs("#pp_proveedor")?.value;
-
-  const fecha_pedido =
-    qs("#pp_fecha")?.value;
+  const proveedor_id = qs("#pp_proveedor")?.value;
+  const fecha_pedido = qs("#pp_fecha")?.value;
 
   if (!proveedor_id) {
-    return alert(
-      "Seleccione un proveedor."
-    );
+    _guardando = false;
+    return alert("Seleccione un proveedor.");
   }
 
   if (!fecha_pedido) {
-    return alert(
-      "Seleccione la fecha del pedido."
-    );
+    _guardando = false;
+    return alert("Seleccione la fecha del pedido.");
   }
 
   const pedido = {
-
-    proveedor_id:
-      Number(proveedor_id),
-
+    proveedor_id: Number(proveedor_id),
     fecha_pedido,
-
     observacion: "",
-
-    // NUEVO
     enviar_email: !!enviar,
-
     items: items.map(i => ({
-
-      producto_id:
-        Number(
-          i.producto_id || i.id
-        ),
-
-      descripcion:
-        i.unidad || "",
-
-      cantidad:
-        Number(i.cantidad) || 0,
-
-      precio_unit:
-        Number(i.costo) || 0
+      producto_id: Number(i.producto_id || i.id),
+      descripcion: i.unidad || "",
+      cantidad: Number(i.cantidad) || 0,
+      precio_unit: Number(i.costo) || 0
     }))
   };
 
   try {
+    const resp = await jpost("/api/pedidos", pedido);
 
-    const resp = await jpost(
-      "/api/pedidos",
-      pedido
+    toast(
+      enviar ? "Pedido guardado y enviado correctamente" : "Pedido guardado correctamente",
+      "success"
     );
 
-    if (enviar) {
-
-      toast(
-        "Pedido guardado y enviado correctamente",
-        "success"
-      );
-
-    } else {
-
-      toast(
-        "Pedido guardado correctamente",
-        "success"
-      );
-    }
-
-    console.log(
-      "Pedido creado:",
-      resp
-    );
+    console.log("Pedido creado:", resp);
 
     window.pp_items = [];
-
     renderPP_Items();
 
-    location.hash =
-      "#lista_pedidos";
-
+    
+    history.pushState(null, "", "#lista_pedidos");
     listarPedidos();
 
   } catch (err) {
-
     console.error(err);
-
-    alert(
-      "Error al guardar el pedido."
-    );
+    
+    toast("Error al guardar el pedido.", "error");
+  } finally {
+   
+    _guardando = false;
   }
 }
-
 function openModalPP() {
   const modal = document.getElementById("modalSelProducto");
 
@@ -5491,93 +5448,60 @@ function openModalPP() {
 window.openModalPP = openModalPP;
 
 function seleccionarProductoPP(id) {
-  const p = Array.isArray(PROD_CACHE)
-    ? PROD_CACHE.find(x => Number(x.id) === Number(id))
-    : null;
-
-  if (!p) {
-    console.error("Producto no encontrado en PROD_CACHE:", id);
-    return alert("Producto no encontrado. Probá recargar productos.");
-  }
+  const p = (window.listaProductosPOS || PROD_CACHE || []).find(x => Number(x.id) === Number(id));
+  if (!p) return;
 
   window.PP_PRODUCTO_ACTUAL = p;
 
-  const setVal = (ids, val) => {
-    for (const _id of ids) {
-      const el = document.getElementById(_id);
+  closeModal("modalSelProducto");
 
-      if (el) {
-        el.value = val;
-        return true;
-      }
-    }
+  // precarga el modal de edición
+  const elNombre   = document.getElementById("pp_edit_nombre");
+  const elCantidad = document.getElementById("pp_edit_cantidad");
+  const elUnidad   = document.getElementById("pp_edit_unidad");
+  const elCosto    = document.getElementById("pp_edit_costo");
 
-    return false;
-  };
+  if (elNombre)   elNombre.value   = p.nombre;
+  if (elCantidad) elCantidad.value = 1;
+  if (elUnidad)   elUnidad.value   = "";
+  if (elCosto)    elCosto.value    = formatearMilesVal(p.precio || p.costo || 0);
 
-  setVal(["pp_ed_id", "pp_edit_id", "pp_producto_id"], p.id);
-  setVal(["pp_edit_nombre", "pp_ed_nombre", "pp_producto_nombre"], p.nombre || "");
-  setVal(["pp_edit_cantidad", "pp_ed_cant", "pp_cantidad"], 1);
-  setVal(["pp_edit_unidad", "pp_ed_unidad", "pp_unidad"], "unidad");
-  setVal(["pp_edit_costo", "pp_ed_costo", "pp_costo"], Number(p.costo || 0));
-
-  try {
-    closeModal("modalSelProducto");
-  } catch {}
-
-  if (document.getElementById("modalEditarPP")) {
-    openModal("modalEditarPP");
-  } else {
-    alert("Producto elegido, pero falta el modalEditarPP en tu HTML.");
-  }
+  openModal("modalEditarPP");
 }
 
 window.seleccionarProductoPP = seleccionarProductoPP;
 
 function agregarProductoAlPedido() {
   const p = window.PP_PRODUCTO_ACTUAL || null;
-
-  if (!p) {
-    return alert("No hay producto seleccionado");
-  }
+  if (!p) return alert("No hay producto seleccionado");
 
   const cantidad = Number(document.getElementById("pp_edit_cantidad")?.value || 0);
+  const unidad   = (document.getElementById("pp_edit_unidad")?.value || "unidad").trim();
+  const costoTxt = (document.getElementById("pp_edit_costo")?.value || "").trim();
+  const costo    = Number(costoTxt.replace(/\D/g, "")) || 0;
 
-  const unidad = (
-    document.getElementById("pp_edit_unidad")?.value || "unidad"
-  ).trim();
+  if (cantidad <= 0) return alert("Ingresá una cantidad válida");
+  if (costo    <= 0) return alert("Ingresá un costo válido");
 
-  const costo =
-    Number(
-      String(document.getElementById("pp_edit_costo")?.value || "")
-        .replace(/\D/g, "")
-    ) || 0;
-
-  if (cantidad <= 0 || costo <= 0) {
-    return alert("Cantidad o costo inválido");
-  }
-
-  if (!Array.isArray(window.pp_items)) {
-    window.pp_items = [];
-  }
+  if (!Array.isArray(window.pp_items)) window.pp_items = [];
 
   const item = {
-    id: Number(p.id),
-    producto_id: Number(p.id),
-    nombre: p.nombre || "",
-    producto_nombre: p.nombre || "",
+    id:               p.id,
+    producto_id:      p.id,
+    nombre:           p.nombre || "",
+    producto_nombre:  p.nombre || "",
     categoria_nombre: p.categoria || p.categoria_nombre || "Sin categoría",
     cantidad,
     unidad,
     costo,
-    precio_unit: costo,
-    costo_estimado: costo,
-    subtotal: cantidad * costo,
-    total: cantidad * costo
+    precio_unit:      costo,
+    costo_estimado:   costo,
+    subtotal:         cantidad * costo,
+    total:            cantidad * costo
   };
 
-  const idx = window.pp_items.findIndex(x =>
-    Number(x.producto_id || x.id) === Number(item.producto_id)
+  const idx = window.pp_items.findIndex(
+    x => Number(x.id || x.producto_id) === Number(item.id)
   );
 
   if (idx >= 0) {
@@ -5586,12 +5510,99 @@ function agregarProductoAlPedido() {
     window.pp_items.push(item);
   }
 
-  renderPP_Items();
+  pp_items = window.pp_items;
+
+  if (typeof renderPP_Items === "function") renderPP_Items();
 
   closeModal("modalEditarPP");
 }
 
 window.agregarProductoAlPedido = agregarProductoAlPedido;
+
+const POS_POR_PAGINA = 6;
+let posPagina    = 1;
+let posFiltrados = [];
+
+function aplicarPaginaPOS() {
+  const desde = (posPagina - 1) * POS_POR_PAGINA;
+  const slice  = posFiltrados.slice(desde, desde + POS_POR_PAGINA);
+  renderizarProductosPOS(slice);
+  renderizarPaginacionPOS(posFiltrados.length);
+}
+
+function renderizarProductosPOS(productos) {
+  const grid = document.getElementById("tablaSelProductos");
+  if (!grid) return;
+
+  if (!productos.length) {
+    grid.innerHTML = `
+      <p style="color:#aaa;font-size:13px;grid-column:1/-1;text-align:center;padding:20px 0;">
+        Sin resultados
+      </p>
+    `;
+    return;
+  }
+
+  grid.innerHTML = productos.map(p => `
+    <div class="card-producto-pos">
+      <div class="card-top-pos">
+        <span class="card-sku-pos">${p.codigo || ""}</span>
+        ${p.stock > 0
+          ? `<span class="stock-badge-pos stock-ok-pos">Stock: ${p.stock}</span>`
+          : `<span class="stock-badge-pos stock-no-pos">Sin stock</span>`}
+      </div>
+      <div class="card-nombre-pos">${p.nombre}</div>
+      <div class="card-marca-pos">${p.marca || ""}</div>
+      <div class="card-precio-pos">Gs. ${formatearMilesVal(p.precio || p.costo || 0)}</div>
+      <button class="btn-seleccionar-pos" type="button" onclick="seleccionarProductoPP(${p.id})">
+        <i class="ti ti-circle-plus"></i> Seleccionar
+      </button>
+    </div>
+  `).join("");
+}
+
+function renderizarPaginacionPOS(total) {
+  const totalPags = Math.ceil(total / POS_POR_PAGINA) || 1;
+  const desde     = (posPagina - 1) * POS_POR_PAGINA;
+
+  const info = document.getElementById("pag-info-productos");
+  if (info) info.textContent =
+    `Mostrando ${desde + 1}–${Math.min(desde + POS_POR_PAGINA, total)} de ${total}`;
+
+  let html = `
+    <button class="pag-btn-pos" onclick="irPaginaPOS(${posPagina - 1})"
+      ${posPagina === 1 ? "disabled" : ""}>
+      <i class="ti ti-chevron-left"></i>
+    </button>`;
+
+  for (let i = 1; i <= totalPags; i++) {
+    if (totalPags <= 5 || i === 1 || i === totalPags || Math.abs(i - posPagina) <= 1) {
+      html += `
+        <button class="pag-btn-pos ${i === posPagina ? "activo" : ""}"
+          onclick="irPaginaPOS(${i})">${i}</button>`;
+    } else if (Math.abs(i - posPagina) === 2) {
+      html += `<span style="font-size:12px;color:#bbb;padding:0 2px">…</span>`;
+    }
+  }
+
+  html += `
+    <button class="pag-btn-pos" onclick="irPaginaPOS(${posPagina + 1})"
+      ${posPagina === totalPags ? "disabled" : ""}>
+      <i class="ti ti-chevron-right"></i>
+    </button>`;
+
+  const btns = document.getElementById("pag-btns-productos");
+  if (btns) btns.innerHTML = html;
+}
+
+function irPaginaPOS(n) {
+  const totalPags = Math.ceil(posFiltrados.length / POS_POR_PAGINA) || 1;
+  if (n < 1 || n > totalPags) return;
+  posPagina = n;
+  aplicarPaginaPOS();
+}
+
+window.irPaginaPOS = irPaginaPOS;
 
 function agregarItemPedido() {
   agregarProductoAlPedido();
@@ -5727,18 +5738,23 @@ function renderPP_Items() {
 }
 
 function filtrarProductosModalPP() {
-  const q = (
-    document.getElementById("buscarProductoPedido")?.value || ""
-  ).toLowerCase().trim();
-
-  const filtrados = (PROD_CACHE || []).filter(p =>
-    String(p.nombre || "").toLowerCase().includes(q) ||
-    String(p.marca || "").toLowerCase().includes(q) ||
-    String(p.categoria || "").toLowerCase().includes(q) ||
-    String(p.codigo || "").toLowerCase().includes(q)
+  const q = (document.getElementById("buscarProductoPedido")?.value || "").toLowerCase().trim();
+  posFiltrados = (window.listaProductosPOS || PROD_CACHE || []).filter(p =>
+    p.nombre.toLowerCase().includes(q) ||
+    (p.marca   || "").toLowerCase().includes(q) ||
+    (p.codigo  || "").toString().includes(q)
   );
+  posPagina = 1;
+  aplicarPaginaPOS();
+}
 
-  renderProductosPedidoModal(filtrados);
+window.filtrarProductosModalPP = filtrarProductosModalPP;
+
+/* =========================================
+   HELPER: formato miles guaraníes
+========================================= */
+function formatearMilesVal(n) {
+  return Number(n).toLocaleString("es-PY");
 }
 
 function cargarSelectProductosPedido(lista) {
@@ -7821,6 +7837,7 @@ function nuevaVenta() {
     if (modal) modal.style.display = "flex";
   }
 }
+
 
 
 window.cargarVentas = cargarVentas;
