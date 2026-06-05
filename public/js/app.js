@@ -5623,10 +5623,13 @@ function renderProductosPedidoModal(lista) {
 
   if (!Array.isArray(lista) || lista.length === 0) {
     cont.innerHTML = `
-      <div class="producto-card-pos">
-        <p style="margin:0;color:#64748b;text-align:center;">
-          No hay productos disponibles para esta empresa.
-        </p>
+      <div style="
+        grid-column:1/-1;
+        text-align:center;
+        padding:40px;
+        color:#64748b;
+      ">
+        No hay productos disponibles.
       </div>
     `;
     return;
@@ -5641,38 +5644,42 @@ function renderProductosPedidoModal(lista) {
       p.nombre ||
       "-";
 
+    const stock = Number(p.stock ?? 0);
+
     cont.innerHTML += `
-      <div class="producto-card-pos">
-        <div class="producto-linea">
-          <span class="producto-label">Código:</span>
-          <span>${escapeHtml(p.codigo || p.id || "-")}</span>
+      <div class="card-producto-pos">
+
+        <div class="card-top-pos">
+          <span class="card-sku-pos">
+            ${escapeHtml(p.codigo || p.id || "-")}
+          </span>
+
+          <span class="stock-badge-pos ${
+            stock > 0 ? "stock-ok-pos" : "stock-no-pos"
+          }">
+            ${stock > 0 ? `Stock: ${stock}` : "Sin stock"}
+          </span>
         </div>
 
-        <div class="producto-linea">
-          <span class="producto-label">Marca:</span>
-          <span>${escapeHtml(p.marca || "-")}</span>
+        <div class="card-nombre-pos">
+          ${escapeHtml(nombreProducto)}
         </div>
 
-        <div class="producto-linea">
-          <span class="producto-label">Producto:</span>
-          <span>${escapeHtml(nombreProducto)}</span>
+        <div class="card-marca-pos">
+          ${escapeHtml(p.marca || "-")}
         </div>
 
-        <div class="producto-linea">
-          <span class="producto-label">Costo:</span>
-          <span>Gs. ${money(p.costo || 0)}</span>
-        </div>
-
-        <div class="producto-linea">
-          <span class="producto-label">Stock:</span>
-          <span>${Number(p.stock ?? 0)}</span>
+        <div class="card-precio-pos">
+          Gs. ${money(p.costo || 0)}
         </div>
 
         <button
-          class="btn primary btn-producto-pos"
+          class="btn-seleccionar-pos"
           onclick="seleccionarProductoPP(${Number(p.id)})">
+          <i class="ti ti-circle-check"></i>
           Seleccionar
         </button>
+
       </div>
     `;
   });

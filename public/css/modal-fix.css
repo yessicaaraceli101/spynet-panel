@@ -1213,7 +1213,7 @@ body:has(#modalVenta[style*="display: flex"]) {
 
 
 .sidebar {
-  background: #2563eb !important;
+  background: #3b82f6 !important;
   padding: 20px 12px !important;
 }
 
@@ -1800,14 +1800,7 @@ body:has(#modalVenta[style*="display: flex"]) {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
 }
 
-#modalSelProducto .producto-linea {
-  display: flex !important;
-  justify-content: space-between !important;
-  gap: 10px !important;
-  padding: 4px 0 !important;
-  border-bottom: 1px dashed #e5e7eb !important;
-  font-size: 14px !important;
-}
+
 
 #modalSelProducto .producto-linea:last-of-type {
   border-bottom: none !important;
@@ -1856,20 +1849,7 @@ body:has(#modalVenta[style*="display: flex"]) {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
 }
 
-#modalSelProducto .producto-linea {
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  gap: 10px !important;
-  min-height: 26px !important;
-  height: auto !important;
-  padding: 4px 0 !important;
-  border-bottom: 1px dashed #e5e7eb !important;
-  color: #0f172a !important;
-  font-size: 14px !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
+
 
 #modalSelProducto .producto-linea span {
   display: inline !important;
@@ -1930,11 +1910,7 @@ body:has(#modalVenta[style*="display: flex"]) {
     box-sizing: border-box !important;
   }
 
-  #modalSelProducto .producto-linea {
-    display: grid !important;
-    grid-template-columns: 95px 1fr !important;
-    gap: 8px !important;
-  }
+  
 
   #modalSelProducto .producto-linea span {
     min-width: 0 !important;
@@ -2005,13 +1981,7 @@ body:has(#modalVenta[style*="display: flex"]) {
   background: #fff !important;
 }
 
-#modalSelProducto .producto-linea {
-  display: flex !important;
-  justify-content: space-between !important;
-  gap: 10px !important;
-  padding: 6px 0 !important;
-  border-bottom: 1px dashed #e5e7eb !important;
-}
+
 
 #modalSelProducto .producto-label {
   font-weight: 700 !important;
@@ -2040,10 +2010,7 @@ body:has(#modalVenta[style*="display: flex"]) {
     grid-template-columns: 1fr !important;
   }
 
-  #modalSelProducto .producto-linea {
-    flex-direction: column !important;
-    gap: 2px !important;
-  }
+
 }
 
 
@@ -3450,4 +3417,15 @@ body {
 
 @media (max-width: 320px) {
   .lista-productos-cards { grid-template-columns: 1fr; }
+}
+
+#modalSelProducto .producto-linea {
+  display: grid !important;
+  grid-template-columns: 95px 1fr !important;
+  gap: 8px !important;
+  align-items: center !important;
+  padding: 6px 0 !important;
+  border-bottom: 1px dashed #e5e7eb !important;
+  font-size: 14px !important;
+  color: #0f172a !important;
 }
