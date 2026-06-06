@@ -7454,32 +7454,96 @@ window.addEventListener("hashchange", () => {
 
 window.USUARIO_ACTUAL = window.USUARIO_ACTUAL || null;
 
+
 async function mostrarUsuarioLogueado() {
   try {
     const data = await jget("/me");
-
-    const nombreBox = document.getElementById("usuarioSidebarNombre");
-
     const user = data?.user || data || {};
 
-    const nombre =
-      user.nombre ||
-      user.usuario ||
-      user.username ||
-      "Usuario";
+    const nombre = user.nombre || user.usuario || user.username || "Usuario";
+    
+    // Si la sesión no trae genero, detectar por nombre como fallback
+    let genero = user.genero || null;
+    
+    if (!genero) {
+      const femeninos = [
+        'yessica','jessica','maria','ana','laura','andrea','carolina',
+        'patricia','claudia','monica','gabriela','daniela','valentina',
+        'sofia','camila','fernanda','natalia','alejandra','paola','diana',
+        'rosa','elena','isabel','lucia','sara','paula','angela','adriana',
+        'lorena','marcela','veronica','sandra','silvia','beatriz','nora',
+        'gloria','martha','luz','carmen','teresa','miriam','susana',
+        'graciela','viviana','romina','noelia','melisa','vanesa',
+        'florencia','agustina','micaela','brenda','cecilia','cristina',
+        'fabiola','karina','liliana','marta','norma','pilar','rebeca',
+        'rocio','silvana','sonia','wendy','julia','fatima','alicia',
+        'cynthia','marlene','zunilda','ramona','catalina','petrona',
+];
+      const primerNombre = nombre.trim().split(' ')[0].toLowerCase();
+      genero = femeninos.includes(primerNombre) ? 'F' : 'M';
+    }
 
     window.USUARIO_ACTUAL = user;
-
-    if (nombreBox) nombreBox.textContent = nombre;
+    setAvatarUsuario(nombre, genero);
 
   } catch (err) {
     console.error("Error obteniendo usuario:", err);
-
-    const nombreBox = document.getElementById("usuarioSidebarNombre");
-    if (nombreBox) nombreBox.textContent = "Usuario";
+    setAvatarUsuario("Usuario", "M");
   }
 }
 
+function setAvatarUsuario(nombreCompleto, genero) {
+  const nombre = (nombreCompleto || 'Usuario').trim();
+  const femeninos = [
+    'yessica','jessica','maria','ana','laura','andrea','carolina',
+    'patricia','claudia','monica','gabriela','daniela','valentina',
+    'sofia','camila','fernanda','natalia','alejandra','paola','diana',
+    'rosa','elena','isabel','lucia','sara','paula','angela','adriana',
+    'lorena','marcela','veronica','sandra','silvia','beatriz','nora',
+    'gloria','martha','luz','carmen','teresa','miriam','susana',
+    'graciela','viviana','romina','noelia','melisa','vanesa',
+    'florencia','agustina','micaela','brenda','cecilia','cristina',
+    'fabiola','karina','liliana','marta','norma','pilar','rebeca',
+    'rocio','silvana','sonia','wendy','julia','fatima','alicia'
+  ];
+
+  const primerNombre = nombre.trim().split(' ')[0].toLowerCase();
+  const esMujer = genero === 'F' || (!genero && femeninos.includes(primerNombre));
+
+  const label = document.getElementById('usuarioSidebarNombre');
+  if (label) label.textContent = nombre.toUpperCase();
+
+  const img = document.getElementById('avatarImg');
+  if (!img) return;
+
+  const old = img.parentElement.querySelector('.avatar-fallback');
+  if (old) old.remove();
+  img.style.display = 'block';
+
+  const seed = encodeURIComponent(nombre.split(' ')[0].toLowerCase());
+
+  // 'personas' — estilo más lindo y realista, separado claramente por género
+  img.src = esMujer
+    ? `https://api.dicebear.com/9.x/personas/svg?seed=${seed}&eyes=open,happy&hair=buns,long,pigtails,wavy&backgroundColor=ffd5dc`
+    : `https://api.dicebear.com/9.x/personas/svg?seed=${seed}&eyes=open,serious&hair=bald,short,buzz&backgroundColor=bde0fe`;
+
+  img.onerror = function() {
+    this.style.display = 'none';
+    const iniciales = nombre.split(' ').filter(Boolean)
+      .slice(0,2).map(p => p[0].toUpperCase()).join('');
+    const fb = document.createElement('div');
+    fb.className = 'avatar-fallback';
+    fb.style.cssText = `
+      width:100%;height:100%;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:13px;font-weight:700;
+      background:${esMujer ? '#fce7f3' : '#dbeafe'};
+      color:${esMujer ? '#be185d' : '#1d4ed8'};
+    `;
+    fb.textContent = iniciales;
+    this.parentElement.appendChild(fb);
+  };
+}
 function fmtMonedaCuenta(moneda, valor) {
   const n = Number(valor || 0);
   const m = String(moneda || "PYG").toUpperCase();
@@ -7845,7 +7909,13 @@ function nuevaVenta() {
   }
 }
 
+function toggleNavGroup(btn) {
+  const items = btn.nextElementSibling;
+  const isOpen = items.classList.contains('open');
 
+  items.classList.toggle('open');
+  btn.classList.toggle('open');
+}
 
 window.cargarVentas = cargarVentas;
 window.nuevaVenta = nuevaVenta;

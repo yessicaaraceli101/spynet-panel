@@ -45,111 +45,158 @@
 </div> 
 
   <!-- USUARIO -->
-  <div class="sidebar-user-card" id="usuarioSidebar">
-    <div class="sidebar-user-avatar">
-      <i class="fa-solid fa-user"></i>
-    </div>
-    <div class="sidebar-user-info">
-      <span class="sidebar-user-label">Usuario activo</span>
-      <strong class="sidebar-user-name" id="usuarioSidebarNombre">Cargando...</strong>
-    </div>
+<div class="sidebar-user-card" id="usuarioSidebar">
+  <div class="sidebar-user-avatar" style="width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid rgba(255,255,255,0.25);">
+    <img id="avatarImg" src="" alt="Avatar" style="width:100%;height:100%;object-fit:cover;display:block;">
   </div>
+  <div class="sidebar-user-info">
+    <span class="sidebar-user-label">Usuario activo</span>
+    <strong class="sidebar-user-name" id="usuarioSidebarNombre">Cargando...</strong>
+  </div>
+</div>
 
   <!-- SEPARADOR -->
   <div style="height:1px;background:rgba(255,255,255,.12);margin:0 1rem .5rem;"></div>
 
-  <!-- NAV -->
-  <nav class="sidebar-nav">
+<nav class="sidebar-nav">
 
+  <!-- PRINCIPAL -->
+  <div class="nav-group">
+    <button class="nav-group-toggle open" onclick="toggleNavGroup(this)">
+      <span>
+        <span class="nav-group-icon" style="background:rgba(99,179,237,0.18);">
+          <i class="fa-solid fa-house-chimney" style="color:#90cdf4;"></i>
+        </span>
+        Principal
+      </span>
+      <i class="fa-solid fa-chevron-down nav-chevron"></i>
+    </button>
+    <div class="nav-group-items open">
+      <a href="#accesos" data-link class="active">
+        <i class="fa-solid fa-gauge"></i> Accesos rápidos
+      </a>
+      <a href="#ventas" data-link>
+        <i class="fa-solid fa-basket-shopping"></i> Historial de Ventas
+      </a>
+      <a href="#caja" data-link>
+        <i class="fa-solid fa-cash-register"></i> Caja
+      </a>
+    </div>
+  </div>
 
-    <p class="sidebar-section-label">PRINCIPAL</p>
+  <!-- REPORTES -->
+  <div class="nav-group">
+    <button class="nav-group-toggle" onclick="toggleNavGroup(this)">
+      <span>
+        <span class="nav-group-icon" style="background:rgba(154,230,180,0.15);">
+          <i class="fa-solid fa-chart-pie" style="color:#9ae6b4;"></i>
+        </span>
+        Reportes
+      </span>
+      <i class="fa-solid fa-chevron-down nav-chevron"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="#dashboard" data-link>
+        <i class="fa-solid fa-gauge"></i> Dashboard
+      </a>
+    </div>
+  </div>
 
-    <a href="#accesos" data-link class="active">
-      <i class="fa-solid fa-gauge"></i>
-      Accesos rápidos
-    </a>
+  <!-- GESTIÓN -->
+  <div class="nav-group">
+    <button class="nav-group-toggle" onclick="toggleNavGroup(this)">
+      <span>
+        <span class="nav-group-icon" style="background:rgba(214,188,250,0.15);">
+          <i class="fa-solid fa-layer-group" style="color:#d6bcfa;"></i>
+        </span>
+        Gestión
+      </span>
+      <i class="fa-solid fa-chevron-down nav-chevron"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="#clientes" data-link>
+        <i class="fa-solid fa-users"></i> Clientes
+      </a>
+      <a href="#proveedores" data-link>
+        <i class="fa-solid fa-truck-field"></i> Proveedores
+      </a>
+      <a href="#productos" data-link>
+        <i class="fa-solid fa-box"></i> Productos
+      </a>
+      <a href="#categorias" data-link>
+        <i class="fa-solid fa-tags"></i> Categorías
+      </a>
+    </div>
+  </div>
 
-    <a href="#ventas" data-link>
-      <i class="fa-solid fa-basket-shopping"></i>
-      Historial de Ventas
-    </a>
+  <!-- COMPRAS -->
+  <div class="nav-group">
+    <button class="nav-group-toggle" onclick="toggleNavGroup(this)">
+      <span>
+        <span class="nav-group-icon" style="background:rgba(251,211,141,0.15);">
+          <i class="fa-solid fa-cart-shopping" style="color:#fbd38d;"></i>
+        </span>
+        Compras
+      </span>
+      <i class="fa-solid fa-chevron-down nav-chevron"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="#compras" data-link>
+        <i class="fa-solid fa-cart-shopping"></i> Compras
+      </a>
+      <a href="#pedidos" data-link>
+        <i class="fa-solid fa-file-invoice"></i> Pedido a Proveedor
+      </a>
+      <a href="#lista_pedidos" data-link>
+        <i class="fa-solid fa-list-check"></i> Lista de Pedidos
+      </a>
+    </div>
+  </div>
 
-    <a href="#caja" data-link>
-      <i class="fa-solid fa-cash-register"></i>
-      Caja
-    </a>
+  <!-- FINANZAS -->
+  <div class="nav-group">
+    <button class="nav-group-toggle" onclick="toggleNavGroup(this)">
+      <span>
+        <span class="nav-group-icon" style="background:rgba(252,182,159,0.15);">
+          <i class="fa-solid fa-coins" style="color:#fcb69f;"></i>
+        </span>
+        Finanzas
+      </span>
+      <i class="fa-solid fa-chevron-down nav-chevron"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="#cuentas-pagar" data-link>
+        <i class="fas fa-file-invoice-dollar"></i> Cuentas a Pagar
+      </a>
+      <a href="#formas-pago" data-link>
+        <i class="fa fa-credit-card"></i> Formas de Pago
+      </a>
+    </div>
+  </div>
 
-    <p class="sidebar-section-label">Reportes</p>
+  <!-- SISTEMA -->
+  <div class="nav-group">
+    <button class="nav-group-toggle" onclick="toggleNavGroup(this)">
+      <span>
+        <span class="nav-group-icon" style="background:rgba(255,255,255,0.08);">
+          <i class="fa-solid fa-gear" style="color:rgba(255,255,255,0.5);"></i>
+        </span>
+        Sistema
+      </span>
+      <i class="fa-solid fa-chevron-down nav-chevron"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="admin.html">
+        <i class="fa-solid fa-user-gear"></i> Panel Administrativo
+      </a>
+      <a href="#" class="logout-link" onclick="logout(event); return false;"
+         style="color:#fc8181 !important;">
+        <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
+      </a>
+    </div>
+  </div>
 
-    <a href="#dashboard" data-link class="active">
-      <i class="fa-solid fa-gauge"></i>
-      Dashboard
-    </a>
-
-    <p class="sidebar-section-label">GESTIÓN</p>
-
-    <a href="#clientes" data-link>
-      <i class="fa-solid fa-users"></i>
-      Clientes
-    </a>
-
-    <a href="#proveedores" data-link>
-      <i class="fa-solid fa-truck-field"></i>
-      Proveedores
-    </a>
-
-    <a href="#productos" data-link>
-      <i class="fa-solid fa-box"></i>
-      Productos
-    </a>
-
-    <a href="#categorias" data-link>
-      <i class="fa-solid fa-tags"></i>
-      Categorías
-    </a>
-
-    <p class="sidebar-section-label">COMPRAS</p>
-
-    <a href="#compras" data-link>
-      <i class="fa-solid fa-cart-shopping"></i>
-      Compras
-    </a>
-
-    <a href="#pedidos" data-link>
-      <i class="fa-solid fa-file-invoice"></i>
-      Pedido a Proveedor
-    </a>
-
-    <a href="#lista_pedidos" data-link>
-      <i class="fa-solid fa-list-check"></i>
-      Lista de Pedidos
-    </a>
-
-    <p class="sidebar-section-label">FINANZAS</p>
-
-    <a href="#cuentas-pagar" data-link>
-      <i class="fas fa-file-invoice-dollar"></i>
-      Cuentas a Pagar
-    </a>
-
-    <a href="#formas-pago" data-link>
-      <i class="fa fa-credit-card"></i>
-      Formas de Pago
-    </a>
-
-    <p class="sidebar-section-label">SISTEMA</p>
-
-    <a href="admin.html">
-      <i class="fa-solid fa-user-gear"></i>
-      Panel Administrativo
-    </a>
-
-    <a href="#" class="logout-link" onclick="logout(event); return false;">
-      <i class="fa-solid fa-right-from-bracket"></i>
-      Cerrar sesión
-    </a>
-
-  </nav>
+</nav>
 </aside>
 
     <main>
@@ -178,93 +225,88 @@
 
 <!-- ACCESOS RÁPIDOS CARDS -->
 <div style="margin-top:1.5rem;">
-  <div style="
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-  " class="accesos-grid">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" class="accesos-grid">
 
-    <!-- Nueva Venta - CELESTE -->
+    <!-- Nueva Venta -->
     <button onclick="nav('#ventas'); setTimeout(()=>nuevaVenta(),200)"
-      style="background:#2596be;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:110px;"
-      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      style="background:#1B3A5C;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
+      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-cart-shopping" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <i class="fa-solid fa-cart-shopping" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Nueva venta</span>
-        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Registrar una venta</small>
+        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Nueva venta</span>
+        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Registrar una venta</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
     </button>
 
-    <!-- Nueva Compra - NARANJA -->
+    <!-- Nueva Compra -->
     <button onclick="nav('#compras'); setTimeout(()=>abrirNuevaCompra(),200)"
-      style="background:#e07c24;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:110px;"
-      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      style="background:#4A2208;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
+      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-receipt" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <i class="fa-solid fa-receipt" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Nueva compra</span>
-        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Registrar una compra</small>
+        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Nueva compra</span>
+        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Registrar una compra</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
     </button>
 
-    <!-- Gestionar Productos - AZUL -->
+    <!-- Gestionar Productos -->
     <button onclick="nav('#productos')"
-      style="background:#3a82c8;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:110px;"
-      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      style="background:#2E2870;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
+      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-box" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <i class="fa-solid fa-box" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Gestionar productos</span>
-        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Editar y controlar stock</small>
+        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Gestionar productos</span>
+        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Editar y controlar stock</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
     </button>
 
-    <!-- Cuentas a Pagar - AMARILLO -->
+    <!-- Cuentas a Pagar -->
     <button onclick="nav('#cuentas-pagar')"
-      style="background:#c9a000;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:110px;"
-      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      style="background:#143D2E;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
+      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-file-invoice-dollar" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <i class="fa-solid fa-file-invoice-dollar" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Cuentas a pagar</span>
-        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Facturas pendientes</small>
+        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Cuentas a pagar</span>
+        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Facturas pendientes</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
     </button>
 
-    <!-- Caja - VERDE -->
+    <!-- Caja -->
     <button onclick="nav('#caja')"
-      style="background:#1e8c42;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:110px;"
-      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      style="background:#0E3D2C;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
+      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-cash-register" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <i class="fa-solid fa-cash-register" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Caja</span>
-        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Control de efectivo</small>
+        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Caja</span>
+        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Control de efectivo</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
     </button>
 
-    <!-- Dashboard - VERDE CLARO -->
+    <!-- Dashboard -->
     <button onclick="nav('#dashboard')"
-      style="background:#40b878;border:none;border-radius:14px;padding:1.1rem 1.1rem 2rem;display:flex;flex-direction:column;align-items:flex-start;gap:10px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:110px;"
-      onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+      style="background:#152E50;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
+      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-chart-column" style="color:rgba(255,255,255,0.9);font-size:22px;"></i>
+      <i class="fa-solid fa-chart-column" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:700;color:#fff;line-height:1.3;">Dashboard</span>
-        <small style="font-size:.73rem;color:rgba(255,255,255,0.78);">Resumen general</small>
+        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Dashboard</span>
+        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Resumen general</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:12px;right:14px;font-size:.72rem;color:rgba(255,255,255,0.5);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
     </button>
 
   </div>
 </div>
-
 <!-- CSS RESPONSIVO - agregar dentro de tu <style> global -->
 <style>
   /* Grid: 3 columnas fijas en desktop, se adapta en móvil */
@@ -3008,6 +3050,7 @@
             document.body.classList.toggle("sidebar-open");
           }
         </script>
+        
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -619,6 +619,15 @@
           </select>
         </div>
 
+
+        <div class="field">
+  <label for="genero">Género</label>
+  <select id="genero">
+    <option value="M">Masculino</option>
+    <option value="F">Femenino</option>
+  </select>
+</div>
+
         <button class="btn-primary" onclick="guardarUsuario()" id="submitBtn">
           Crear usuario
         </button>
@@ -901,6 +910,7 @@ const colorPrincipal =
       const usuario = document.getElementById("usuario").value.trim();
       const password = document.getElementById("password").value.trim();
       const rol = document.getElementById("rol").value;
+      const genero = document.getElementById("genero").value;
 
       if (!nombre || !usuario) {
         mostrarMensaje("Completá nombre y usuario.", "error");
@@ -921,7 +931,8 @@ const colorPrincipal =
               nombre,
               usuario,
               password,
-              rol
+              rol,
+              genero
             })
           });
 
@@ -944,7 +955,8 @@ const colorPrincipal =
               nombre,
               usuario,
               password,
-              rol
+              rol,
+              genero
             })
           });
 
@@ -971,6 +983,7 @@ const colorPrincipal =
       document.getElementById("usuario").value = usuario.usuario || "";
       document.getElementById("password").value = "";
       document.getElementById("rol").value = usuario.rol || "usuario";
+      document.getElementById("genero").value = usuario.genero || "M";
 
       document.getElementById("formTitle").textContent = "Editar usuario";
       document.getElementById("formSubtitle").textContent = "Modificá los datos del usuario seleccionado.";
@@ -990,6 +1003,7 @@ const colorPrincipal =
       document.getElementById("usuario").value = "";
       document.getElementById("password").value = "";
       document.getElementById("rol").value = "usuario";
+      document.getElementById("genero").value = "M";
 
       document.getElementById("formTitle").textContent = "Crear usuario";
       document.getElementById("formSubtitle").textContent = "Completá los datos para registrar un nuevo usuario.";

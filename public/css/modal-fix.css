@@ -1213,7 +1213,7 @@ body:has(#modalVenta[style*="display: flex"]) {
 
 
 .sidebar {
-  background: #3b82f6 !important;
+  background: #1565C0 !important; /* azul profesional, no eléctrico */
   padding: 20px 12px !important;
 }
 
@@ -3429,3 +3429,125 @@ body {
   font-size: 14px !important;
   color: #0f172a !important;
 }
+
+
+
+
+/* ── Grupos ── */
+.nav-group { margin-bottom: 2px; }
+
+.nav-group-toggle {
+  width: 100%;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  color: rgba(255,255,255,0.70);
+  font-size: .93rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: background .15s, color .15s;
+  gap: 8px;
+}
+
+.nav-group-toggle:hover {
+  background: rgba(255,255,255,0.07);
+  color: #fff;
+}
+
+.nav-group-toggle.open {
+  color: #fff;
+}
+
+.nav-group-toggle > span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+/* Ícono de grupo con fondo de color */
+.nav-group-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+/* Chevron */
+.nav-chevron {
+  font-size: .6rem;
+  opacity: .5;
+  transition: transform .25s;
+  margin-left: auto;
+}
+.nav-group-toggle.open .nav-chevron {
+  transform: rotate(180deg);
+  opacity: .8;
+}
+
+/* Items colapsables */
+.nav-group-items {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height .3s ease;
+  padding-left: 10px;
+}
+.nav-group-items.open {
+  max-height: 500px;
+}
+
+/* Línea izquierda que conecta los items */
+.nav-group-items {
+  border-left: 1.5px solid rgba(255,255,255,0.10);
+  margin-left: 22px;
+  padding-left: 12px;
+  margin-bottom: 4px;
+}
+
+/* Links */
+.nav-group-items a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  font-size: .93rem;
+  color: rgba(255,255,255,0.58);
+  text-decoration: none;
+  border-radius: 7px;
+  transition: background .15s, color .15s;
+  margin-bottom: 1px;
+}
+.nav-group-items a i {
+  font-size: 15px;
+  width: 16px;
+  text-align: center;
+  opacity: .7;
+}
+.nav-group-items a:hover {
+  background: rgba(255,255,255,0.09);
+  color: #fff;
+}
+.nav-group-items a:hover i {
+  opacity: 1;
+}
+.nav-group-items a.active {
+  background: rgba(255,255,255,0.13);
+  color: #fff;
+  font-weight: 600;
+}
+.nav-group-items a.active i {
+  opacity: 1;
+}
+
+
+
+

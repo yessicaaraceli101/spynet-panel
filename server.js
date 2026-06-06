@@ -518,6 +518,7 @@ app.post("/login", async (req, res) => {
         u.id,
         u.usuario,
         u.nombre,
+        u.genero,
         u.password_hash,
         u.rol,
         u.activo,
@@ -563,6 +564,7 @@ app.post("/login", async (req, res) => {
       id: u.id,
       usuario: u.usuario,
       nombre: u.nombre,
+      genero: u.genero || 'M',   // ← agregado
       rol: u.rol,
       empresa_id: u.empresa_id,
       empresa_nombre: u.empresa_nombre,
@@ -6569,50 +6571,28 @@ app.post("/usuarios/seed-admin", async (_req, res) => {
 app.post("/api/usuarios", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
-
-    const {
-      nombre,
-      usuario,
-      password,
-      rol
-    } = req.body;
+    const { nombre, usuario, password, rol, genero } = req.body;
 
     if (!nombre || !usuario || !password) {
-      return res.status(400).json({
-        error: "Faltan datos obligatorios"
-      });
+      return res.status(400).json({ error: "Faltan datos obligatorios" });
     }
 
     const hash = await bcrypt.hash(password, 10);
 
     const { rows } = await pool.query(
       `
-      INSERT INTO usuarios (
-        nombre,
-        usuario,
-        password_hash,
-        rol,
-        empresa_id
-      )
-      VALUES ($1,$2,$3,$4,$5)
-      RETURNING id, nombre, usuario, rol, empresa_id
+      INSERT INTO usuarios (nombre, usuario, password_hash, rol, genero, empresa_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, nombre, usuario, rol, genero, empresa_id
       `,
-      [
-        nombre,
-        usuario,
-        hash,
-        rol || "usuario",
-        empresaId
-      ]
+      [nombre, usuario, hash, rol || 'usuario', genero || 'M', empresaId]
     );
 
-    res.status(201).json(rows[0]);
+    return res.json(rows[0]);
 
   } catch (err) {
     console.error("POST /api/usuarios", err);
-    res.status(500).json({
-      error: "Error al crear usuario"
-    });
+    res.status(500).json({ error: "Error al crear usuario" });
   }
 });
 
@@ -6620,19 +6600,9 @@ app.put("/api/usuarios/:id", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
     const id = Number(req.params.id);
+    const { nombre, usuario, password, rol, genero } = req.body;
 
-    const {
-      nombre,
-      usuario,
-      password,
-      rol
-    } = req.body;
-
-    if (!id) {
-      return res.status(400).json({
-        error: "ID inválido"
-      });
-    }
+    if (!id) return res.status(400).json({ error: "ID inválido" });
 
     let rows;
 
@@ -6645,87 +6615,53 @@ app.put("/api/usuarios/:id", requireEmpresa, async (req, res) => {
         SET nombre = $1,
             usuario = $2,
             password_hash = $3,
-            rol = $4
-        WHERE id = $5
-          AND empresa_id = $6
-        RETURNING id, nombre, usuario, rol, empresa_id
+            rol = $4,
+            genero = $5
+        WHERE id = $6
+          AND empresa_id = $7
+        RETURNING id, nombre, usuario, rol, genero, empresa_id
         `,
-        [
-          nombre,
-          usuario,
-          hash,
-          rol,
-          id,
-          empresaId
-        ]
+        [nombre, usuario, hash, rol, genero || 'M', id, empresaId]
       );
-
       rows = r.rows;
+
     } else {
       const r = await pool.query(
         `
         UPDATE usuarios
         SET nombre = $1,
             usuario = $2,
-            rol = $3
-        WHERE id = $4
-          AND empresa_id = $5
-        RETURNING id, nombre, usuario, rol, empresa_id
+            rol = $3,
+            genero = $4
+        WHERE id = $5
+          AND empresa_id = $6
+        RETURNING id, nombre, usuario, rol, genero, empresa_id
         `,
-        [
-          nombre,
-          usuario,
-          rol,
-          id,
-          empresaId
-        ]
+        [nombre, usuario, rol, genero || 'M', id, empresaId]
       );
-
       rows = r.rows;
     }
 
     if (!rows.length) {
-      return res.status(404).json({
-        error: "Usuario no encontrado o no pertenece a esta empresa"
-      });
+      return res.status(404).json({ error: "Usuario no encontrado o no pertenece a esta empresa" });
     }
 
     return res.json(rows[0]);
 
   } catch (err) {
     console.error("PUT /api/usuarios/:id", err);
-    res.status(500).json({
-      error: "Error al actualizar usuario"
-    });
+    res.status(500).json({ error: "Error al actualizar usuario" });
   }
 });
 
 app.get("/api/usuarios", requireEmpresa, async (req, res) => {
-
   try {
-
-    // DEBUG
-    console.log("=================================");
-    console.log("REQ.USER:");
-    console.log(req.user);
-
-    console.log("REQ.SESSION:");
-    console.log(req.session);
-
     const empresaId = getEmpresaId(req);
 
-    console.log("EMPRESA ID:", empresaId);
-    console.log("=================================");
-
-    // VALIDAR EMPRESA
     if (!empresaId) {
-
-      return res.status(401).json({
-        error: "Empresa no identificada"
-      });
+      return res.status(401).json({ error: "Empresa no identificada" });
     }
 
-    // CONSULTAR SOLO USUARIOS DE ESA EMPRESA
     const { rows } = await pool.query(
       `
       SELECT
@@ -6733,6 +6669,7 @@ app.get("/api/usuarios", requireEmpresa, async (req, res) => {
         nombre,
         usuario,
         rol,
+        genero,
         empresa_id
       FROM usuarios
       WHERE empresa_id = $1
@@ -6741,20 +6678,14 @@ app.get("/api/usuarios", requireEmpresa, async (req, res) => {
       [empresaId]
     );
 
-    console.log("USUARIOS ENCONTRADOS:");
-    console.log(rows);
-
     res.json(rows);
 
   } catch (err) {
-
     console.error("GET /api/usuarios", err);
-
-    res.status(500).json({
-      error: "Error al listar usuarios"
-    });
+    res.status(500).json({ error: "Error al listar usuarios" });
   }
 });
+
 function fmtGs(n) {
   return `Gs. ${Number(n || 0).toLocaleString("es-PY")}`;
 }
