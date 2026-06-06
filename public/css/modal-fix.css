@@ -3470,16 +3470,9 @@ body {
   gap: 9px;
 }
 
-/* Ícono de grupo con fondo de color */
+css/* Ícono de grupo — sin fondo */
 .nav-group-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 12px;
+  display: none;
 }
 
 /* Chevron */
