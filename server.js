@@ -6158,197 +6158,399 @@ app.get("/formas-pago/movimientos", requireEmpresa, async (req, res) => {
 app.get("/ventas/:id/pagare", requireEmpresa, async (req, res) => {
   const empresaId = getEmpresaId(req);
   const ventaId = Number(req.params.id);
-
+ 
   try {
-    const v = await pool.query(
-      `
-      SELECT
-        v.id,
-        v.fecha,
-        v.total,
-        v.total_pyg,
-        v.total_moneda,
-        v.moneda,
-        v.tipo_cambio,
-        v.estado_pago,
-        v.nro_comprobante,
-        COALESCE(v.cajero_nombre, 'Sin usuario') AS cajero_nombre,
-        fp.nombre AS forma_pago_nombre,
-        COALESCE(c.nombre || ' ' || c.apellido, 'Consumidor Final') AS cliente_nombre,
-        COALESCE(c.ci, '') AS cliente_ruc,
-        e.nombre AS empresa_nombre
-      FROM ventas v
-      LEFT JOIN clientes c
-        ON c.id = v.cliente_id
-       AND c.empresa_id = $2
-      LEFT JOIN formas_pago fp
-        ON fp.id = v.forma_pago_id
-       AND fp.empresa_id = $2
-      LEFT JOIN empresas e
-        ON e.id = v.empresa_id
-      WHERE v.id = $1
-        AND v.empresa_id = $2
-      LIMIT 1
-      `,
-      [ventaId, empresaId]
-    );
-
-    if (!v.rows.length) {
-      return res.status(404).send("Venta no encontrada");
-    }
-
-    const venta = v.rows[0];
-
+    /* ── 1. Datos de la venta ── */
+    const vRow = await pool.query(
+      `SELECT
+         v.id,
+         v.fecha,
+         v.total,
+         v.total_pyg,
+         v.moneda,
+         v.tipo_cambio,
+         v.estado_pago,
+         v.nro_comprobante,
+         COALESCE(v.cajero_nombre, 'Sin usuario')          AS cajero_nombre,
+         fp.nombre                                          AS forma_pago_nombre,
+         COALESCE(c.nombre || ' ' || c.apellido,
+                  'Consumidor Final')                      AS cliente_nombre,
+         COALESCE(c.ci, '')                                AS cliente_ruc,
+         COALESCE(c.direccion, '')                         AS cliente_direccion,
+         COALESCE(c.telefono, '')                          AS cliente_telefono,
+         e.nombre                                          AS empresa_nombre,
+         COALESCE(e.ruc,       '')                         AS empresa_ruc,
+         COALESCE(e.direccion, '')                         AS empresa_direccion,
+         COALESCE(e.telefono,  '')                         AS empresa_telefono,
+         COALESCE(e.email,     '')                         AS empresa_email,
+         COALESCE(e.timbrado,  '')                         AS timbrado,
+         COALESCE(e.nro_establecimiento, '001')            AS nro_est,
+         COALESCE(e.nro_punto_expedicion, '001')           AS nro_punto
+         FROM ventas v
+         LEFT JOIN clientes       c  ON c.id = v.cliente_id      AND c.empresa_id = $2
+         LEFT JOIN formas_pago    fp ON fp.id = v.forma_pago_id  AND fp.empresa_id = $2
+         LEFT JOIN empresas       e  ON e.id = v.empresa_id
+         WHERE v.id = $1 AND v.empresa_id = $2
+         LIMIT 1`,
+         [ventaId, empresaId]
+        );
+ 
+    if (!vRow.rows.length) return res.status(404).send("Venta no encontrada");
+    const venta = vRow.rows[0];
+ 
+    /* ── 2. Ítems de la venta ── */
     const itemsQ = await pool.query(
-      `
-      SELECT
-        vi.cantidad,
-        vi.precio,
-        vi.subtotal,
-        p.nombre AS producto_nombre
-      FROM ventas_items vi
-      JOIN productos p
-        ON p.id = vi.producto_id
-       AND p.empresa_id = $2
-      WHERE vi.venta_id = $1
-        AND vi.empresa_id = $2
-      ORDER BY vi.id ASC
-      `,
+      `SELECT
+         vi.cantidad,
+         vi.precio,
+         vi.subtotal,
+         COALESCE(vi.iva_tipo, '10')   AS iva_tipo,   -- '5' | '10' | 'exenta'
+         p.nombre                      AS producto_nombre
+       FROM ventas_items vi
+       JOIN productos p ON p.id = vi.producto_id AND p.empresa_id = $2
+       WHERE vi.venta_id = $1 AND vi.empresa_id = $2
+       ORDER BY vi.id ASC`,
       [ventaId, empresaId]
     );
-
     const items = itemsQ.rows;
-
+ 
+    /* ── 3. Totales IVA ── */
+    let totalExenta = 0, totalIva5 = 0, totalIva10 = 0;
+    for (const it of items) {
+      const sub = Number(it.subtotal || 0);
+      if (it.iva_tipo === "exenta") totalExenta += sub;
+      else if (it.iva_tipo === "5")  totalIva5   += sub;
+      else                           totalIva10  += sub;
+    }
+    const ivaCalc5  = Math.round(totalIva5  * 5  / 105);
+    const ivaCalc10 = Math.round(totalIva10 * 10 / 110);
+    const totalIva  = ivaCalc5 + ivaCalc10;
+    const totalPyg  = Number(venta.total_pyg ?? venta.total ?? 0);
+ 
+    /* ── 4. Helpers ── */
+    const fmtGs  = (n) => Number(n || 0).toLocaleString("es-PY");
+    const fechaObj = venta.fecha ? new Date(venta.fecha) : new Date();
+    const dia    = String(fechaObj.getDate()).padStart(2, "0");
+    const mes    = String(fechaObj.getMonth() + 1).padStart(2, "0");
+    const anio   = fechaObj.getFullYear();
+ 
+    /* número de factura: nro_comprobante puede ser "0001114" o se genera */
+    const nroFactura = venta.nro_comprobante
+      ? String(venta.nro_comprobante).padStart(7, "0")
+      : String(venta.id).padStart(7, "0");
+    const nroCompleto = `${venta.nro_est}-${venta.nro_punto}-${nroFactura}`;
+ 
+    /* ── 5. Construir PDF con PDFDocument (pdfkit) ── */
+    // Tamaño oficio: 216 × 330 mm → 612 × 935 pts  (o carta 612×792)
+    // Usamos carta apaisada para que quepa la tabla cómodamente
+    const PAGE_W = 794;  // A4 landscape width ≈ 842, usamos un poco menos
+    const PAGE_H = 560;
+    const M = 28;        // margen general
+ 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=recibo_${empresaId}_${ventaId}.pdf`);
-
-    const doc = new PDFDocument({ size: [595, 300], margin: 28 });
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename=factura_${empresaId}_${ventaId}.pdf`
+    );
+ 
+    const doc = new PDFDocument({ size: [PAGE_W, PAGE_H], margin: M });
     doc.pipe(res);
-
-    const fmtGs = (n) => Number(n || 0).toLocaleString("es-PY");
-    const fechaStr = venta.fecha ? new Date(venta.fecha).toISOString().slice(0, 10) : "";
-    const totalPyg = Number(venta.total_pyg ?? venta.total ?? 0);
-    const cajero = venta.cajero_nombre || "Sin usuario";
-
-    const logoLeft = path.join(process.cwd(), "public", "img", "logo2.png");
-    const logoRight = path.join(process.cwd(), "public", "img", "logo1.jpg");
-
-    const hoy = new Date();
-    const reciboNro = `** ${String(hoy.getMonth() + 1).padStart(2, "0")}/${hoy.getFullYear()}-${String(venta.id).padStart(3, "0")} **`;
-
-    const productosTexto = items.map(it => {
-      const cant = Number(it.cantidad || 0);
-      return `${it.producto_nombre || "-"} x${cant}`;
-    }).join(", ");
-
-    const pageW = doc.page.width;
-    const boxX = 35;
-    const boxY = 35;
-    const boxW = pageW - 70;
-    const boxH = 150;
-
-    doc.lineWidth(1);
-    doc.rect(boxX, boxY, boxW, boxH).stroke();
-
-    if (fs.existsSync(logoLeft)) {
-      doc.image(logoLeft, boxX + 10, boxY + 8, { width: 46 });
+ 
+    // ── Paleta ──
+    const COLOR_BORDE  = "#000000";
+    const COLOR_TITULO = "#cc0000";   // rojo para número grande
+    const COLOR_HEADER = "#1a1a2e";   // azul oscuro encabezado tabla
+    const COLOR_WHITE  = "#ffffff";
+    const COLOR_LIGHT  = "#f5f5f5";
+ 
+    const lw = (w) => doc.lineWidth(w);
+    const fr = (x, y, w, h, opts = {}) => doc.rect(x, y, w, h);
+ 
+    /* ════════════════════════════════════════
+       BLOQUE SUPERIOR: empresa + datos factura
+    ════════════════════════════════════════ */
+    const hdrH = 95;
+    const hdrY = M;
+ 
+    // Borde exterior
+    lw(1.2);
+    doc.rect(M, hdrY, PAGE_W - M * 2, hdrH).stroke(COLOR_BORDE);
+ 
+    // Logo empresa (izquierda)
+    const logoPath = path.join(process.cwd(), "public", "img", "logo2.png");
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, M + 6, hdrY + 8, { width: 52 });
     }
+ 
+    // Nombre empresa
+    doc.font("Helvetica-Bold").fontSize(13)
+   .fillColor(COLOR_BORDE)
+   .text(venta.empresa_nombre || "EMPRESA", M + 64, hdrY + 10, {
+     width: 310, align: "center"  // ← center
+   });
 
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(9)
-      .text(venta.empresa_nombre || "SPYNET", boxX + 62, boxY + 8, {
-        width: 150,
-        align: "left"
-      });
-
-    doc
-      .font("Helvetica-Oblique")
-      .fontSize(6.8)
-      .text("Teléfono: 0983 399 215", boxX + 62, boxY + 21, {
-        width: 150,
-        align: "left"
-      })
-      .text("info@spynet.com.py", boxX + 62, boxY + 31, {
-        width: 150,
-        align: "left"
-      });
-
-    if (fs.existsSync(logoRight)) {
-      doc.image(logoRight, boxX + boxW - 92, boxY + 10, { width: 48 });
+   doc.font("Helvetica").fontSize(7.5).fillColor("#333")
+   .text(venta.empresa_direccion,          M + 64, hdrY + 28, { width: 310, align: "center" })
+   .text(`Tel: ${venta.empresa_telefono}`, M + 64, hdrY + 39, { width: 310, align: "center" })
+   .text(`Email: ${venta.empresa_email}`,  M + 64, hdrY + 50, { width: 310, align: "center" });
+    // Línea vertical divisoria
+    const divX = PAGE_W - M - 200;
+    lw(1);
+    doc.moveTo(divX, hdrY).lineTo(divX, hdrY + hdrH).stroke(COLOR_BORDE);
+ 
+    // Bloque derecho: timbrado + RUC + FACTURA
+    const rX = divX + 8;
+    const rW = PAGE_W - M - divX - 16;
+ 
+    doc.font("Helvetica").fontSize(7)
+       .fillColor("#000")
+       .text(`Timbrado N°: ${venta.timbrado}`,          rX, hdrY + 8,  { width: rW })
+ 
+    doc.font("Helvetica-Bold").fontSize(9)
+       .text(`R.U.C.: ${venta.empresa_ruc}`, rX, hdrY + 40, { width: rW });
+ 
+    doc.font("Helvetica-Bold").fontSize(13)
+       .text("FACTURA", rX, hdrY + 53, { width: rW, align: "center" });
+ 
+    // Número de factura en rojo grande
+    doc.font("Helvetica-Bold").fontSize(14)
+       .fillColor(COLOR_TITULO)
+       .text(nroCompleto, rX, hdrY + 70, { width: rW, align: "center" });
+    doc.fillColor("#000");
+ 
+    /* ════════════════════════════════════════
+       BLOQUE CLIENTE
+    ════════════════════════════════════════ */
+    const cliY = hdrY + hdrH + 4;
+    const cliH = 58;
+ 
+    lw(0.8);
+    doc.rect(M, cliY, PAGE_W - M * 2, cliH).stroke(COLOR_BORDE);
+ 
+    const col2 = PAGE_W / 2 + 20;
+ 
+    // fila 1
+    doc.font("Helvetica").fontSize(7.5);
+    const lineH = 14;
+ 
+    const drawField = (label, value, x, y, w) => {
+      doc.font("Helvetica-Bold").text(label, x, y, { continued: true })
+         .font("Helvetica").text(` ${value}`, { width: w });
+      // underline
+      doc.moveTo(x, y + 10).lineTo(x + w, y + 10).lineWidth(0.4).stroke("#aaa");
+      lw(0.8);
+    };
+ 
+    const r1y = cliY + 6;
+    drawField("Fecha de Emisión:", `${dia}  /  ${mes}  /  ${anio}`,
+              M + 6, r1y, 260);
+    // Condición de venta
+    const cond = (venta.forma_pago_nombre || "CONTADO").toUpperCase();
+    const esContado = cond.includes("CONTADO");
+    doc.font("Helvetica-Bold").fontSize(7.5)
+       .text("Cond. de Venta:", col2, r1y, { width: 80 });
+    doc.font("Helvetica").fontSize(7.5)
+       .text(`Contado [${esContado ? "X" : " "}]  Crédito [${esContado ? " " : "X"}]`,
+             col2 + 82, r1y, { width: 130 });
+ 
+    const r2y = r1y + lineH;
+    drawField("Nombre o Razón Social:", venta.cliente_nombre, M + 6, r2y, PAGE_W - M * 2 - 12);
+ 
+    const r3y = r2y + lineH;
+    drawField("Dirección:", venta.cliente_direccion, M + 6, r3y, 260);
+    drawField("R.U.C.:", venta.cliente_ruc,           col2, r3y, 160);
+ 
+    const r4y = r3y + lineH;
+    drawField("Cajero:", venta.cajero_nombre,         M + 6, r4y, 200);
+    drawField("Tel.:", venta.cliente_telefono,        col2, r4y, 160);
+ 
+    /* ════════════════════════════════════════
+       TABLA DE ÍTEMS
+    ════════════════════════════════════════ */
+    const tblY  = cliY + cliH + 4;
+    const tblX  = M;
+    const tblW  = PAGE_W - M * 2;
+ 
+    // Anchos de columna
+    const colCant   = 45;
+    const colDesc   = tblW - colCant - 90 - 85 - 85 - 85;
+    const colPU     = 90;
+    const colExenta = 85;
+    const colIva5   = 85;
+    const colIva10  = 85;
+ 
+    const colXs = [
+      tblX,
+      tblX + colCant,
+      tblX + colCant + colDesc,
+      tblX + colCant + colDesc + colPU,
+      tblX + colCant + colDesc + colPU + colExenta,
+      tblX + colCant + colDesc + colPU + colExenta + colIva5,
+    ];
+ 
+    const rowH = 15;
+    const hdrRowH = 22;
+ 
+    // Cabecera tabla
+    doc.rect(tblX, tblY, tblW, hdrRowH).fillAndStroke(COLOR_HEADER, COLOR_BORDE);
+    doc.fillColor(COLOR_WHITE).font("Helvetica-Bold").fontSize(7.5);
+ 
+    const thCentered = (txt, x, w, y = tblY + 4, h = hdrRowH - 8) => {
+      doc.text(txt, x + 2, y, { width: w - 4, align: "center", height: h });
+    };
+ 
+    thCentered("CANT.",             colXs[0], colCant);
+    thCentered("DESCRIPCIÓN",       colXs[1], colDesc);
+    thCentered("PRECIO\nUNITARIO",  colXs[2], colPU);
+ 
+    // Sub-cabecera "VALOR DE VENTAS"
+    const vvX = colXs[3];
+    const vvW = colExenta + colIva5 + colIva10;
+    doc.text("VALOR DE VENTAS", vvX + 2, tblY + 2, { width: vvW - 4, align: "center" });
+    thCentered("EXENTAS",  colXs[3], colExenta, tblY + 10, 10);
+    thCentered("IVA 5 %",  colXs[4], colIva5,   tblY + 10, 10);
+    thCentered("IVA 10 %", colXs[5], colIva10,  tblY + 10, 10);
+ 
+    doc.fillColor("#000");
+ 
+    // Líneas verticales cabecera
+    lw(0.6);
+    for (let i = 1; i < colXs.length; i++) {
+      doc.moveTo(colXs[i], tblY).lineTo(colXs[i], tblY + hdrRowH).stroke(COLOR_BORDE);
     }
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(8.5)
-      .text("RECIBO DE DINERO", boxX + boxW - 230, boxY + 8, {
-        width: 120,
-        align: "center"
-      })
-      .fontSize(7.5)
-      .text(reciboNro, boxX + boxW - 230, boxY + 21, {
-        width: 120,
-        align: "center"
-      })
-      .text(`Gs ${fmtGs(totalPyg)}`, boxX + boxW - 230, boxY + 32, {
-        width: 120,
-        align: "center"
-      });
-
-    doc
-      .font("Helvetica")
-      .fontSize(7.5)
-      .text(
-        `Recibí (mos) de ${venta.cliente_nombre || "Consumidor Final"}, RUC ${venta.cliente_ruc || "—"}, la cantidad de Gs ${fmtGs(totalPyg)} en concepto de ${productosTexto || "COMPRA"}.`,
-        boxX + 10,
-        boxY + 54,
-        { width: boxW - 20, align: "left" }
-      );
-
-    doc
-      .fontSize(7.5)
-      .text(`Fecha: ${fechaStr}`, boxX + 10, boxY + 95, {
-        width: 180,
-        align: "left"
-      });
-
-    doc
-      .fontSize(7.5)
-      .text(`Cajero: ${cajero}`, boxX + 10, boxY + 107, {
-        width: 220,
-        align: "left"
-      });
-
-    doc
-      .fontSize(7.5)
-      .text(hoy.toLocaleDateString("es-PY", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric"
-      }), boxX + boxW - 180, boxY + 95, {
-        width: 145,
-        align: "center"
-      });
-
-    doc
-      .moveTo(boxX + boxW - 200, boxY + 125)
-      .lineTo(boxX + boxW - 35, boxY + 125)
-      .stroke();
-
-    doc
-      .fontSize(7)
-      .text(`Ref.: VENTA N° ${String(venta.id).padStart(5, "0")}`, boxX + 10, boxY + 132, {
-        width: 190,
-        align: "left"
-      });
-
+    // borde derecho
+    doc.moveTo(tblX + tblW, tblY).lineTo(tblX + tblW, tblY + hdrRowH).stroke(COLOR_BORDE);
+ 
+    // Filas de ítems (máx 8 para que quepan en la página)
+    const MAX_ROWS = 8;
+    const filledRows = items.slice(0, MAX_ROWS);
+    while (filledRows.length < MAX_ROWS) filledRows.push(null);
+ 
+    let rowY = tblY + hdrRowH;
+    filledRows.forEach((it, idx) => {
+      const bg = idx % 2 === 0 ? "#ffffff" : COLOR_LIGHT;
+      doc.rect(tblX, rowY, tblW, rowH).fillAndStroke(bg, COLOR_BORDE);
+ 
+      if (it) {
+        const cant  = Number(it.cantidad  || 0);
+        const pu    = Number(it.precio    || 0);
+        const sub   = Number(it.subtotal  || 0);
+        const isEx  = it.iva_tipo === "exenta";
+        const is5   = it.iva_tipo === "5";
+ 
+        doc.fillColor("#000").font("Helvetica").fontSize(7.5);
+        const cell = (txt, x, w, align = "center") =>
+          doc.text(String(txt), x + 2, rowY + 4, { width: w - 4, align });
+ 
+        cell(cant,             colXs[0], colCant);
+        cell(it.producto_nombre || "", colXs[1], colDesc, "left");
+        cell(fmtGs(pu),        colXs[2], colPU);
+        cell(isEx ? fmtGs(sub) : "",  colXs[3], colExenta);
+        cell(is5  ? fmtGs(sub) : "",  colXs[4], colIva5);
+        cell(!isEx && !is5 ? fmtGs(sub) : "", colXs[5], colIva10);
+      }
+ 
+      // líneas verticales
+      for (let i = 1; i < colXs.length; i++) {
+        lw(0.4);
+        doc.moveTo(colXs[i], rowY).lineTo(colXs[i], rowY + rowH).stroke(COLOR_BORDE);
+      }
+      doc.moveTo(tblX + tblW, rowY).lineTo(tblX + tblW, rowY + rowH).stroke(COLOR_BORDE);
+ 
+      rowY += rowH;
+    });
+ 
+    /* ── Sub-Totales ── */
+    lw(0.8);
+    doc.rect(tblX, rowY, tblW, rowH).fillAndStroke(COLOR_LIGHT, COLOR_BORDE);
+    doc.fillColor("#000").font("Helvetica-Bold").fontSize(7.5)
+       .text("SUB - TOTALES", tblX + 4, rowY + 4, {
+         width: colCant + colDesc + colPU - 8, align: "left"
+       });
+ 
+    const subCell = (val, x, w) =>
+      doc.text(fmtGs(val), x + 2, rowY + 4, { width: w - 4, align: "center" });
+    subCell(totalExenta, colXs[3], colExenta);
+    subCell(totalIva5,   colXs[4], colIva5);
+    subCell(totalIva10,  colXs[5], colIva10);
+ 
+    for (let i = 1; i < colXs.length; i++) {
+      doc.moveTo(colXs[i], rowY).lineTo(colXs[i], rowY + rowH).stroke(COLOR_BORDE);
+    }
+    doc.moveTo(tblX + tblW, rowY).lineTo(tblX + tblW, rowY + rowH).stroke(COLOR_BORDE);
+ 
+    rowY += rowH;
+ 
+    /* ════════════════════════════════════════
+       TOTAL A PAGAR + EN LETRAS
+    ════════════════════════════════════════ */
+    const ftrH = 30;
+    lw(0.8);
+    doc.rect(tblX, rowY, tblW, ftrH).stroke(COLOR_BORDE);
+ 
+    doc.font("Helvetica-Bold").fontSize(8)
+       .text("TOTAL A PAGAR", tblX + 4, rowY + 6, { width: 95 });
+ 
+    doc.font("Helvetica-Bold").fontSize(7.5)
+       .text(`GS. [${totalPyg > 0 && venta.moneda === "PYG" ? "X" : " "}]`, tblX + 100, rowY + 6, { width: 50 });
+    doc.font("Helvetica-Bold").fontSize(7.5)
+       .text(`U$ [${venta.moneda === "USD" ? "X" : " "}]`, tblX + 152, rowY + 6, { width: 50 });
+ 
+    // "En letras" — si tienes una función numToWords, úsala; si no, dejamos espacio
+    const enLetras = typeof numToWords === "function"
+      ? numToWords(totalPyg)
+      : "(ver importe arriba)";
+    doc.font("Helvetica").fontSize(7.5)
+       .text(`(En Letras): ${enLetras}`, tblX + 200, rowY + 6, {
+         width: tblW - 370, align: "left"
+       });
+ 
+    // Caja total derecha
+    const totBoxW = 160;
+    const totBoxX = tblX + tblW - totBoxW;
+    doc.rect(totBoxX, rowY, totBoxW, ftrH).stroke(COLOR_BORDE);
+    doc.font("Helvetica-Bold").fontSize(10)
+       .text(`Gs ${fmtGs(totalPyg)}`, totBoxX + 4, rowY + 8, {
+         width: totBoxW - 8, align: "center"
+       });
+ 
+    rowY += ftrH;
+ 
+    /* ════════════════════════════════════════
+       LIQUIDACIÓN IVA
+    ════════════════════════════════════════ */
+    const ivaH = 20;
+    lw(0.8);
+    doc.rect(tblX, rowY, tblW, ivaH).stroke(COLOR_BORDE);
+ 
+    const ivaColW = tblW / 3;
+    doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#000");
+    doc.text(`LIQUIDACIÓN DEL IVA (5%): Gs ${fmtGs(ivaCalc5)}`,
+             tblX + 4, rowY + 5, { width: ivaColW - 8 });
+    doc.moveTo(tblX + ivaColW, rowY).lineTo(tblX + ivaColW, rowY + ivaH).stroke(COLOR_BORDE);
+    doc.text(`(10%): Gs ${fmtGs(ivaCalc10)}`,
+             tblX + ivaColW + 4, rowY + 5, { width: ivaColW - 8, align: "center" });
+    doc.moveTo(tblX + ivaColW * 2, rowY).lineTo(tblX + ivaColW * 2, rowY + ivaH).stroke(COLOR_BORDE);
+    doc.text(`TOTAL IVA: Gs ${fmtGs(totalIva)}`,
+             tblX + ivaColW * 2 + 4, rowY + 5, { width: ivaColW - 8, align: "right" });
+ 
+    rowY += ivaH;
+ 
+    /* ════════════════════════════════════════
+       PIE: ref venta + imprenta (pequeño)
+    ════════════════════════════════════════ */
+    doc.font("Helvetica").fontSize(6).fillColor("#666")
+       .text(
+         `Ref.: Venta N° ${String(venta.id).padStart(5, "0")}  |  Cajero: ${venta.cajero_nombre}  |  Forma de Pago: ${venta.forma_pago_nombre || "—"}`,
+         tblX, rowY + 4, { width: tblW, align: "left" }
+       );
+ 
     doc.end();
   } catch (err) {
-    console.error("❌ Error generando recibo:", err);
-    res.status(500).send("Error generando recibo");
+    console.error("❌ Error generando factura:", err);
+    res.status(500).send("Error generando factura");
   }
 });
-
 app.post("/caja/cerrar", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
