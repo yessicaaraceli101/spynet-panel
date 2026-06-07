@@ -212,135 +212,130 @@
 <div class="dashboard-kpis"></div>
 
 <!-- ACCESOS RÁPIDOS CARDS -->
+<!-- ACCESOS RÁPIDOS CARDS -->
 <div style="margin-top:1.5rem;">
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" class="accesos-grid">
 
     <!-- Nueva Venta -->
     <button onclick="nav('#ventas'); setTimeout(()=>nuevaVenta(),200)"
-      style="background:#1B3A5C;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
-      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
+      style="background:#1B3F6B;border:none;border-radius:10px;padding:1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;position:relative;text-align:center;transition:filter .15s,transform .15s;min-height:110px;"
+      onmouseover="this.style.filter='brightness(1.1)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-cart-shopping" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
+      <i class="fa-solid fa-cart-shopping" style="font-size:28px;color:rgba(255,255,255,0.93);"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Nueva venta</span>
-        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Registrar una venta</small>
+        <span style="display:block;font-size:1rem;font-weight:600;color:#fff;line-height:1.3;">Nueva venta</span>
+        <small style="font-size:.80rem;color:rgba(255,255,255,0.60);">Registrar una venta</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:9px;right:12px;font-size:.65rem;color:rgba(255,255,255,0.28);"></i>
     </button>
 
     <!-- Nueva Compra -->
     <button onclick="nav('#compras'); setTimeout(()=>abrirNuevaCompra(),200)"
-      style="background:#4A2208;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
-      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
+      style="background:#4A8BB5;border:none;border-radius:10px;padding:1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;position:relative;text-align:center;transition:filter .15s,transform .15s;min-height:110px;"
+      onmouseover="this.style.filter='brightness(1.1)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-receipt" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
+      <i class="fa-solid fa-receipt" style="font-size:28px;color:rgba(255,255,255,0.93);"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Nueva compra</span>
-        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Registrar una compra</small>
+        <span style="display:block;font-size:1rem;font-weight:600;color:#fff;line-height:1.3;">Nueva compra</span>
+        <small style="font-size:.80rem;color:rgba(255,255,255,0.60);">Registrar una compra</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:9px;right:12px;font-size:.65rem;color:rgba(255,255,255,0.28);"></i>
     </button>
 
     <!-- Gestionar Productos -->
     <button onclick="nav('#productos')"
-      style="background:#2E2870;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
-      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
+      style="background:#1B3F6B;border:none;border-radius:10px;padding:1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;position:relative;text-align:center;transition:filter .15s,transform .15s;min-height:110px;"
+      onmouseover="this.style.filter='brightness(1.1)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-box" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
+      <i class="fa-solid fa-box" style="font-size:28px;color:rgba(255,255,255,0.93);"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Gestionar productos</span>
-        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Editar y controlar stock</small>
+        <span style="display:block;font-size:1rem;font-weight:600;color:#fff;line-height:1.3;">Gestionar productos</span>
+        <small style="font-size:.80rem;color:rgba(255,255,255,0.60);">Editar y controlar stock</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:9px;right:12px;font-size:.65rem;color:rgba(255,255,255,0.28);"></i>
     </button>
 
     <!-- Cuentas a Pagar -->
     <button onclick="nav('#cuentas-pagar')"
-      style="background:#143D2E;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
-      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
+      style="background:#4A8BB5;border:none;border-radius:10px;padding:1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;position:relative;text-align:center;transition:filter .15s,transform .15s;min-height:110px;"
+      onmouseover="this.style.filter='brightness(1.1)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-file-invoice-dollar" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
+      <i class="fa-solid fa-file-invoice-dollar" style="font-size:28px;color:rgba(255,255,255,0.93);"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Cuentas a pagar</span>
-        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Facturas pendientes</small>
+        <span style="display:block;font-size:1rem;font-weight:600;color:#fff;line-height:1.3;">Cuentas a pagar</span>
+        <small style="font-size:.80rem;color:rgba(255,255,255,0.60);">Facturas pendientes</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:9px;right:12px;font-size:.65rem;color:rgba(255,255,255,0.28);"></i>
     </button>
 
     <!-- Caja -->
     <button onclick="nav('#caja')"
-      style="background:#0E3D2C;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
-      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
+      style="background:#1B3F6B;border:none;border-radius:10px;padding:1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;position:relative;text-align:center;transition:filter .15s,transform .15s;min-height:110px;"
+      onmouseover="this.style.filter='brightness(1.1)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-cash-register" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
+      <i class="fa-solid fa-cash-register" style="font-size:28px;color:rgba(255,255,255,0.93);"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Caja</span>
-        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Control de efectivo</small>
+        <span style="display:block;font-size:1rem;font-weight:600;color:#fff;line-height:1.3;">Caja</span>
+        <small style="font-size:.80rem;color:rgba(255,255,255,0.60);">Control de efectivo</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:9px;right:12px;font-size:.65rem;color:rgba(255,255,255,0.28);"></i>
     </button>
 
     <!-- Dashboard -->
     <button onclick="nav('#dashboard')"
-      style="background:#152E50;border:none;border-radius:12px;padding:18px 18px 38px;display:flex;flex-direction:column;gap:12px;cursor:pointer;position:relative;text-align:left;transition:filter .15s,transform .15s;min-height:115px;"
-      onmouseover="this.style.filter='brightness(1.15)';this.style.transform='translateY(-2px)'"
+      style="background:#4A8BB5;border:none;border-radius:10px;padding:1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;position:relative;text-align:center;transition:filter .15s,transform .15s;min-height:110px;"
+      onmouseover="this.style.filter='brightness(1.1)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.filter='brightness(1)';this.style.transform='none'">
-      <i class="fa-solid fa-chart-column" style="color:rgba(255,255,255,0.85);font-size:20px;"></i>
+      <i class="fa-solid fa-chart-column" style="font-size:28px;color:rgba(255,255,255,0.93);"></i>
       <div>
-        <span style="display:block;font-size:.88rem;font-weight:600;color:#fff;line-height:1.3;">Dashboard</span>
-        <small style="font-size:.72rem;color:rgba(255,255,255,0.60);">Resumen general</small>
+        <span style="display:block;font-size:1rem;font-weight:600;color:#fff;line-height:1.3;">Dashboard</span>
+        <small style="font-size:.80rem;color:rgba(255,255,255,0.60);">Resumen general</small>
       </div>
-      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:13px;right:15px;font-size:.7rem;color:rgba(255,255,255,0.35);"></i>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:9px;right:12px;font-size:.65rem;color:rgba(255,255,255,0.28);"></i>
     </button>
 
   </div>
 </div>
-<!-- CSS RESPONSIVO - agregar dentro de tu <style> global -->
+
+<!-- CSS RESPONSIVO -->
 <style>
-  /* Grid: 3 columnas fijas en desktop, se adapta en móvil */
   .accesos-grid {
     grid-template-columns: repeat(3, 1fr) !important;
   }
-
   @media (max-width: 768px) {
     .accesos-grid {
       grid-template-columns: repeat(2, 1fr) !important;
     }
   }
-
   @media (max-width: 480px) {
     .accesos-grid {
       grid-template-columns: 1fr 1fr !important;
       gap: 8px !important;
     }
     .accesos-grid button {
-      padding: 0.9rem 0.9rem 1.8rem !important;
       min-height: 95px !important;
     }
   }
-
-  /* Notificaciones responsivo */
-  .btn-notif {
-    position: relative;
-    flex-shrink: 0;
-  }
-
   .notif-dropdown {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 8px);
-    width: 300px;
-    z-index: 999;
-  }
+  position: fixed !important;
+  top: 60px !important;       
+  right: 1rem !important;
+  width: 320px !important;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  z-index: 9999 !important;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.13);
+}
 
-  @media (max-width: 480px) {
-    .notif-dropdown {
-      width: calc(100vw - 2rem);
-      right: -1rem;
-    }
+@media (max-width: 480px) {
+  .notif-dropdown {
+    width: calc(100vw - 2rem) !important;
+    right: 1rem !important;
   }
+}
 </style>
-
 </section>
 
 
