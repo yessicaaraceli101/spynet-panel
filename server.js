@@ -6973,11 +6973,13 @@ app.get("/caja/informe/pdf", requireEmpresa, async (req, res) => {
     const logoPath = path.join(process.cwd(), "public", "img", "logo2.png");
 
     const empresaQ = await pool.query(
-      "SELECT nombre FROM empresas WHERE id=$1 LIMIT 1",
-      [empresaId]
-    );
+  "SELECT nombre, telefono, email FROM empresas WHERE id=$1 LIMIT 1",
+  [empresaId]
+);
 
-    const empresaNombre = empresaQ.rows[0]?.nombre || "Empresa";
+const empresaNombre = empresaQ.rows[0]?.nombre || "Empresa";
+const empresaTelefono = empresaQ.rows[0]?.telefono || "";
+const empresaEmail = empresaQ.rows[0]?.email || "";
 
     const diaQ = await pool.query(
       `
@@ -7101,14 +7103,14 @@ app.get("/caja/informe/pdf", requireEmpresa, async (req, res) => {
     doc.pipe(res);
 
     if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 40, 32, { width: 70 });
-    }
+  doc.image(logoPath, 40, 32, { width: 70 });
+}
 
-    doc.font("Helvetica-Bold").fontSize(24).fillColor(darkText).text("Informe de Caja", 120, 40);
-    doc.font("Helvetica").fontSize(11).fillColor(mutedText)
-      .text(`Empresa: ${empresaNombre}`, 120, 72)
-      .text(`Fecha de emisión: ${fmtFechaLargaPY(fecha)}`, 120, 88)
-      .text(`Generado por: ${usuarioNombre}`, 120, 104);
+doc.font("Helvetica-Bold").fontSize(24).fillColor(darkText).text("Informe de Caja", 120, 40);
+doc.font("Helvetica").fontSize(11).fillColor(mutedText)
+  .text(`${empresaNombre}`, 120, 72)
+  .text(empresaTelefono ? `Tel: ${empresaTelefono}` : "", 120, 88)
+  .text(empresaEmail ? `Email: ${empresaEmail}` : "", 120, 104);
 
     doc.moveTo(40, 128).lineTo(555, 128).strokeColor(lineColor).lineWidth(1).stroke();
     doc.y = 145;
@@ -7156,11 +7158,7 @@ app.get("/caja/informe/pdf", requireEmpresa, async (req, res) => {
 
     doc.addPage();
 
-    if (fs.existsSync(logoPath)) {
-      doc.image(logoPath, 40, 22, { width: 45 });
-    }
-
-    doc.font("Helvetica-Bold").fontSize(16).fillColor(darkText).text("Detalle de Ventas del Día", 95, 30);
+    doc.font("Helvetica-Bold").fontSize(16).fillColor(darkText).text("Detalle de Ventas del Día", 40, 30);
     y = 70;
 
     const rowsVentas = ventasQ.rows.length
