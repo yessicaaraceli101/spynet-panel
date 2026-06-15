@@ -138,57 +138,58 @@
     }
 
     .card{
-      background:var(--card);
-      border:1px solid var(--line-soft);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      padding:20px;
-    }
+  background:#ffffff;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  box-shadow:0 2px 10px rgba(15,23,42,.05);
+  padding:20px;
+  transition:all .2s ease;
+}
 
-    .kpi-card{
-      position:relative;
-      overflow:hidden;
-      min-height:145px;
-      cursor:pointer;
-      transition:transform .18s ease, box-shadow .18s ease;
-    }
+   .kpi-card{
+  position:relative;
+  overflow:hidden;
+  min-height:145px;
+  cursor:pointer;
+  transition:all .2s ease;
+}
 
-    .kpi-card:hover{
-      transform:translateY(-2px);
-      box-shadow:0 14px 34px rgba(15,23,42,.10);
-    }
+.kpi-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 10px 24px rgba(0,0,0,.08);
+}
 
-    .kpi-card::before{
-      content:"";
-      position:absolute;
-      left:0;
-      top:0;
-      bottom:0;
-      width:6px;
-      border-radius:20px 0 0 20px;
-    }
-
-    .kpi-compras-dia::before{ background:var(--orange); }
-    .kpi-compras-mes::before{ background:var(--green); }
-    .kpi-cuentas-dia::before{ background:var(--red); }
-    .kpi-cuentas-mes::before{ background:var(--blue); }
 
     .kpi-icon{
-      width:42px;
-      height:42px;
-      border-radius:12px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      margin-bottom:14px;
-      font-size:18px;
-    }
+  width:auto;
+  height:auto;
+  display:block;
+  margin-bottom:14px;
+  font-size:24px;
+  background:none !important;
+  border:none !important;
+  box-shadow:none !important;
+}
 
-    .icon-orange{ background:var(--orange-soft); color:var(--orange-text); }
-    .icon-green{ background:var(--green-soft); color:var(--green-text); }
-    .icon-red{ background:var(--red-soft); color:var(--red-text); }
-    .icon-blue{ background:var(--blue-soft); color:var(--blue-text); }
+    .icon-orange{
+  background:none !important;
+  color:#f59e0b;
+}
 
+.icon-green{
+  background:none !important;
+  color:#16a34a;
+}
+
+.icon-red{
+  background:none !important;
+  color:#dc2626;
+}
+
+.icon-blue{
+  background:none !important;
+  color:#2563eb;
+}
     .kpi-title{
       font-size:14px;
       font-weight:800;
@@ -245,14 +246,14 @@
       font-weight:800;
     }
 
-    .table-wrap{
-      overflow:auto;
-      background:#ffffff;
-      border-radius:20px;
-      box-shadow:var(--shadow);
-      border:1px solid #dbeafe;
-      padding:14px;
-    }
+   .table-wrap{
+  overflow:auto;
+  background:#ffffff;
+  border-radius:12px;
+  border:1px solid #e5e7eb;
+  box-shadow:0 2px 10px rgba(15,23,42,.05);
+  padding:14px;
+}
 
     table{
       width:100%;
@@ -272,8 +273,8 @@
     }
 
     th{
-      background:var(--blue-soft);
-      color:var(--blue-text);
+  background:#f8fafc;
+  color:#334155;
       font-weight:900;
       position:sticky;
       top:0;
@@ -382,6 +383,128 @@
         font-size:22px;
       }
     }
+    thead {
+  background: var(--blue);
+  color: white;
+}
+
+thead th {
+  padding: 14px;
+  font-weight: 600;
+}
+.btn-detalle{
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: .2s;
+}
+
+.btn-detalle:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(37,99,235,.25);
+}
+#lunesTotal,
+#martesTotal,
+#miercolesTotal,
+#juevesTotal,
+#viernesTotal,
+#sabadoTotal,
+#domingoTotal{
+  font-weight: 700;
+  color: #0f172a;
+}
+tbody tr{
+  transition:.2s;
+}
+
+tbody tr:hover{
+  background:#f8fafc;
+}
+tfoot{
+  background:#eff6ff;
+}
+
+tfoot th{
+  font-size:16px;
+  font-weight:700;
+}
+.resumen-semanal{
+  background:#fff;
+  border-radius:16px;
+  padding:20px;
+  box-shadow:0 4px 15px rgba(0,0,0,.05);
+}
+
+.resumen-semanal .section-head{
+  margin-bottom:18px;
+}
+
+.resumen-semanal .section-head h3{
+  margin:0;
+  font-size:28px;
+  font-weight:700;
+  color:#0f172a;
+}
+
+.tabla-egresos{
+  width:100%;
+  border-collapse:collapse;
+}
+
+.tabla-egresos thead th{
+  background:#2563eb;
+  color:#fff;
+  padding:14px;
+  text-align:left;
+  font-weight:600;
+}
+
+.tabla-egresos tbody td{
+  padding:14px;
+  border-bottom:1px solid #e5e7eb;
+}
+
+.tabla-egresos tbody tr:hover{
+  background:#f8fafc;
+}
+
+.total-dia{
+  font-weight:700;
+  color:#0f172a;
+}
+
+.tabla-egresos tfoot{
+  background:#eff6ff;
+}
+
+.tabla-egresos tfoot th{
+  padding:16px 14px;
+  font-size:15px;
+  font-weight:700;
+  color:#1e3a8a;
+}
+
+.btn-detalle{
+  background:#2563eb;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:8px 14px;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.btn-detalle:hover{
+  transform:translateY(-1px);
+  box-shadow:0 4px 12px rgba(37,99,235,.25);
+}
   </style>
 </head>
 
@@ -442,6 +565,132 @@
       </div>
     </div>
 
+    
+
+
+
+<div class="section resumen-semanal">
+
+  <div class="section-head">
+    <h3>Resumen Semanal de Egresos</h3>
+  </div>
+
+  <div class="table-wrap">
+
+    <table class="tabla-egresos">
+
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th>Compras</th>
+          <th>Cuentas Pagadas</th>
+          <th>Total Día</th>
+          <th>Detalle</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        <tr>
+          <td><strong>Lunes</strong></td>
+          <td id="lunesCompras">Gs. 0</td>
+          <td id="lunesCuentas">Gs. 0</td>
+          <td id="lunesTotal" class="total-dia">Gs. 0</td>
+          <td>
+            <button class="btn-detalle" onclick="verDetalleDia('lunes')">
+              👁 Ver detalle
+            </button>
+          </td>
+        </tr>
+
+        <tr>
+          <td><strong>Martes</strong></td>
+          <td id="martesCompras">Gs. 0</td>
+          <td id="martesCuentas">Gs. 0</td>
+          <td id="martesTotal" class="total-dia">Gs. 0</td>
+          <td>
+            <button class="btn-detalle" onclick="verDetalleDia('martes')">
+              👁 Ver detalle
+            </button>
+          </td>
+        </tr>
+
+        <tr>
+          <td><strong>Miércoles</strong></td>
+          <td id="miercolesCompras">Gs. 0</td>
+          <td id="miercolesCuentas">Gs. 0</td>
+          <td id="miercolesTotal" class="total-dia">Gs. 0</td>
+          <td>
+            <button class="btn-detalle" onclick="verDetalleDia('miercoles')">
+              👁 Ver detalle
+            </button>
+          </td>
+        </tr>
+
+        <tr>
+          <td><strong>Jueves</strong></td>
+          <td id="juevesCompras">Gs. 0</td>
+          <td id="juevesCuentas">Gs. 0</td>
+          <td id="juevesTotal" class="total-dia">Gs. 0</td>
+          <td>
+            <button class="btn-detalle" onclick="verDetalleDia('jueves')">
+              👁 Ver detalle
+            </button>
+          </td>
+        </tr>
+
+        <tr>
+          <td><strong>Viernes</strong></td>
+          <td id="viernesCompras">Gs. 0</td>
+          <td id="viernesCuentas">Gs. 0</td>
+          <td id="viernesTotal" class="total-dia">Gs. 0</td>
+          <td>
+            <button class="btn-detalle" onclick="verDetalleDia('viernes')">
+              👁 Ver detalle
+            </button>
+          </td>
+        </tr>
+
+        <tr>
+          <td><strong>Sábado</strong></td>
+          <td id="sabadoCompras">Gs. 0</td>
+          <td id="sabadoCuentas">Gs. 0</td>
+          <td id="sabadoTotal" class="total-dia">Gs. 0</td>
+          <td>
+            <button class="btn-detalle" onclick="verDetalleDia('sabado')">
+              👁 Ver detalle
+            </button>
+          </td>
+        </tr>
+
+        <tr>
+          <td><strong>Domingo</strong></td>
+          <td id="domingoCompras">Gs. 0</td>
+          <td id="domingoCuentas">Gs. 0</td>
+          <td id="domingoTotal" class="total-dia">Gs. 0</td>
+          <td>
+            <button class="btn-detalle" onclick="verDetalleDia('domingo')">
+              👁 Ver detalle
+            </button>
+          </td>
+        </tr>
+
+      </tbody>
+
+      <tfoot>
+        <tr>
+          <th colspan="3">TOTAL GENERAL SEMANA</th>
+          <th id="totalGeneralSemana">Gs. 0</th>
+          <th></th>
+        </tr>
+      </tfoot>
+
+    </table>
+
+  </div>
+
+</div>
+    
     <div class="section" id="compras-dia">
       <div class="section-head">
         <h3>Compras del Día</h3>
@@ -565,7 +814,7 @@
     </div>
   </div>
 
-  <script>
+<script>
     const ITEMS_POR_PAGINA = 5;
 
     const state = {
@@ -574,6 +823,9 @@
       cuentasDiaPage: 1,
       cuentasMesPage: 1
     };
+
+    let __comprasCache = [];
+    let __cuentasCache = [];
 
     const fmtGs = (n) => "Gs. " + Number(n || 0).toLocaleString("es-PY");
 
@@ -620,12 +872,28 @@
       return String(dateStr).slice(0, 7) === String(todayStr).slice(0, 7);
     }
 
+    // Parsea "YYYY-MM-DD" (o cualquier string que empiece así) como fecha LOCAL,
+    // evitando el desfase de zona horaria que produce new Date("YYYY-MM-DD")
+    // (que lo interpreta como UTC y puede caer un día antes en getDay()).
+    function parseFechaLocal(dateStr){
+      const d = onlyDate(dateStr);
+      if(!d) return null;
+
+      const m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if(!m) return null;
+
+      const fecha = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      return isNaN(fecha.getTime()) ? null : fecha;
+    }
+
     function fechaCuenta(c){
       return onlyDate(
         c.fecha_pago ||
         c.pagado_en ||
         c.fecha_pagado ||
         c.fecha_pago_real ||
+        c.pago ||
+        c.fecha_pagada ||
         c.fecha ||
         c.vencimiento ||
         c.creado_en ||
@@ -813,17 +1081,248 @@
         const hoy = hoyLocal();
 
         const compras = await getCompras();
-        pintarComprasDia(compras || [], hoy);
-        pintarComprasMes(compras || [], hoy);
+        __comprasCache = compras || [];
+
+        pintarComprasDia(__comprasCache, hoy);
+        pintarComprasMes(__comprasCache, hoy);
 
         const cuentas = await getCuentas();
-        pintarCuentasDia(cuentas || [], hoy);
-        pintarCuentasMes(cuentas || [], hoy);
+        __cuentasCache = cuentas || [];
 
+        pintarCuentasDia(__cuentasCache, hoy);
+        pintarCuentasMes(__cuentasCache, hoy);
+
+        pintarResumenSemanal(__comprasCache, __cuentasCache);
       } catch (err) {
         console.error("Error cargando detalle de egresos:", err);
         alert("No se pudo cargar el detalle de egresos.");
       }
+    }
+
+    function pintarResumenSemanal(compras, cuentas) {
+
+      const dias = {
+        1: "lunes",
+        2: "martes",
+        3: "miercoles",
+        4: "jueves",
+        5: "viernes",
+        6: "sabado",
+        0: "domingo"
+      };
+
+      const hoy = new Date();
+
+      const inicioSemana = new Date(hoy);
+      inicioSemana.setDate(hoy.getDate() - (hoy.getDay() === 0 ? 6 : hoy.getDay() - 1));
+      inicioSemana.setHours(0, 0, 0, 0);
+
+      const finSemana = new Date(inicioSemana);
+      finSemana.setDate(inicioSemana.getDate() + 6);
+      finSemana.setHours(23, 59, 59, 999);
+
+      let totalSemana = 0;
+
+      Object.entries(dias).forEach(([numDia, nombreDia]) => {
+
+        const totalCompras = compras
+          .filter(c => {
+            const fecha = parseFechaLocal(c.fecha);
+            if(!fecha) return false;
+
+            return (
+              fecha >= inicioSemana &&
+              fecha <= finSemana &&
+              fecha.getDay() == numDia
+            );
+          })
+          .reduce((a, c) => a + Number(c.total || 0), 0);
+
+        const totalCuentas = cuentas
+          .filter(c => {
+            if(String(c.estado || "").toLowerCase() !== "pagado") return false;
+
+            const fecha = parseFechaLocal(fechaCuenta(c));
+            if(!fecha) return false;
+
+            return (
+              fecha >= inicioSemana &&
+              fecha <= finSemana &&
+              fecha.getDay() == numDia
+            );
+          })
+          .reduce((a, c) => a + montoCuenta(c), 0);
+
+        const totalDia = totalCompras + totalCuentas;
+
+        const elCompras = document.getElementById(`${nombreDia}Compras`);
+        const elCuentas = document.getElementById(`${nombreDia}Cuentas`);
+        const elTotal = document.getElementById(`${nombreDia}Total`);
+
+        if(elCompras) elCompras.textContent = fmtGs(totalCompras);
+        if(elCuentas) elCuentas.textContent = fmtGs(totalCuentas);
+        if(elTotal) elTotal.textContent = fmtGs(totalDia);
+
+        totalSemana += totalDia;
+      });
+
+      const elTotalSemana = document.getElementById("totalGeneralSemana");
+      if(elTotalSemana) elTotalSemana.textContent = fmtGs(totalSemana);
+    }
+
+    // Mapa nombre de día (es) -> número de día JS (0=domingo .. 6=sábado)
+    const NUM_DIA = {
+      domingo: 0,
+      lunes: 1,
+      martes: 2,
+      miercoles: 3,
+      jueves: 4,
+      viernes: 5,
+      sabado: 6
+    };
+
+    const NOMBRE_DIA_LEGIBLE = {
+      domingo: "Domingo",
+      lunes: "Lunes",
+      martes: "Martes",
+      miercoles: "Miércoles",
+      jueves: "Jueves",
+      viernes: "Viernes",
+      sabado: "Sábado"
+    };
+
+    function getRangoSemanaActual(){
+      const hoy = new Date();
+
+      const inicioSemana = new Date(hoy);
+      inicioSemana.setDate(hoy.getDate() - (hoy.getDay() === 0 ? 6 : hoy.getDay() - 1));
+      inicioSemana.setHours(0, 0, 0, 0);
+
+      const finSemana = new Date(inicioSemana);
+      finSemana.setDate(inicioSemana.getDate() + 6);
+      finSemana.setHours(23, 59, 59, 999);
+
+      return { inicioSemana, finSemana };
+    }
+
+    function verDetalleDia(dia){
+      const numDia = NUM_DIA[dia];
+      if(numDia === undefined) return;
+
+      const { inicioSemana, finSemana } = getRangoSemanaActual();
+
+      const comprasDia = __comprasCache.filter(c => {
+        const fecha = parseFechaLocal(c.fecha);
+        if(!fecha) return false;
+        return fecha >= inicioSemana && fecha <= finSemana && fecha.getDay() == numDia;
+      });
+
+      const cuentasDia = __cuentasCache.filter(c => {
+        if(String(c.estado || "").toLowerCase() !== "pagado") return false;
+        const fecha = parseFechaLocal(fechaCuenta(c));
+        if(!fecha) return false;
+        return fecha >= inicioSemana && fecha <= finSemana && fecha.getDay() == numDia;
+      });
+
+      mostrarModalDetalleDia(dia, comprasDia, cuentasDia);
+    }
+
+    function cerrarModalDetalleDia(){
+      const modal = document.getElementById("modalDetalleDia");
+      if(modal) modal.remove();
+    }
+
+    function mostrarModalDetalleDia(dia, comprasDia, cuentasDia){
+      cerrarModalDetalleDia();
+
+      const totalCompras = comprasDia.reduce((a, c) => a + Number(c.total || 0), 0);
+      const totalCuentas = cuentasDia.reduce((a, c) => a + montoCuenta(c), 0);
+      const totalDia = totalCompras + totalCuentas;
+
+      const filasCompras = comprasDia.length ? comprasDia.map(c => `
+        <tr>
+          <td>${onlyDate(c.fecha)}</td>
+          <td>${c.proveedor_nombre || "-"}</td>
+          <td>${c.factura || "-"}</td>
+          <td>${c.detalle_productos || c.nombres_productos || c.productos || "-"}</td>
+          <td class="cell-muted">${c.tipo_pago || "-"}</td>
+          <td class="money">${fmtGs(c.total)}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="6" class="empty">Sin compras este día</td></tr>`;
+
+      const filasCuentas = cuentasDia.length ? cuentasDia.map(c => `
+        <tr>
+          <td>${fechaCuenta(c) || "-"}</td>
+          <td>${c.proveedor || c.proveedor_nombre || "-"}</td>
+          <td>${c.concepto || c.descripcion || "-"}</td>
+          <td><span class="tag">${c.estado || "Pagado"}</span></td>
+          <td class="cell-muted">${c.caja_tipo || c.tipo_caja || c.caja || "-"}</td>
+          <td class="money">${fmtGs(montoCuenta(c))}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="6" class="empty">Sin cuentas pagadas este día</td></tr>`;
+
+      const overlay = document.createElement("div");
+      overlay.id = "modalDetalleDia";
+      overlay.style.cssText = `
+        position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 9999; padding: 16px;
+      `;
+
+      overlay.innerHTML = `
+        <div style="background:#fff; border-radius:10px; max-width:900px; width:100%; max-height:85vh; overflow:auto; padding:20px 24px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+            <h3 style="margin:0; font-size:18px;">Detalle del ${NOMBRE_DIA_LEGIBLE[dia] || dia}</h3>
+            <button id="btnCerrarModalDetalleDia" style="border:none; background:transparent; font-size:20px; cursor:pointer; line-height:1;">&times;</button>
+          </div>
+
+          <h4 style="margin:16px 0 8px;">Compras</h4>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <thead>
+                <tr>
+                  <th style="text-align:left; padding:6px;">Fecha</th>
+                  <th style="text-align:left; padding:6px;">Proveedor</th>
+                  <th style="text-align:left; padding:6px;">Factura</th>
+                  <th style="text-align:left; padding:6px;">Detalle</th>
+                  <th style="text-align:left; padding:6px;">Tipo pago</th>
+                  <th style="text-align:right; padding:6px;">Total</th>
+                </tr>
+              </thead>
+              <tbody>${filasCompras}</tbody>
+            </table>
+          </div>
+          <p style="text-align:right; font-weight:600; margin:4px 0 0;">Total compras: ${fmtGs(totalCompras)}</p>
+
+          <h4 style="margin:20px 0 8px;">Cuentas pagadas</h4>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <thead>
+                <tr>
+                  <th style="text-align:left; padding:6px;">Fecha pago</th>
+                  <th style="text-align:left; padding:6px;">Proveedor</th>
+                  <th style="text-align:left; padding:6px;">Concepto</th>
+                  <th style="text-align:left; padding:6px;">Estado</th>
+                  <th style="text-align:left; padding:6px;">Caja</th>
+                  <th style="text-align:right; padding:6px;">Monto</th>
+                </tr>
+              </thead>
+              <tbody>${filasCuentas}</tbody>
+            </table>
+          </div>
+          <p style="text-align:right; font-weight:600; margin:4px 0 0;">Total cuentas: ${fmtGs(totalCuentas)}</p>
+
+          <hr style="margin:16px 0;">
+          <p style="text-align:right; font-size:16px; font-weight:700; margin:0;">Total del día: ${fmtGs(totalDia)}</p>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      document.getElementById("btnCerrarModalDetalleDia").onclick = cerrarModalDetalleDia;
+      overlay.addEventListener("click", (e) => {
+        if(e.target === overlay) cerrarModalDetalleDia();
+      });
     }
 
     aplicarEmpresaEgresos();
