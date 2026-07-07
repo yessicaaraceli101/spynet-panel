@@ -1147,330 +1147,207 @@
 
       <!-- ===== Modales ===== -->
 
-      <!-- Cliente: NUEVO -->
-      <div class="modal" id="modalCliente">
-        <div class="sheet">
-          <h3>Nuevo Cliente</h3>
-          <div class="grid cols-2">
-            <div><label class="label">Nombre</label><input id="c_nombre" class="input"></div>
-            <div><label class="label">Apellido</label><input id="c_apellido" class="input"></div>
-            <div><label class="label">CI</label><input id="c_ci" class="input" inputmode="numeric" /></div>
-            <div><label class="label">Teléfono</label><input id="c_tel" class="input"></div>
-            <div><label class="label">País</label><input id="c_country" class="input" placeholder="Paraguay"></div>
-            <div><label class="label">Ciudad</label><input id="c_city" class="input" placeholder="Asunción"></div>
-            <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="c_dir" class="input"></div>
-            <div><label class="label">Estado</label>
-              <select id="c_status" class="input">
-                <option value="pagado">Pagado</option>
-                <option value="pendiente">Pendiente de pago</option>
-              </select>
-            </div>
-          </div>
-          <div class="actions" style="margin-top:1rem">
-            <button class="btn btn-green" onclick="guardarCliente()">Guardar</button>
-            <button class="btn btn-red" onclick="closeModal('modalCliente')">Cerrar</button>
-          </div>
-        </div>
+<!-- Cliente: NUEVO -->
+<div class="modal" id="modalCliente">
+  <div class="sheet sheet-pro">
+    <div class="sheet-header">
+      <div class="sheet-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+      <div>
+        <h3>Nuevo Cliente</h3>
+        <p class="sheet-subtitle">Completá los datos para registrar un nuevo cliente</p>
+      </div>
+    </div>
+
+    <div class="sheet-body">
+      <div class="section-title">Datos personales</div>
+      <div class="grid cols-2">
+        <div><label class="label">Nombre</label><input id="c_nombre" class="input" placeholder="Ej: María"></div>
+        <div><label class="label">Apellido</label><input id="c_apellido" class="input" placeholder="Ej: López"></div>
+        <div><label class="label">CI</label><input id="c_ci" class="input" inputmode="numeric" placeholder="Ej: 4521789"></div>
+        <div><label class="label">Teléfono</label><input id="c_tel" class="input" placeholder="Ej: 0981 123 456"></div>
       </div>
 
-      <!-- Cliente: EDITAR -->
-      <div class="modal" id="modalClienteEdit">
-        <div class="sheet">
-          <h3>Editar Cliente</h3>
-          <input type="hidden" id="cli_edit_id" />
-          <div class="grid cols-2">
-            <div><label class="label">Nombre</label><input id="ce_nombre" class="input"></div>
-            <div><label class="label">Apellido</label><input id="ce_apellido" class="input"></div>
-            <div><label class="label">CI</label><input id="ce_ci" class="input" inputmode="numeric" /></div>
-            <div><label class="label">Teléfono</label><input id="ce_tel" class="input"></div>
-            <div><label class="label">País</label><input id="ce_country" class="input"></div>
-            <div><label class="label">Ciudad</label><input id="ce_city" class="input"></div>
-            <div style="grid-column:1/-1"><label class="label">Dirección</label><input id="ce_dir" class="input"></div>
-            <div><label class="label">Estado</label>
-              <select id="ce_status" class="input">
-                <option value="pagado">Pagado</option>
-                <option value="pendiente">Pendiente de pago</option>
-              </select>
-            </div>
-          </div>
-          <div class="actions" style="margin-top:1rem">
-            <button class="btn btn-success" onclick="actualizarCliente()">Guardar cambios</button>
-            <button class="btn btn-danger" onclick="closeModal('modalClienteEdit')">Cerrar</button>
-          </div>
+      <div class="section-title">Ubicación</div>
+      <div class="grid cols-2">
+        <div><label class="label">País</label><input id="c_country" class="input" placeholder="Paraguay"></div>
+        <div><label class="label">Ciudad</label><input id="c_city" class="input" placeholder="Asunción"></div>
+        <div><label class="label">Dirección</label><input id="c_dir" class="input" placeholder="Calle y número"></div>
+        <div>
+          <label class="label">Estado</label>
+          <select id="c_status" class="input">
+            <option value="pagado">Pagado</option>
+            <option value="pendiente">Pendiente de pago</option>
+          </select>
         </div>
       </div>
+    </div>
 
+    <div class="actions sheet-footer">
+      <button class="btn btn-red" onclick="closeModal('modalCliente')">Cerrar</button>
+      <button class="btn btn-green" onclick="guardarCliente()">Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cliente: EDITAR -->
+<div class="modal" id="modalClienteEdit">
+  <div class="sheet sheet-pro">
+    <div class="sheet-header">
+      <div class="sheet-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+        </svg>
+      </div>
+      <div>
+        <h3>Editar Cliente</h3>
+        <p class="sheet-subtitle">Actualizá los datos del cliente</p>
+      </div>
+    </div>
+
+    <input type="hidden" id="cli_edit_id" />
+
+    <div class="sheet-body">
+      <div class="section-title">Datos personales</div>
+      <div class="grid cols-2">
+        <div><label class="label">Nombre</label><input id="ce_nombre" class="input"></div>
+        <div><label class="label">Apellido</label><input id="ce_apellido" class="input"></div>
+        <div><label class="label">CI</label><input id="ce_ci" class="input" inputmode="numeric" /></div>
+        <div><label class="label">Teléfono</label><input id="ce_tel" class="input"></div>
+      </div>
+
+      <div class="section-title">Ubicación</div>
+      <div class="grid cols-2">
+        <div><label class="label">País</label><input id="ce_country" class="input"></div>
+        <div><label class="label">Ciudad</label><input id="ce_city" class="input"></div>
+        <div><label class="label">Dirección</label><input id="ce_dir" class="input"></div>
+        <div>
+          <label class="label">Estado</label>
+          <select id="ce_status" class="input">
+            <option value="pagado">Pagado</option>
+            <option value="pendiente">Pendiente de pago</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions sheet-footer">
+      <button class="btn btn-danger" onclick="closeModal('modalClienteEdit')">Cerrar</button>
+      <button class="btn btn-success" onclick="actualizarCliente()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
       <!-- Proveedor: NUEVO -->
 <div class="modal" id="modalProveedor">
-
-  <div class="sheet">
-
-    <h3>Nuevo Proveedor</h3>
-
-    <div class="grid cols-2">
-
-      <!-- NOMBRE -->
+  <div class="sheet sheet-pro">
+    <div class="sheet-header">
+      <div class="sheet-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21h18"></path>
+          <path d="M5 21V7l8-4v18"></path>
+          <path d="M19 21V11l-6-4"></path>
+        </svg>
+      </div>
       <div>
-        <label class="label">Nombre</label>
-
-        <input
-          id="p_nombre"
-          class="input"
-          placeholder="Nombre del proveedor"
-        >
+        <h3>Nuevo Proveedor</h3>
+        <p class="sheet-subtitle">Completá los datos para registrar un nuevo proveedor</p>
       </div>
-
-      <!-- RUC -->
-      <div>
-        <label class="label">RUC</label>
-
-        <input
-          id="p_ruc"
-          class="input"
-          placeholder="Ej: 1234567-8"
-        >
-      </div>
-
-      <!-- CONTACTO -->
-      <div>
-        <label class="label">Contacto</label>
-
-        <input
-          id="p_contacto"
-          class="input"
-          placeholder="Nombre de contacto"
-        >
-      </div>
-
-      <!-- EMAIL -->
-      <div>
-        <label class="label">Email</label>
-
-        <input
-          id="p_email"
-          type="email"
-          class="input"
-          placeholder="proveedor@email.com"
-        >
-      </div>
-
-      <!-- TELÉFONO -->
-      <div>
-        <label class="label">Teléfono</label>
-
-        <input
-          id="p_tel"
-          class="input"
-          placeholder="Ej: 0981 123 456"
-        >
-      </div>
-
-      <!-- PAÍS -->
-      <div>
-        <label class="label">País</label>
-
-        <input
-          id="p_pais"
-          class="input"
-          value="Paraguay"
-        >
-      </div>
-
-      <!-- CIUDAD -->
-      <div>
-        <label class="label">Ciudad</label>
-
-        <input
-          id="p_ciudad"
-          class="input"
-          placeholder="Asunción"
-        >
-      </div>
-
-      <!-- DIRECCIÓN -->
-      <div style="grid-column:1/-1">
-
-        <label class="label">Dirección</label>
-
-        <input
-          id="p_dir"
-          class="input"
-          placeholder="Dirección completa"
-        >
-
-      </div>
-
-      <!-- ESTADO -->
-      <div>
-
-        <label class="label">Estado</label>
-
-        <select id="p_estado" class="input">
-          <option>Activo</option>
-          <option>Inactivo</option>
-        </select>
-
-      </div>
-
     </div>
 
-    <!-- BOTONES -->
-    <div
-      class="actions"
-      style="margin-top:1rem"
-    >
+    <div class="sheet-body">
+      <div class="section-title">Datos del proveedor</div>
+      <div class="grid cols-2">
+        <div><label class="label">Nombre</label><input id="p_nombre" class="input" placeholder="Nombre del proveedor"></div>
+        <div><label class="label">RUC</label><input id="p_ruc" class="input" placeholder="Ej: 1234567-8"></div>
+      </div>
 
-      <button
-        class="btn btn-green"
-        onclick="guardarProveedor()"
-      >
-        Guardar
-      </button>
+      <div class="section-title">Contacto</div>
+      <div class="grid cols-2">
+        <div><label class="label">Contacto</label><input id="p_contacto" class="input" placeholder="Nombre de contacto"></div>
+        <div><label class="label">Email</label><input id="p_email" type="email" class="input" placeholder="proveedor@email.com"></div>
+        <div><label class="label">Teléfono</label><input id="p_tel" class="input" placeholder="Ej: 0981 123 456"></div>
+      </div>
 
-      <button
-        class="btn btn-red"
-        onclick="closeModal('modalProveedor')"
-      >
-        Cerrar
-      </button>
-
+      <div class="section-title">Ubicación</div>
+      <div class="grid cols-2">
+        <div><label class="label">País</label><input id="p_pais" class="input" value="Paraguay"></div>
+        <div><label class="label">Ciudad</label><input id="p_ciudad" class="input" placeholder="Asunción"></div>
+        <div><label class="label">Dirección</label><input id="p_dir" class="input" placeholder="Dirección completa"></div>
+        <div>
+          <label class="label">Estado</label>
+          <select id="p_estado" class="input">
+            <option>Activo</option>
+            <option>Inactivo</option>
+          </select>
+        </div>
+      </div>
     </div>
 
+    <div class="actions sheet-footer">
+      <button class="btn btn-red" onclick="closeModal('modalProveedor')">Cerrar</button>
+      <button class="btn btn-green" onclick="guardarProveedor()">Guardar proveedor</button>
+    </div>
   </div>
-
 </div>
-      <!-- Proveedor: EDITAR -->
+
+<!-- Proveedor: EDITAR -->
 <div class="modal" id="modalProveedorEdit">
-
-  <div class="sheet">
-
-    <h3>Editar Proveedor</h3>
+  <div class="sheet sheet-pro">
+    <div class="sheet-header">
+      <div class="sheet-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+        </svg>
+      </div>
+      <div>
+        <h3>Editar Proveedor</h3>
+        <p class="sheet-subtitle">Actualizá los datos del proveedor</p>
+      </div>
+    </div>
 
     <input type="hidden" id="prov_edit_id" />
 
-    <div class="grid cols-2">
-
-      <!-- NOMBRE -->
-      <div>
-        <label class="label">Nombre</label>
-
-        <input
-          id="pe_nombre"
-          class="input"
-        >
+    <div class="sheet-body">
+      <div class="section-title">Datos del proveedor</div>
+      <div class="grid cols-2">
+        <div><label class="label">Nombre</label><input id="pe_nombre" class="input"></div>
+        <div><label class="label">RUC</label><input id="pe_ruc" class="input"></div>
       </div>
 
-      <!-- RUC -->
-      <div>
-        <label class="label">RUC</label>
-
-        <input
-          id="pe_ruc"
-          class="input"
-        >
+      <div class="section-title">Contacto</div>
+      <div class="grid cols-2">
+        <div><label class="label">Contacto</label><input id="pe_contacto" class="input"></div>
+        <div><label class="label">Email</label><input id="pe_email" type="email" class="input" placeholder="proveedor@email.com"></div>
+        <div><label class="label">Teléfono</label><input id="pe_tel" class="input"></div>
       </div>
 
-      <!-- CONTACTO -->
-      <div>
-        <label class="label">Contacto</label>
-
-        <input
-          id="pe_contacto"
-          class="input"
-        >
+      <div class="section-title">Ubicación</div>
+      <div class="grid cols-2">
+        <div><label class="label">País</label><input id="pe_pais" class="input"></div>
+        <div><label class="label">Ciudad</label><input id="pe_ciudad" class="input"></div>
+        <div><label class="label">Dirección</label><input id="pe_dir" class="input"></div>
+        <div>
+          <label class="label">Estado</label>
+          <select id="pe_estado" class="input">
+            <option>Activo</option>
+            <option>Inactivo</option>
+          </select>
+        </div>
       </div>
-
-      <!-- EMAIL -->
-      <div>
-        <label class="label">Email</label>
-
-        <input
-          id="pe_email"
-          type="email"
-          class="input"
-          placeholder="proveedor@email.com"
-        >
-      </div>
-
-      <!-- TELÉFONO -->
-      <div>
-        <label class="label">Teléfono</label>
-
-        <input
-          id="pe_tel"
-          class="input"
-        >
-      </div>
-
-      <!-- PAÍS -->
-      <div>
-        <label class="label">País</label>
-
-        <input
-          id="pe_pais"
-          class="input"
-        >
-      </div>
-
-      <!-- CIUDAD -->
-      <div>
-        <label class="label">Ciudad</label>
-
-        <input
-          id="pe_ciudad"
-          class="input"
-        >
-      </div>
-
-      <!-- DIRECCIÓN -->
-      <div style="grid-column:1/-1">
-
-        <label class="label">Dirección</label>
-
-        <input
-          id="pe_dir"
-          class="input"
-        >
-
-      </div>
-
-      <!-- ESTADO -->
-      <div>
-
-        <label class="label">Estado</label>
-
-        <select id="pe_estado" class="input">
-          <option>Activo</option>
-          <option>Inactivo</option>
-        </select>
-
-      </div>
-
     </div>
 
-    <!-- BOTONES -->
-    <div class="actions">
-
-      <button
-        class="btn btn-success"
-        onclick="actualizarProveedor()"
-      >
-        Guardar cambios
-      </button>
-
-      <button
-        class="btn btn-danger"
-        onclick="closeModal('modalProveedorEdit')"
-      >
-        Cerrar
-      </button>
-
+    <div class="actions sheet-footer">
+      <button class="btn btn-danger" onclick="closeModal('modalProveedorEdit')">Cerrar</button>
+      <button class="btn btn-success" onclick="actualizarProveedor()">Guardar cambios</button>
     </div>
-
   </div>
-
 </div>
-
       <div id="modalClaveEditar" class="modal">
         <div class="sheet modal-clave">
 
@@ -1764,207 +1641,179 @@
           </div>
         </div>
       </div>
+<!-- Producto: NUEVO -->
+<div class="modal" id="modalProducto">
+  <div class="sheet sheet-pro">
+    <div class="sheet-header">
+      <div class="sheet-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+          <path d="m3.3 7 8.7 5 8.7-5"></path>
+          <path d="M12 22V12"></path>
+        </svg>
+      </div>
+      <div>
+        <h3>Nuevo Producto</h3>
+        <p class="sheet-subtitle">Completá los datos para registrar un nuevo producto</p>
+      </div>
+    </div>
 
-        <!-- Producto: NUEVO -->
-        <div class="modal" id="modalProducto">
-          <div class="sheet">
-            <h3>+Nuevo Producto</h3>
+    <div class="sheet-body">
+      <div class="section-title">Datos del producto</div>
+      <div class="grid cols-2">
+        <div style="grid-column:1/-1"><label class="label">Nombre del Producto</label><input id="pr_nombre" class="input" placeholder="Ej: Cable cargador grueso"></div>
+        <div><label class="label">Código / SKU</label><input id="pr_codigo" class="input" placeholder="SKU o código de barras"></div>
+        <div><label class="label">Categoría</label><input id="pr_cat" class="input" placeholder="Ej. Lácteos, Galletitas, Limpieza..."></div>
+        <div style="grid-column:1/-1"><label class="label">Marca</label><input id="pr_marca" class="input" placeholder="Petti, Omo, etc."></div>
+      </div>
 
-            <div class="grid cols-2">
+      <div class="section-title">Precios y stock</div>
+      <div class="grid cols-2">
+        <div><label class="label">Precio (Gs.)</label><input id="pr_precio" class="input" type="text" inputmode="numeric" placeholder="0" oninput="formatearMilesPY(this)"></div>
+        <div><label class="label">Costo (Gs.)</label><input id="pr_costo" class="input" type="text" inputmode="numeric" placeholder="0" oninput="formatearMilesPY(this)"></div>
+        <div><label class="label">Cantidad</label><input id="pr_stock" class="input" type="number" min="0" step="1" placeholder="0"></div>
+        <div><label class="label">Imagen (opcional)</label><input id="pr_img" type="file" accept="image/*"></div>
+      </div>
+    </div>
 
-              <!-- NOMBRE -->
-              <div style="grid-column:1/-1">
-                <label class="label">Nombre del Producto</label>
-                <input id="pr_nombre" class="input" placeholder="Ej: Cable cargador grueso">
-              </div>
+    <div class="actions sheet-footer">
+      <button class="btn btn-red" onclick="closeModal('modalProducto')">Cerrar</button>
+      <button class="btn btn-green" onclick="guardarProducto(event)">Guardar producto</button>
+    </div>
+  </div>
+</div>
 
-              <!-- CÓDIGO -->
-              <div>
-                <label class="label">Código / SKU</label>
-                <input id="pr_codigo" class="input" placeholder="SKU o código de barras">
-              </div>
+<!-- Producto: EDITAR -->
+<div class="modal" id="modalProductoEdit">
+  <div class="sheet sheet-pro">
+    <div class="sheet-header">
+      <div class="sheet-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+        </svg>
+      </div>
+      <div>
+        <h3>Editar Producto</h3>
+        <p class="sheet-subtitle">Actualizá los datos del producto</p>
+      </div>
+    </div>
 
-              <!-- CATEGORÍA -->
-              <div>
-                <label class="label">Categoría</label>
-                <input id="pr_cat" class="input" placeholder="Ej. Lácteos, Galletitas, Limpieza...">
-              </div>
+    <input type="hidden" id="edit_id" />
 
-              <!-- MARCA -->
-              <div style="grid-column:1/-1">
-                <label class="label">Marca</label>
-                <input id="pr_marca" class="input" placeholder="Petti, Omo, etc.">
-              </div>
+    <div class="sheet-body">
+      <div class="section-title">Datos del producto</div>
+      <div class="grid cols-2">
+        <div style="grid-column:1/-1"><label class="label">Nombre del Producto</label><input id="ed_nombre" class="input" placeholder="Ej: Cable cargador grueso"></div>
+        <div><label class="label">Código / SKU</label><input id="ed_codigo" class="input" placeholder="SKU o código de barras"></div>
+        <div><label class="label">Categoría</label><input id="ed_cat" class="input" placeholder="Ej. Lácteos, Galletitas, Limpieza..."></div>
+        <div style="grid-column:1/-1"><label class="label">Marca</label><input id="ed_marca" class="input" placeholder="Petti, Omo, etc."></div>
+      </div>
 
-              <!-- PRECIO -->
-              <div>
-                <label class="label">Precio (Gs.)</label>
-                <input id="pr_precio" class="input" type="text" inputmode="numeric" placeholder="0"
-                  oninput="formatearMilesPY(this)">
-              </div>
+      <div class="section-title">Precios y stock</div>
+      <div class="grid cols-2">
+        <div><label class="label">Precio (Gs.)</label><input id="ed_precio" class="input" type="number" step="0.01" min="0" placeholder="0.00"></div>
+        <div><label class="label">Costo (Gs.)</label><input id="ed_costo" class="input" type="number" step="0.01" min="0" placeholder="0.00"></div>
+        <div><label class="label">Cantidad</label><input id="ed_stock" class="input" type="number" min="0" step="1" placeholder="0"></div>
+        <div><label class="label">Imagen (opcional)</label><input id="ed_img" type="file" accept="image/*" class="input"></div>
+      </div>
+    </div>
 
-              <!-- COSTO -->
-              <div>
-                <label class="label">Costo (Gs.)</label>
-                <input id="pr_costo" class="input" type="text" inputmode="numeric" placeholder="0"
-                  oninput="formatearMilesPY(this)">
-              </div>
+    <div class="actions sheet-footer">
+      <button class="btn btn-danger" onclick="closeModal('modalProductoEdit')">Cerrar</button>
+      <button class="btn btn-success" onclick="actualizarProducto()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+       <!-- Categoría: NUEVA -->
+<div class="modal" id="modalCategoria">
+  <div class="sheet sheet-pro">
+    <div class="sheet-header">
+      <div class="sheet-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3h7v7H3z"></path>
+          <path d="M14 3h7v7h-7z"></path>
+          <path d="M14 14h7v7h-7z"></path>
+          <path d="M3 14h7v7H3z"></path>
+        </svg>
+      </div>
+      <div>
+        <h3>Nueva Categoría</h3>
+        <p class="sheet-subtitle">Completá los datos para registrar una nueva categoría</p>
+      </div>
+    </div>
 
-              <!-- STOCK -->
-              <div>
-                <label class="label">Cantidad</label>
-                <input id="pr_stock" class="input" type="number" min="0" step="1" placeholder="0">
-              </div>
+    <div class="sheet-body">
+      <div class="section-title">Datos de la categoría</div>
+      <div class="grid cols-2">
+        <div style="grid-column:1/-1"><label class="label">Nombre</label><input id="cat_nombre" class="input" placeholder="Nombre de la categoría"></div>
+        <div><label class="label">Código</label><input id="cat_codigo" class="input" placeholder="Código interno (opcional)"></div>
+        <div><label class="label">Imagen</label><input id="cat_img" type="file" accept="image/*" class="input"></div>
+        <div style="grid-column:1/-1"><label class="label">Descripción</label><input id="cat_desc" class="input" placeholder="Descripción de la categoría"></div>
+      </div>
+    </div>
 
-              <!-- IMAGEN -->
-              <div style="grid-column:1/-1">
-                <label class="label">Imagen (opcional)</label>
-                <input id="pr_img" type="file" accept="image/*">
-              </div>
+    <div class="actions sheet-footer">
+      <button class="btn btn-red" onclick="closeModal('modalCategoria')">Cerrar</button>
+      <button class="btn btn-green" onclick="guardarCategoria()">Guardar categoría</button>
+    </div>
+  </div>
+</div>
 
-            </div>
+<!-- Categoría: EDITAR -->
+<div class="modal" id="modalCategoriaEdit">
+  <div class="sheet sheet-pro">
+    <div class="sheet-header">
+      <div class="sheet-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+        </svg>
+      </div>
+      <div>
+        <h3>Editar Categoría</h3>
+        <p class="sheet-subtitle">Actualizá los datos de la categoría</p>
+      </div>
+    </div>
 
-            <div class="actions" style="margin-top:1rem">
-              <button class="btn btn-guardar" onclick="guardarProducto(event)">
-                Guardar
-              </button>
+    <input type="hidden" id="cat_edit_id" />
 
-              <button class="btn btn-cerrar" onclick="closeModal('modalProducto')">
-                Cerrar
-              </button>
-            </div>
+    <div class="sheet-body">
+      <div class="section-title">Datos de la categoría</div>
+      <div class="grid cols-2">
+        <div style="grid-column:1/-1">
+          <label class="label">Categoría</label>
+          <input id="cat_ed_nombre" class="input" placeholder="Nombre de la categoría">
+        </div>
+
+        <div>
+          <label class="label">Código</label>
+          <input id="cat_ed_codigo" class="input" placeholder="Código interno (opcional)">
+        </div>
+
+        <div>
+          <label class="label">Imagen (opcional)</label>
+          <input id="cat_ed_img" type="file" accept="image/*" class="input">
+          <div style="margin-top:.5rem;display:flex;align-items:center;gap:.5rem">
+            <img id="cat_ed_preview" src="" alt=""
+              style="width:48px;height:48px;border-radius:.5rem;object-fit:cover;border:1px solid #e5e7eb;display:none">
+            <span class="text-muted">PNG / JPG</span>
           </div>
         </div>
 
-        <!-- Producto: EDITAR -->
-        <div class="modal" id="modalProductoEdit">
-          <div class="sheet">
-            <h3>Editar Producto</h3>
-
-            <input type="hidden" id="edit_id" />
-
-            <div class="grid cols-2">
-
-              <!-- NOMBRE -->
-              <div style="grid-column:1/-1">
-                <label class="label">Nombre del Producto</label>
-                <input id="ed_nombre" class="input" placeholder="Ej: Cable cargador grueso">
-              </div>
-
-              <!-- CÓDIGO -->
-              <div>
-                <label class="label">Código / SKU</label>
-                <input id="ed_codigo" class="input" placeholder="SKU o código de barras">
-              </div>
-
-              <!-- CATEGORÍA -->
-              <div>
-                <label class="label">Categoría</label>
-                <input id="ed_cat" class="input" placeholder="Ej. Lácteos, Galletitas, Limpieza...">
-              </div>
-
-              <!-- MARCA -->
-              <div style="grid-column:1/-1">
-                <label class="label">Marca</label>
-                <input id="ed_marca" class="input" placeholder="Petti, Omo, etc.">
-              </div>
-
-              <!-- PRECIO -->
-              <div>
-                <label class="label">Precio (Gs.)</label>
-                <input id="ed_precio" class="input" type="number" step="0.01" min="0" placeholder="0.00">
-              </div>
-
-              <!-- COSTO -->
-              <div>
-                <label class="label">Costo (Gs.)</label>
-                <input id="ed_costo" class="input" type="number" step="0.01" min="0" placeholder="0.00">
-              </div>
-
-              <!-- STOCK -->
-              <div style="grid-column:1/-1">
-                <label class="label">Cantidad</label>
-                <input id="ed_stock" class="input" type="number" min="0" step="1" placeholder="0">
-              </div>
-
-              <!-- IMAGEN -->
-              <div style="grid-column:1/-1">
-                <label class="label">Imagen (opcional)</label>
-                <input id="ed_img" type="file" accept="image/*" class="input">
-              </div>
-
-            </div>
-
-            <div class="actions" style="margin-top:1rem">
-              <button class="btn btn-success" onclick="actualizarProducto()">
-                Guardar
-              </button>
-
-              <button class="btn btn-danger" onclick="closeModal('modalProductoEdit')">
-                Cerrar
-              </button>
-            </div>
-          </div>
+        <div style="grid-column:1/-1">
+          <label class="label">Descripción</label>
+          <input id="cat_ed_desc" class="input" placeholder="Descripción de la categoría">
         </div>
-        <!-- Categoría: NUEVA -->
-        <div class="modal" id="modalCategoria">
-          <div class="sheet">
-            <h3>Nueva Categoría</h3>
-            <div class="grid cols-2">
-              <div style="grid-column:1/-1"><label class="label">Nombre</label><input id="cat_nombre" class="input">
-              </div>
-              <div><label class="label">Código</label><input id="cat_codigo" class="input"></div>
-              <div><label class="label">Imagen</label><input id="cat_img" type="file" accept="image/*" class="input">
-              </div>
-              <div style="grid-column:1/-1"><label class="label">Descripción</label><input id="cat_desc" class="input">
-              </div>
-            </div>
-            <div class="actions" style="margin-top:1rem">
-              <button class="btn btn-green" onclick="guardarCategoria()">Guardar</button>
-              <button class="btn btn-red" onclick="closeModal('modalCategoria')">Cerrar</button>
-            </div>
-          </div>
-        </div>
+      </div>
+    </div>
 
-        <!-- Categoría: EDITAR -->
-        <div class="modal" id="modalCategoriaEdit">
-          <div class="sheet">
-            <h3>Editar Categoría</h3>
-            <input type="hidden" id="cat_edit_id" />
-
-            <div class="grid cols-2">
-              <div style="grid-column:1/-1">
-                <label class="label">Categoría</label>
-                <input id="cat_ed_nombre" class="input" placeholder="Nombre de la categoría">
-              </div>
-
-              <div>
-                <label class="label">Código</label>
-                <input id="cat_ed_codigo" class="input" placeholder="Código interno (opcional)">
-              </div>
-
-              <div>
-                <label class="label">Imagen (opcional)</label>
-                <input id="cat_ed_img" type="file" accept="image/*" class="input">
-                <div style="margin-top:.5rem;display:flex;align-items:center;gap:.5rem">
-                  <img id="cat_ed_preview" src="" alt=""
-                    style="width:48px;height:48px;border-radius:.5rem;object-fit:cover;border:1px solid #e5e7eb;display:none">
-                  <span class="text-muted">PNG / JPG</span>
-                </div>
-              </div>
-
-              <div style="grid-column:1/-1">
-                <label class="label">Descripción</label>
-                <input id="cat_ed_desc" class="input" placeholder="Descripción de la categoría">
-              </div>
-            </div>
-
-            <div class="actions" style="margin-top:1rem">
-              <button class="btn btn-success" onclick="actualizarCategoria()">Guardar cambios</button>
-              <button class="btn btn-danger" onclick="closeModal('modalCategoriaEdit')">Cerrar</button>
-            </div>
-          </div>
-        </div>
+    <div class="actions sheet-footer">
+      <button class="btn btn-danger" onclick="closeModal('modalCategoriaEdit')">Cerrar</button>
+      <button class="btn btn-success" onclick="actualizarCategoria()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
 
         <!-- MODAL — EDITAR COMPRA -->
         <div id="modalEditarCompra" class="modal-overlay" style="display:none;">
@@ -2241,13 +2090,13 @@
             <!-- DÍA -->
             <div class="resumen-caja-card">
               <div class="resumen-caja-head">
-                <h3>📅 Recaudado del día</h3>
+                <h3>Recaudado del día</h3>
                 <span class="resumen-pill">HOY</span>
               </div>
 
               <div class="resumen-cols">
                 <div class="resumen-bloque">
-                  <h4>💵 Efectivo</h4>
+                  <h4>Efectivo</h4>
 
                   <div class="resumen-item">
                     <span>Ingreso</span>
@@ -2266,7 +2115,7 @@
                 </div>
 
                 <div class="resumen-bloque">
-                  <h4>🏦 Transferencia</h4>
+                  <h4>Transferencia</h4>
 
                   <div class="resumen-item">
                     <span>Ingreso</span>
@@ -2294,13 +2143,13 @@
             <!-- MES -->
             <div class="resumen-caja-card">
               <div class="resumen-caja-head">
-                <h3>📆 Recaudado del mes</h3>
+                <h3>Recaudado del mes</h3>
                 <span class="resumen-pill resumen-pill-mes">MES</span>
               </div>
 
               <div class="resumen-cols">
                 <div class="resumen-bloque">
-                  <h4>💵 Efectivo</h4>
+                  <h4>Efectivo</h4>
 
                   <div class="resumen-item">
                     <span>Ingreso</span>
@@ -2319,7 +2168,7 @@
                 </div>
 
                 <div class="resumen-bloque">
-                  <h4>🏦 Transferencia</h4>
+                  <h4>Transferencia</h4>
 
                   <div class="resumen-item">
                     <span>Ingreso</span>
@@ -2356,21 +2205,21 @@
 
               <!-- EFECTIVO -->
               <div class="caja-col caja-resumen">
-                <h4>💵 Efectivo</h4>
+                <h4>Efectivo</h4>
                 <p>Hoy: <b id="fp-dia-efectivo">Gs. 0</b></p>
                 <p>Mes: <b id="fp-mes-efectivo">Gs. 0</b></p>
               </div>
 
               <!-- TRANSFERENCIA -->
               <div class="caja-col caja-resumen">
-                <h4>🔁 Transferencia</h4>
+                <h4>Transferencia</h4>
                 <p>Hoy: <b id="fp-dia-transferencia">Gs. 0</b></p>
                 <p>Mes: <b id="fp-mes-transferencia">Gs. 0</b></p>
               </div>
 
               <!-- TOTAL -->
               <div class="caja-col caja-resumen">
-                <h4>📊 Total</h4>
+                <h4>Total</h4>
                 <p>Hoy: <b id="fp-dia-total">Gs. 0</b></p>
                 <p>Mes: <b id="fp-mes-total">Gs. 0</b></p>
               </div>
@@ -2379,9 +2228,9 @@
 
             <!-- DETALLE POR BANCO / FORMA -->
             <div id="fp-detalle" style="margin-top:1rem"></div>
-            <!-- ✅ NUEVO: MOVIMIENTOS CON COMPROBANTE (NO afecta fp-detalle) -->
+            <!-- NUEVO: MOVIMIENTOS CON COMPROBANTE-->
             <div id="fp-movimientos" style="margin-top:1rem">
-              <h4 style="margin:0 0 .5rem 0;">🧾 Últimos movimientos (con comprobante)</h4>
+              <h4 style="margin:0 0 .5rem 0;"> Últimos movimientos (con comprobante)</h4>
 
               <div style="overflow:auto; border:1px solid #e5e7eb; border-radius:10px;">
                 <table style="width:100%; border-collapse:collapse;">

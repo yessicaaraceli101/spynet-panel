@@ -3992,3 +3992,200 @@ css/* Ícono de grupo — sin fondo */
 .nav-group-toggle.open .nav-chevron {
   transform: rotate(180deg);
 }
+
+
+
+css.sheet-pro {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 1.25rem 1.75rem 1rem;
+  border-bottom: 1px solid #eef0f3;
+  flex-shrink: 0;
+}
+
+.sheet-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sheet-header h3 {
+  margin: 0 0 2px;
+  font-size: 1.1rem;
+}
+
+.sheet-subtitle {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #6b7280;
+}
+
+.sheet-body {
+  padding: 1rem 1.75rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9095a0;
+  margin: 0.9rem 0 0.5rem;
+}
+
+.section-title:first-child {
+  margin-top: 0;
+}
+
+.sheet-pro .grid.cols-2 {
+  gap: 0.7rem 1rem;
+}
+
+.sheet-pro .label {
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.sheet-pro .input {
+  padding: 0.55rem 0.75rem;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.sheet-pro .input:focus {
+  outline: none;
+  border-color: #4f7cff;
+  box-shadow: 0 0 0 3px rgba(79,124,255,0.15);
+}
+
+.sheet-footer {
+  margin: 0 !important;
+  padding: 0.9rem 1.75rem;
+  background: #f9fafb;
+  border-top: 1px solid #eef0f3;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.modal#modalCliente .sheet,
+.modal#modalClienteEdit .sheet {
+  height: 85vh !important;
+  max-height: 640px !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+}
+
+.modal#modalCliente .sheet-header,
+.modal#modalClienteEdit .sheet-header {
+  flex: 0 0 auto !important;
+}
+
+.modal#modalCliente .sheet-body,
+.modal#modalClienteEdit .sheet-body {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  height: auto !important;
+}
+
+.modal#modalCliente .sheet-footer,
+.modal#modalClienteEdit .sheet-footer {
+  margin-top: 0 !important;
+  flex: 0 0 auto !important;
+}
+
+
+#modalProveedor .sheet,
+#modalProveedorEdit .sheet {
+  max-height: 90vh !important;
+  height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+#modalProveedor .sheet-body,
+#modalProveedorEdit .sheet-body {
+  overflow-y: auto !important;
+  flex: 1 1 auto !important;
+}
+
+#modalProveedor .sheet-footer,
+#modalProveedorEdit .sheet-footer {
+  flex: 0 0 auto !important;
+  position: relative !important;
+  bottom: auto !important;
+  background: #f9fafb !important;
+  border-top: 1px solid #eef0f3 !important;
+}
+
+
+#modalProducto .sheet,
+#modalProductoEdit .sheet {
+  max-height: 90vh !important;
+  height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+#modalProducto .sheet-body,
+#modalProductoEdit .sheet-body {
+  overflow-y: auto !important;
+  flex: 1 1 auto !important;
+}
+
+#modalProducto .sheet-footer,
+#modalProductoEdit .sheet-footer {
+  flex: 0 0 auto !important;
+  position: relative !important;
+  bottom: auto !important;
+  background: #f9fafb !important;
+  border-top: 1px solid #eef0f3 !important;
+}
+
+#modalCategoria .sheet,
+#modalCategoriaEdit .sheet {
+  max-height: 90vh !important;
+  height: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+#modalCategoria .sheet-body,
+#modalCategoriaEdit .sheet-body {
+  overflow-y: auto !important;
+  flex: 0 1 auto !important;
+}
+
+#modalCategoria .sheet-footer,
+#modalCategoriaEdit .sheet-footer {
+  flex: 0 0 auto !important;
+  position: relative !important;
+  bottom: auto !important;
+  background: #f9fafb !important;
+  border-top: 1px solid #eef0f3 !important;
+}

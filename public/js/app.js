@@ -1575,49 +1575,101 @@ function toast(msg, type = "info") {
   // Eliminar toasts anteriores
   document.querySelectorAll(".toast-pro").forEach(t => t.remove());
 
-  const color =
-    type === "error"   ? { bg: "#fee2e2", border: "#ef4444", text: "#991b1b", icon: "❌" } :
-    type === "success" ? { bg: "#f0fdf4", border: "#22c55e", text: "#166534", icon: "✅" } :
-                         { bg: "#eff6ff", border: "#3b82f6", text: "#1e40af", icon: "ℹ️" };
+  // Definir colores e íconos SVG
+  const config = {
+    success: {
+      bg: "#f0fdf4",
+      border: "#22c55e",
+      text: "#166534",
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#22c55e"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+      title: "¡Éxito!"
+    },
+    error: {
+      bg: "#fee2e2",
+      border: "#ef4444",
+      text: "#991b1b",
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#ef4444"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+      title: "Error"
+    },
+    info: {
+      bg: "#eff6ff",
+      border: "#3b82f6",
+      text: "#1e40af",
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#3b82f6"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+      title: "Información"
+    }
+  };
+
+  const cfg = config[type] || config.info;
 
   const el = document.createElement("div");
   el.className = "toast-pro";
 
+  // Estructura interna con icono cuadrado, título y mensaje
   el.innerHTML = `
-    <div style="font-size:2rem;line-height:1">${color.icon}</div>
-    <div>
-      <div style="font-weight:700;font-size:.95rem;margin-bottom:2px;">
-        ${type === "success" ? "¡Éxito!" : type === "error" ? "Error" : "Información"}
+    <div style="
+      display:flex;
+      align-items:center;
+      gap:12px;
+      width:100%;
+    ">
+      <div style="
+        width:44px;
+        height:44px;
+        min-width:44px;
+        background:${cfg.bg};
+        border-radius:10px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        border:1.5px solid ${cfg.border};
+      ">
+        ${cfg.icon}
       </div>
-      <div style="font-size:.85rem;opacity:.85">${msg}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:.95rem;color:${cfg.text};margin-bottom:2px;">
+          ${cfg.title}
+        </div>
+        <div style="font-size:.85rem;color:#475569;opacity:.9;word-break:break-word;">
+          ${msg}
+        </div>
+      </div>
+      <button onclick="this.closest('.toast-pro').remove()" style="
+        background:none;
+        border:none;
+        cursor:pointer;
+        padding:4px;
+        margin-left:4px;
+        flex-shrink:0;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color:#94a3b8;
+        transition:color .15s;
+      " onmouseover="this.style.color='#475569'" onmouseout="this.style.color='#94a3b8'">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
-    <button onclick="this.parentElement.remove()" style="
-      background:none;border:none;cursor:pointer;
-      font-size:1.1rem;color:${color.text};opacity:.6;
-      margin-left:.5rem;padding:0;line-height:1;
-    ">✕</button>
   `;
 
+  // Estilos generales del contenedor del toast
   Object.assign(el.style, {
     position: "fixed",
     top: "1.5rem",
     right: "1.5rem",
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
+    background: "#ffffff",
     padding: "1rem 1.25rem",
-    background: color.bg,
-    color: color.text,
-    border: `1.5px solid ${color.border}`,
-    borderLeft: `5px solid ${color.border}`,
+    border: `1px solid ${cfg.border}`,
+    borderLeft: `4px solid ${cfg.border}`,
     borderRadius: "12px",
-    boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+    boxShadow: "0 8px 30px rgba(0,0,0,.12)",
     zIndex: "99999",
-    minWidth: "280px",
-    maxWidth: "360px",
+    minWidth: "300px",
+    maxWidth: "420px",
     opacity: "0",
     transform: "translateX(40px)",
-    transition: "opacity .3s ease, transform .3s ease"
+    transition: "opacity .3s ease, transform .3s ease",
+    fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
   });
 
   document.body.appendChild(el);
@@ -1628,14 +1680,13 @@ function toast(msg, type = "info") {
     el.style.transform = "translateX(0)";
   });
 
-  // Salida automática
+  // Auto‑cierre después de 3.5 segundos
   setTimeout(() => {
     el.style.opacity = "0";
     el.style.transform = "translateX(40px)";
     setTimeout(() => el.remove(), 350);
   }, 3500);
 }
-
 async function withLoading(btn, fn) {
   if (!btn) return fn();
 
@@ -5353,7 +5404,7 @@ function calcularTotalesPP() {
 let _guardando = false;
 
 async function guardarPedido(enviar = false) {
-  // ✅ FIX 1: bloquea doble clic / doble tap en móvil
+  
   if (_guardando) return;
   _guardando = true;
 
@@ -6700,12 +6751,12 @@ async function verificarCaja() {
       `;
     }
 
-    console.log("✅ verificarCaja OK");
+    console.log("verificarCaja OK");
 
   } catch (e) {
 
     console.error(
-      "❌ Error verificando caja:",
+      "Error verificando caja:",
       e
     );
   }

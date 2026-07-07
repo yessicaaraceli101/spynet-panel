@@ -212,7 +212,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ Logs ANTES de crear el cliente
+
 console.log("SUPABASE_URL:", process.env.SUPABASE_URL ? "OK" : "FALTA");
 console.log("SERVICE_ROLE:", process.env.SUPABASE_SERVICE_ROLE_KEY ? "OK" : "FALTA");
 
@@ -229,7 +229,7 @@ function normTipoCaja(t) {
   return s;
 }
 
-// ✅ Cortar con error claro si falta algo
+
 if (!process.env.SUPABASE_URL) {
   throw new Error("FALTA SUPABASE_URL en .env");
 }
@@ -237,7 +237,7 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error("FALTA SUPABASE_SERVICE_ROLE_KEY en .env");
 }
 
-// ✅ Crear cliente recién acá
+
 const supabase = createClient(
   process.env.SUPABASE_URL.trim(),
   process.env.SUPABASE_SERVICE_ROLE_KEY.trim()
@@ -305,12 +305,12 @@ const pool = new Pool({
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 10_000,
 });
-// ✅ Log de errores del pool
+
 pool.on("error", (err) => {
-  console.error("❌ Pool error:", err.message);
+  console.error("Pool error:", err.message);
 });
 
-// ✅ Chequeo inicial de conexión + DB actual
+
 (async () => {
   try {
     const client = await pool.connect();
@@ -448,9 +448,9 @@ async function bootstrapFormasPagoTodasEmpresas() {
       }
     }
 
-    console.log("✅ Formas de pago sincronizadas para todas las empresas");
+    console.log("Formas de pago sincronizadas para todas las empresas");
   } catch (e) {
-    console.error("❌ bootstrapFormasPagoTodasEmpresas:", e);
+    console.error("bootstrapFormasPagoTodasEmpresas:", e);
   }
 }
 
@@ -2703,7 +2703,7 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
     fecha_pedido,
     observacion,
     items,
-    enviar_email  // ✅ tomamos el flag del frontend
+    enviar_email 
   } = req.body || {};
 
   if (!proveedor_id || !Array.isArray(items) || !items.length) {
@@ -2808,10 +2808,7 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
     ========================================================= */
     const pdf = await generarPDFPedido(pool, pedidoId, empresaId);
 
-    /* =========================================================
-       ✅ RESPONDE AL CLIENTE INMEDIATAMENTE
-          El email se envía después, sin que el usuario espere
-    ========================================================= */
+   
     res.status(201).json({
       ok: true,
       pedidoId,
@@ -2840,7 +2837,7 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
 
     if (!provData?.email || !provData?.smtp_user || !provData?.smtp_pass) return;
 
-    // ✅ Sin await — corre en segundo plano
+
     nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 587,
@@ -2866,8 +2863,8 @@ app.post("/api/pedidos", requireEmpresa, async (req, res) => {
         path: pdf?.fullPath || pdf?.path || pdf?.file
       }]
     })
-    .then(() => console.log("✅ Pedido enviado al proveedor:", provData.email))
-    .catch(err => console.error("❌ ERROR ENVIANDO EMAIL:", err));
+    .then(() => console.log("Pedido enviado al proveedor:", provData.email))
+    .catch(err => console.error("ERROR ENVIANDO EMAIL:", err));
 
   } catch (e) {
 
@@ -3240,7 +3237,7 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 
 /* ----------------------------------- Server --------------------------------- */
 
-// ✅ Próximo N° Factura por proveedor (autocompletar en compras)
+
 app.get("/compras/proxima-factura", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
@@ -6001,7 +5998,7 @@ app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
   }
 });
 
-// ✅ Único: /caja/resumen?fecha=16/02/2026 ó 2026-02-16
+
 app.get("/caja/resumen", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
@@ -7760,7 +7757,7 @@ app.post("/api/asistente-admin", requireEmpresa, async (req, res) => {
         `SELECT COUNT(*) AS c, COALESCE(SUM(total),0) AS t FROM pedidos_prov WHERE empresa_id=$1${filtroPedido}`,
         [empresaId]
       );
-      respuesta = `📦 <b>Pedidos ${textoPeriodo}:</b> ${r.rows[0].c} por <b>${money(r.rows[0].t)}</b>.`;
+      respuesta = `<b>Pedidos ${textoPeriodo}:</b> ${r.rows[0].c} por <b>${money(r.rows[0].t)}</b>.`;
     }
 
     // STOCK BAJO
@@ -7772,8 +7769,8 @@ app.post("/api/asistente-admin", requireEmpresa, async (req, res) => {
         [empresaId]
       );
       respuesta = r.rowCount
-        ? "⚠️ <b>Productos con stock bajo:</b><br>" + r.rows.map(p => `• ${p.nombre}: ${p.stock} uds`).join("<br>")
-        : "✅ No hay productos con stock bajo.";
+        ? "<b>Productos con stock bajo:</b><br>" + r.rows.map(p => `• ${p.nombre}: ${p.stock} uds`).join("<br>")
+        : "No hay productos con stock bajo.";
     }
 
     // STOCK / INVENTARIO
@@ -7782,7 +7779,7 @@ app.post("/api/asistente-admin", requireEmpresa, async (req, res) => {
         `SELECT COUNT(*) AS productos, COALESCE(SUM(stock),0) AS unidades FROM productos WHERE empresa_id=$1 AND COALESCE(activo,true)=true`,
         [empresaId]
       );
-      respuesta = `🏪 <b>Inventario:</b> ${r.rows[0].productos} productos activos con ${r.rows[0].unidades} unidades en stock.`;
+      respuesta = `<b>Inventario:</b> ${r.rows[0].productos} productos activos con ${r.rows[0].unidades} unidades en stock.`;
     }
 
     // CAJA
@@ -7936,7 +7933,7 @@ app.post("/api/login", async (req, res) => {
       });
     }
 
-    // ✅ SOLO ADMINS
+    
     if (
       u.rol !== "admin" &&
       u.rol !== "superadmin"
@@ -8263,5 +8260,5 @@ app.get("/empresas/:id", async (req, res) => {
   }
 });
 app.listen(PORT, () => {
-  console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
