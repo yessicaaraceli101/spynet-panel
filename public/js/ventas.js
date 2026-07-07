@@ -1877,11 +1877,15 @@ function mostrarExitoVenta(vueltoTexto, simbolo) {
 
   const vueltoHTML = vueltoTexto !== null ? `
     <div style="
-      background:#f0fdf4;border:2px solid #16a34a;
+      background:#f0fdf4;border:1px solid #bbf7d0;
       border-radius:14px;padding:16px 20px;margin-bottom:24px;
     ">
-      <div style="font-size:.85rem;font-weight:600;color:#16a34a;margin-bottom:4px;">VUELTO</div>
-      <div style="font-size:2rem;font-weight:900;color:#15803d;">${vueltoTexto} ${simbolo}</div>
+      <div style="font-size:.85rem;font-weight:700;color:#16a34a;letter-spacing:.04em;margin-bottom:4px;">
+        VUELTO
+      </div>
+      <div style="font-size:2rem;font-weight:800;color:#15803d;">
+        ${vueltoTexto} ${simbolo}
+      </div>
     </div>
   ` : `<div style="margin-bottom:24px;"></div>`;
 
@@ -1892,11 +1896,12 @@ function mostrarExitoVenta(vueltoTexto, simbolo) {
       box-shadow:0 24px 60px rgba(0,0,0,.25);
       animation:popIn .25s ease;
     ">
-      <div style="
-        width:72px;height:72px;background:#dcfce7;border-radius:50%;
-        display:flex;align-items:center;justify-content:center;
-        margin:0 auto 18px;font-size:2rem;
-      ">✅</div>
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" style="margin:0 auto 18px;display:block;">
+        <circle cx="32" cy="32" r="30" stroke="#16a34a" stroke-width="3"/>
+        <path d="M19 32.5L28 41.5L45 22.5" stroke="#16a34a" stroke-width="3.6"
+          stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+
       <h2 style="margin:0 0 8px;font-size:1.5rem;font-weight:800;color:#0f172a;">
         ¡Venta registrada!
       </h2>
@@ -1907,7 +1912,10 @@ function mostrarExitoVenta(vueltoTexto, simbolo) {
       <button onclick="document.getElementById('modalExitoVenta').remove()" style="
         width:100%;height:48px;background:#16a34a;color:#fff;
         border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;
-      ">Aceptar</button>
+        transition:background .15s ease;
+      " onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">
+        Aceptar
+      </button>
     </div>
     <style>@keyframes popIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}</style>
   `;

@@ -4192,3 +4192,274 @@ css.sheet-pro {
 
 .iva-hidden { display: none; }
 .resumen-oculto { display: none; }
+
+
+/* ===================================================================
+   MODAL DE PAGO — estilos profesionales
+   Clases usadas por el HTML/JS actual: pago-modal-rect, pago-grid,
+   pago-item, efectivo-destacado, pago-layout-rect, pago-card,
+   efectivo-row/col, vuelto-box, pago-resumen, pago-actions, etc.
+=================================================================== */
+
+.pago-modal-rect{
+  max-width: 720px;
+  border-radius: 14px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pago-modal-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.pago-modal-header h3{
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.pago-close-btn{
+  border: none;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+}
+.pago-close-btn:hover{ color: #475569; }
+
+/* ============ GRID DE FORMAS DE PAGO ============ */
+.pago-grid{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 20px 24px 4px;
+}
+
+.pago-item{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease, color .15s ease;
+}
+
+.pago-item i{
+  font-size: 15px;
+  width: 18px;
+  text-align: center;
+  color: #94a3b8;
+  background: none;      /* sin fondo en el ícono */
+  flex-shrink: 0;
+}
+
+.pago-item:hover{
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+/* Estado seleccionado (cualquier método que no sea efectivo) */
+.pago-item.seleccionada{
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  box-shadow: 0 0 0 1px #2563eb inset;
+}
+.pago-item.seleccionada i{ color: #2563eb; }
+
+/* EFECTIVO — siempre primero y destacado */
+.pago-item.efectivo-destacado{
+  grid-column: 1 / -1;
+  min-height: 52px;
+  background: #ffffff;
+  border: 1.5px solid #16a34a;
+  color: #15803d;
+  font-size: 14.5px;
+}
+.pago-item.efectivo-destacado i{ color: #16a34a; }
+
+.pago-item.efectivo-destacado.seleccionada{
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(22,163,74,.25);
+}
+.pago-item.efectivo-destacado.seleccionada i{ color: #ffffff; }
+
+@media (max-width: 480px){
+  .pago-grid{ grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ============ MENSAJE / COMPROBANTE ============ */
+.mensaje-forma-pago{
+  margin: 4px 24px 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 13px;
+}
+
+.pago-comprobante{
+  margin: 16px 24px 0;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.pago-help-text{
+  display: block;
+  margin-top: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* ============ LAYOUT: EFECTIVO / MONEDA / RESUMEN ============ */
+.pago-layout-rect{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px 24px 0;
+}
+
+.pago-card{
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #ffffff;
+}
+
+#bloqueEfectivo{
+  grid-column: 1 / -1;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.efectivo-row{
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.efectivo-col{ flex: 1; }
+
+.input-efectivo{
+  font-size: 20px;
+  font-weight: 700;
+  text-align: right;
+  color: #14532d;
+}
+
+.vuelto-box{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.vuelto-label{
+  font-size: 12px;
+  color: #16a34a;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.vuelto-valor{
+  font-size: 22px;
+  font-weight: 800;
+  color: #15803d;
+}
+
+/* ============ RESUMEN ============ */
+.pago-resumen{
+  background: #f8fafc;
+}
+
+.resumen-title{
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.resumen-line{
+  display: flex;
+  justify-content: space-between;
+  font-size: 13.5px;
+  color: #475569;
+  padding: 3px 0;
+}
+.resumen-line strong{ color: #1e293b; }
+
+/* ============ LABEL / INPUT GENÉRICOS ============ */
+.label{
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.input{
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 14px;
+  color: #1e293b;
+  outline: none;
+  transition: border-color .15s ease;
+}
+.input:focus{ border-color: #2563eb; }
+
+/* ============ BOTONES DE ACCIÓN ============ */
+.pago-actions{
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px 24px 24px;
+}
+
+.pago-actions .btn{
+  min-width: 130px;
+  height: 42px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.pago-actions .btn.primary{
+  background: #2563eb;
+  color: #fff;
+}
+.pago-actions .btn.primary:hover{ background: #1d4ed8; }
+
+.pago-actions .btn.secondary{
+  background: #ffffff;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+.pago-actions .btn.secondary:hover{ background: #f8fafc; }
