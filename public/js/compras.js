@@ -207,8 +207,31 @@ async function toggleMonedaCompra() {
 
   if (productoSeleccionado) autocompletarCostoCompraDesdeMoneda();
 
+  // 🟢 NUEVO: recalcular todos los items antes de renderizar
+  recalcularMonedaItemsCompra();
+
   renderItemsCompra();
 }
+function recalcularMonedaItemsCompra() {
+  const moneda = getMonedaCompra();
+  const tipoCambio = getTipoCambioCompra();
+
+  compraItems.forEach((it) => {
+    if (moneda === "PYG") {
+      it.costo_moneda = it.costo;
+      it.subtotal_moneda = it.subtotal;
+    } else {
+      if (!tipoCambio || tipoCambio <= 0) {
+        it.costo_moneda = 0;
+        it.subtotal_moneda = 0;
+      } else {
+        it.costo_moneda = it.costo / tipoCambio;
+        it.subtotal_moneda = it.subtotal / tipoCambio;
+      }
+    }
+  });
+}
+
 
 /* ===============================
    MONEDA EDITAR COMPRA

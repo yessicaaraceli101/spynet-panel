@@ -2379,7 +2379,6 @@
                     <input type="number" id="c_tipo_cambio_moneda" class="input" step="0.01" min="0" value="1"
                       placeholder="Ej:6350" oninput="renderItemsCompra()">
                     <small style="display:block; margin-top:6px; color:#6b7280;">
-                      Ingrese la cotización usada para esta compra.
                     </small>
                   </div>
 
@@ -2393,17 +2392,18 @@
                       Subtotal en moneda: <strong id="c_subtotal_moneda">Gs. 0</strong>
                     </div>
 
-                    <div style="color:#374151; margin-top:4px;">
-                      IVA en moneda: <strong id="c_iva_moneda">Gs. 0</strong>
-                    </div>
+                    <div class="iva-hidden" style="color:#374151; margin-top:4px;">
+                   IVA en moneda: <strong id="c_iva_moneda">Gs. 0</strong>
+                   </div>
 
-                    <div style="color:#374151; margin-top:4px;">
-                      Total en moneda: <strong id="c_total_moneda_text">Gs. 0</strong>
-                    </div>
 
-                    <div style="color:#374151; margin-top:4px;">
-                      Total en guaraníes: <strong id="c_total_pyg_resumen">Gs. 0</strong>
-                    </div>
+                    <div class="resumen-oculto" style="color:#374151; margin-top:4px;">
+                    Total en moneda: <strong id="c_total_moneda_text">Gs. 0</strong>
+                   </div>
+
+                   <div class="resumen-oculto" style="color:#374151; margin-top:4px;">
+                   Total en guaraníes: <strong id="c_total_pyg_resumen">Gs. 0</strong>
+                 </div>
                   </div>
                 </div>
 

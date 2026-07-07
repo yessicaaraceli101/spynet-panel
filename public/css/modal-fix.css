@@ -4189,3 +4189,6 @@ css.sheet-pro {
   background: #f9fafb !important;
   border-top: 1px solid #eef0f3 !important;
 }
+
+.iva-hidden { display: none; }
+.resumen-oculto { display: none; }
