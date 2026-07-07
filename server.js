@@ -5773,6 +5773,7 @@ app.get("/caja/resumen-dia", requireEmpresa, async (req, res) => {
     const q = await pool.query(
       `
       SELECT
+        -- INGRESO EFECTIVO (ventas)
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
@@ -5785,14 +5786,25 @@ app.get("/caja/resumen-dia", requireEmpresa, async (req, res) => {
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_efectivo,
 
+        -- EGRESO EFECTIVO (compras + cuentas pagadas)
         COALESCE((
           SELECT SUM(c.total)
           FROM compras c
           WHERE c.fecha::date = $1::date
             AND c.empresa_id = $2
             AND c.tipo_pago = 'efectivo'
+        ), 0)
+        +
+        COALESCE((
+          SELECT SUM(cp.monto_pyg)
+          FROM cuentas_pagar cp
+          WHERE cp.fecha_pago::date = $1::date
+            AND cp.empresa_id = $2
+            AND cp.estado = 'pagado'
+            AND cp.caja_tipo = 'efectivo'
         ), 0) AS egreso_efectivo,
 
+        -- INGRESO TRANSFERENCIA (ventas)
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
@@ -5805,12 +5817,22 @@ app.get("/caja/resumen-dia", requireEmpresa, async (req, res) => {
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_transferencia,
 
+        -- EGRESO TRANSFERENCIA (compras + cuentas pagadas)
         COALESCE((
           SELECT SUM(c.total)
           FROM compras c
           WHERE c.fecha::date = $1::date
             AND c.empresa_id = $2
             AND c.tipo_pago = 'transferencia'
+        ), 0)
+        +
+        COALESCE((
+          SELECT SUM(cp.monto_pyg)
+          FROM cuentas_pagar cp
+          WHERE cp.fecha_pago::date = $1::date
+            AND cp.empresa_id = $2
+            AND cp.estado = 'pagado'
+            AND cp.caja_tipo = 'transferencia'
         ), 0) AS egreso_transferencia
       `,
       [ymd, empresaId]
@@ -5826,8 +5848,7 @@ app.get("/caja/resumen-dia", requireEmpresa, async (req, res) => {
     const egreso_transferencia = Number(r.egreso_transferencia || 0);
     const saldo_transferencia = ingreso_transferencia - egreso_transferencia;
 
-    const saldo_total =
-      saldo_efectivo + saldo_transferencia;
+    const saldo_total = saldo_efectivo + saldo_transferencia;
 
     return res.json({
       ok: true,
@@ -5846,7 +5867,6 @@ app.get("/caja/resumen-dia", requireEmpresa, async (req, res) => {
 
   } catch (err) {
     console.error("GET /caja/resumen-dia", err);
-
     return res.status(500).json({
       ok: false,
       msg: "Error resumen día"
@@ -5854,9 +5874,8 @@ app.get("/caja/resumen-dia", requireEmpresa, async (req, res) => {
   }
 });
 
-
 // ===============================
-// RESUMEN DEL MES
+// RESUMEN DEL MES (con cuentas pagadas)
 // ===============================
 app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
   try {
@@ -5881,48 +5900,66 @@ app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
     const q = await pool.query(
       `
       SELECT
+        -- INGRESO EFECTIVO (ventas)
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
           LEFT JOIN formas_pago fp 
             ON fp.id = v.forma_pago_id
            AND fp.empresa_id = $2
-          WHERE date_trunc('month', v.fecha::date)
-              = date_trunc('month', $1::date)
+          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
             AND v.empresa_id = $2
             AND lower(fp.tipo) LIKE '%efect%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_efectivo,
 
+        -- EGRESO EFECTIVO (compras + cuentas pagadas)
         COALESCE((
           SELECT SUM(c.total)
           FROM compras c
-          WHERE date_trunc('month', c.fecha::date)
-              = date_trunc('month', $1::date)
+          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
             AND c.empresa_id = $2
             AND c.tipo_pago = 'efectivo'
+        ), 0)
+        +
+        COALESCE((
+          SELECT SUM(cp.monto_pyg)
+          FROM cuentas_pagar cp
+          WHERE date_trunc('month', cp.fecha_pago::date) = date_trunc('month', $1::date)
+            AND cp.empresa_id = $2
+            AND cp.estado = 'pagado'
+            AND cp.caja_tipo = 'efectivo'
         ), 0) AS egreso_efectivo,
 
+        -- INGRESO TRANSFERENCIA (ventas)
         COALESCE((
           SELECT SUM(v.total)
           FROM ventas v
           LEFT JOIN formas_pago fp 
             ON fp.id = v.forma_pago_id
            AND fp.empresa_id = $2
-          WHERE date_trunc('month', v.fecha::date)
-              = date_trunc('month', $1::date)
+          WHERE date_trunc('month', v.fecha::date) = date_trunc('month', $1::date)
             AND v.empresa_id = $2
             AND lower(fp.tipo) LIKE '%transf%'
             AND (v.estado_pago IS NULL OR v.estado_pago <> 'anulado')
         ), 0) AS ingreso_transferencia,
 
+        -- EGRESO TRANSFERENCIA (compras + cuentas pagadas)
         COALESCE((
           SELECT SUM(c.total)
           FROM compras c
-          WHERE date_trunc('month', c.fecha::date)
-              = date_trunc('month', $1::date)
+          WHERE date_trunc('month', c.fecha::date) = date_trunc('month', $1::date)
             AND c.empresa_id = $2
             AND c.tipo_pago = 'transferencia'
+        ), 0)
+        +
+        COALESCE((
+          SELECT SUM(cp.monto_pyg)
+          FROM cuentas_pagar cp
+          WHERE date_trunc('month', cp.fecha_pago::date) = date_trunc('month', $1::date)
+            AND cp.empresa_id = $2
+            AND cp.estado = 'pagado'
+            AND cp.caja_tipo = 'transferencia'
         ), 0) AS egreso_transferencia
       `,
       [ymd, empresaId]
@@ -5938,8 +5975,7 @@ app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
     const egreso_transferencia = Number(r.egreso_transferencia || 0);
     const saldo_transferencia = ingreso_transferencia - egreso_transferencia;
 
-    const saldo_total =
-      saldo_efectivo + saldo_transferencia;
+    const saldo_total = saldo_efectivo + saldo_transferencia;
 
     return res.json({
       ok: true,
@@ -5958,7 +5994,6 @@ app.get("/caja/resumen-mes", requireEmpresa, async (req, res) => {
 
   } catch (err) {
     console.error("GET /caja/resumen-mes", err);
-
     return res.status(500).json({
       ok: false,
       msg: "Error resumen mes"
