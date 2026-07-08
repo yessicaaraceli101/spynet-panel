@@ -4463,3 +4463,951 @@ css.sheet-pro {
   border-color: #e2e8f0;
 }
 .pago-actions .btn.secondary:hover{ background: #f8fafc; }
+
+
+
+
+/* =========================================================
+   PAGO MODAL — sistema de pago profesional
+   Anclado a #modalPago con !important en las propiedades
+   estructurales para ganarle a CSS global preexistente del
+   sistema (esto evita el scroll y el ancho angosto que
+   aparecía por reglas más específicas ya cargadas en el sitio).
+   ========================================================= */
+
+:root {
+  --pago-azul-header: #eaf4ff;
+  --pago-azul-header-2: #d7ecff;
+  --pago-azul-header-borde: #bfe0ff;
+  --pago-navy-text: #0f3a66;
+  --pago-border: #dfe4ec;
+  --pago-bg: #f6f8fb;
+  --pago-text: #22293b;
+  --pago-text-muted: #6b7688;
+  --pago-blue: #2f6fed;
+  --pago-blue-light: #eaf1ff;
+  --pago-green: #17994b;
+  --pago-green-dark: #0f7d3c;
+  --pago-green-light: #eafff2;
+  --pago-white: #ffffff;
+  --pago-radius: 10px;
+  --pago-radius-sm: 6px;
+  --pago-shadow: 0 20px 45px -12px rgba(15, 27, 51, 0.35);
+}
+
+/* ---------- reset local para evitar overflow por CSS global ---------- */
+#modalPago, #modalPago * {
+  box-sizing: border-box !important;
+}
+
+/* ---------- overlay ---------- */
+#modalPago.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 1000 !important;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- contenedor rectangular ---------- */
+#modalPago .pago-modal-pro {
+  width: 900px !important;
+  max-width: 95vw !important;
+  height: auto !important;
+  max-height: 88vh !important;
+  background: var(--pago-white) !important;
+  border-radius: var(--pago-radius) !important;
+  box-shadow: var(--pago-shadow) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* ---------- header celeste claro ---------- */
+#modalPago .pago-modal-header-pro {
+  background: linear-gradient(135deg, var(--pago-azul-header) 0%, var(--pago-azul-header-2) 100%) !important;
+  border-bottom: 1px solid var(--pago-azul-header-borde);
+  padding: 18px 26px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex: 0 0 auto;
+}
+
+#modalPago .pago-modal-header-pro h3 {
+  color: var(--pago-navy-text) !important;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  margin: 0 !important;
+}
+
+#modalPago .pago-modal-close {
+  background: rgba(15, 58, 102, 0.08);
+  border: none;
+  color: var(--pago-navy-text);
+  width: 30px;
+  height: 30px;
+  border-radius: var(--pago-radius-sm);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+#modalPago .pago-modal-close:hover {
+  background: rgba(15, 58, 102, 0.16);
+}
+
+/* ---------- cuerpo: dos paneles, todo visible sin scroll ---------- */
+#modalPago .pago-modal-body {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) !important;
+  gap: 0 !important;
+  background: var(--pago-bg);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#modalPago .pago-panel-left,
+#modalPago .pago-panel-right {
+  padding: 18px 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+#modalPago .pago-panel-left {
+  border-right: 1px solid var(--pago-border);
+}
+
+/* ---------- grid de métodos de pago ---------- */
+#modalPago .pago-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  width: 100%;
+}
+
+#modalPago .pago-grid .btnFormaPago {
+  width: 100% !important;
+  min-width: 0 !important;
+  border: 1px solid var(--pago-border) !important;
+  background: var(--pago-white) !important;
+  color: var(--pago-text) !important;
+  border-radius: var(--pago-radius-sm) !important;
+  padding: 10px 6px !important;
+  margin: 0 !important;
+  font-size: 12.5px !important;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  text-align: center;
+  white-space: normal;
+  transition: border-color 0.12s ease, background 0.12s ease, transform 0.08s ease;
+}
+#modalPago .pago-grid .btnFormaPago:hover {
+  border-color: var(--pago-blue) !important;
+  background: var(--pago-blue-light) !important;
+}
+#modalPago .pago-grid .btnFormaPago:active {
+  transform: translateY(1px);
+}
+#modalPago .pago-grid .btnFormaPago.active {
+  background: var(--pago-blue) !important;
+  border-color: var(--pago-blue) !important;
+  color: var(--pago-white) !important;
+}
+
+/* Efectivo: ocupa toda la fila, primero, y más resaltante */
+#modalPago .pago-grid .btnFormaPago-efectivo {
+  grid-column: 1 / -1 !important;
+  background: var(--pago-green-light) !important;
+  border: 1.5px solid var(--pago-green) !important;
+  color: var(--pago-green-dark) !important;
+  font-size: 14px !important;
+  padding: 12px 10px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+#modalPago .pago-grid .btnFormaPago-efectivo:hover {
+  background: #dcfce7 !important;
+}
+#modalPago .pago-grid .btnFormaPago-efectivo.active {
+  background: var(--pago-green) !important;
+  border-color: var(--pago-green-dark) !important;
+  color: var(--pago-white) !important;
+}
+
+/* ---------- mensaje / comprobante / otro banco ---------- */
+#modalPago .mensaje-forma-pago-pro {
+  font-size: 12px;
+  color: var(--pago-text-muted);
+  background: var(--pago-white);
+  border: 1px solid var(--pago-border);
+  border-radius: var(--pago-radius-sm);
+  padding: 8px 10px;
+}
+
+#modalPago .pago-comprobante-card,
+#modalPago .pago-otrobanco-card {
+  background: var(--pago-white);
+  border: 1px solid var(--pago-border);
+  border-radius: var(--pago-radius-sm);
+  padding: 12px 14px;
+}
+
+#modalPago .pago-help-text {
+  display: block;
+  margin-top: 6px;
+  color: var(--pago-text-muted);
+  font-size: 11px;
+}
+
+/* ---------- campos genéricos ---------- */
+#modalPago .label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--pago-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 5px;
+}
+
+#modalPago .input {
+  width: 100% !important;
+  border: 1px solid var(--pago-border);
+  border-radius: var(--pago-radius-sm);
+  padding: 9px 11px;
+  font-size: 13.5px;
+  color: var(--pago-text);
+  background: var(--pago-white);
+}
+#modalPago .input:focus {
+  outline: none;
+  border-color: var(--pago-blue);
+  box-shadow: 0 0 0 3px var(--pago-blue-light);
+}
+#modalPago .input-disabled {
+  background: #eef1f6;
+  color: var(--pago-text-muted);
+  cursor: not-allowed;
+}
+
+/* ---------- tarjetas del panel derecho ---------- */
+#modalPago .pago-card {
+  background: var(--pago-white);
+  border: 1px solid var(--pago-border);
+  border-radius: var(--pago-radius-sm);
+  padding: 14px;
+}
+
+#modalPago .efectivo-destacado {
+  border: 1.5px solid var(--pago-green);
+  background: var(--pago-green-light);
+}
+
+#modalPago .input-efectivo {
+  font-size: 19px;
+  font-weight: 700;
+  text-align: right;
+  border-color: var(--pago-green);
+}
+
+#modalPago .vuelto-box-pro {
+  margin-top: 10px;
+  background: var(--pago-green);
+  border-radius: var(--pago-radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#modalPago .vuelto-label {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+#modalPago .vuelto-valor {
+  color: var(--pago-white);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+/* ---------- resumen ---------- */
+#modalPago .pago-resumen-card {
+  background: var(--pago-white);
+}
+#modalPago .pago-resumen-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pago-navy-text);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 8px;
+}
+#modalPago .pago-resumen-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--pago-text-muted);
+  padding: 5px 0;
+  border-top: 1px dashed var(--pago-border);
+}
+#modalPago .pago-resumen-line:first-of-type {
+  border-top: none;
+}
+#modalPago .pago-resumen-line strong {
+  color: var(--pago-text);
+  font-size: 13.5px;
+}
+
+/* ---------- acciones ---------- */
+#modalPago .pago-actions-pro {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px;
+  padding: 14px 22px !important;
+  background: var(--pago-white);
+  border-top: 1px solid var(--pago-border);
+  flex: 0 0 auto;
+}
+
+#modalPago .pago-actions-pro .btn {
+  border: none;
+  border-radius: var(--pago-radius-sm);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+#modalPago .pago-actions-pro .btn.primary {
+  background: var(--pago-green) !important;
+  color: var(--pago-white) !important;
+}
+#modalPago .pago-actions-pro .btn.primary:hover {
+  background: var(--pago-green-dark) !important;
+}
+#modalPago .pago-actions-pro .btn.secondary {
+  background: var(--pago-white) !important;
+  color: var(--pago-text) !important;
+  border: 1px solid var(--pago-border) !important;
+}
+#modalPago .pago-actions-pro .btn.secondary:hover {
+  background: var(--pago-bg) !important;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 760px) {
+  #modalPago .pago-modal-body {
+    grid-template-columns: 1fr !important;
+    overflow-y: auto;
+  }
+  #modalPago .pago-panel-left {
+    border-right: none;
+    border-bottom: 1px solid var(--pago-border);
+  }
+  #modalPago .pago-modal-pro {
+    width: 96vw !important;
+    max-height: 92vh !important;
+  }
+}
+
+
+/* =========================================================
+   MODAL CLAVE — confirmación compacta y profesional
+   Anclado a #modalClaveEditar para no afectar otros modales
+   que también usen las clases genéricas .modal / .sheet
+   ========================================================= */
+
+#modalClaveEditar, #modalClaveEditar * {
+  box-sizing: border-box !important;
+}
+
+#modalClaveEditar.modal {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ---------- tarjeta compacta ---------- */
+#modalClaveEditar .modal-clave-pro {
+  width: 420px !important;
+  max-width: 92vw !important;
+  padding: 26px 28px 22px !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: 0 20px 45px -12px rgba(15, 27, 51, 0.35) !important;
+  margin: 0 !important;
+}
+
+/* ---------- título ---------- */
+#modalClaveEditar .modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 6px !important;
+}
+#modalClaveEditar .modal-title-icon {
+  display: inline-flex;
+  color: #2f6fed;
+}
+#modalClaveEditar .modal-title-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+#modalClaveEditar .modal-subtitle {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0 0 18px !important;
+  line-height: 1.4;
+}
+
+/* ---------- input + ojo ---------- */
+#modalClaveEditar .password-wrapper {
+  position: relative;
+  margin-bottom: 6px;
+}
+
+#modalClaveEditar .password-wrapper .input {
+  width: 100% !important;
+  padding: 10px 42px 10px 12px !important;
+  border: 1px solid #dfe4ec;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #22293b;
+  background: #ffffff;
+}
+#modalClaveEditar .password-wrapper .input:focus {
+  outline: none;
+  border-color: #2f6fed;
+  box-shadow: 0 0 0 3px #eaf1ff;
+}
+
+#modalClaveEditar .toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  cursor: pointer;
+  color: #64748b;
+  opacity: 0.85;
+  transition: opacity 0.12s ease, color 0.12s ease;
+  user-select: none;
+}
+#modalClaveEditar .toggle-password svg {
+  width: 19px;
+  height: 19px;
+}
+#modalClaveEditar .toggle-password:hover {
+  opacity: 1;
+  color: #2f6fed;
+}
+
+/* ---------- error ---------- */
+#modalClaveEditar .error-msg {
+  min-height: 16px;
+  font-size: 12.5px;
+  color: #dc2626;
+  margin: 4px 0 4px !important;
+}
+
+/* ---------- acciones ---------- */
+#modalClaveEditar .actions.spaced {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 10px;
+  margin-top: 16px !important;
+}
+
+#modalClaveEditar .actions .btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+#modalClaveEditar .actions .btn.secondary {
+  background: #ffffff !important;
+  color: #22293b !important;
+  border: 1px solid #dfe4ec !important;
+}
+#modalClaveEditar .actions .btn.secondary:hover {
+  background: #f6f8fb !important;
+}
+#modalClaveEditar .actions .btn.primary {
+  background: #2f6fed !important;
+  color: #ffffff !important;
+}
+#modalClaveEditar .actions .btn.primary:hover {
+  background: #2158c9 !important;
+}
+
+@media (max-width: 480px) {
+  #modalClaveEditar .modal-clave-pro {
+    width: 94vw !important;
+    padding: 22px 20px !important;
+  }
+}
+
+
+/* =========================================================
+   MODAL ELIMINAR VENTA — confirmación compacta y profesional
+   Anclado a #modalEliminarVenta para no afectar otros modales
+   que reutilicen .modal-overlay / .modal-box / .btn-danger
+   ========================================================= */
+
+#modalEliminarVenta, #modalEliminarVenta * {
+  box-sizing: border-box !important;
+}
+
+#modalEliminarVenta.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 1000 !important;
+}
+
+/* ---------- tarjeta compacta ---------- */
+#modalEliminarVenta .modal-eliminar-pro {
+  width: 380px !important;
+  max-width: 92vw !important;
+  padding: 28px 26px 22px !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: 0 20px 45px -12px rgba(15, 27, 51, 0.35) !important;
+  margin: 0 !important;
+  text-align: center;
+}
+
+/* ---------- ícono de advertencia ---------- */
+#modalEliminarVenta .modal-eliminar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+}
+#modalEliminarVenta .modal-eliminar-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---------- título y texto ---------- */
+#modalEliminarVenta h3 {
+  margin: 0 0 8px !important;
+  font-size: 18px;
+  font-weight: 700;
+  color: #dc2626;
+}
+#modalEliminarVenta p {
+  margin: 0 0 20px !important;
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.4;
+}
+
+/* ---------- acciones ---------- */
+#modalEliminarVenta .modal-actions {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 10px;
+}
+
+#modalEliminarVenta .modal-actions button {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+#modalEliminarVenta .btn-secondary {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+#modalEliminarVenta .btn-secondary:hover {
+  background: #e2e8f0 !important;
+}
+
+#modalEliminarVenta .btn-danger {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
+#modalEliminarVenta .btn-danger:hover {
+  background: #b91c1c !important;
+}
+
+@media (max-width: 420px) {
+  #modalEliminarVenta .modal-eliminar-pro {
+    width: 94vw !important;
+    padding: 24px 18px !important;
+  }
+}
+
+/* =========================================================
+   MODAL ELIMINAR COMPRA — confirmación compacta y profesional
+   Anclado a #modalEliminarCompra para no afectar otros modales
+   que reutilicen .modal-overlay / .modal-content / .btn
+   ========================================================= */
+
+#modalEliminarCompra, #modalEliminarCompra * {
+  box-sizing: border-box !important;
+}
+
+#modalEliminarCompra.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 1000 !important;
+}
+
+/* ---------- tarjeta compacta ---------- */
+#modalEliminarCompra .modal-eliminar-compra-pro {
+  width: 380px !important;
+  max-width: 92vw !important;
+  padding: 28px 26px 22px !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: 0 20px 45px -12px rgba(15, 27, 51, 0.35) !important;
+  margin: 0 !important;
+  text-align: center;
+}
+
+/* ---------- ícono ---------- */
+#modalEliminarCompra .modal-eliminar-compra-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 18px;
+}
+
+/* ---------- título y texto ---------- */
+#modalEliminarCompra h3 {
+  margin: 0 0 8px !important;
+  font-size: 18px;
+  font-weight: 700;
+  color: #dc2626;
+}
+#modalEliminarCompra p {
+  margin: 0 0 20px !important;
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.4;
+}
+
+/* ---------- acciones ---------- */
+#modalEliminarCompra .actions {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  margin-top: 0 !important;
+}
+
+#modalEliminarCompra .actions button {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+#modalEliminarCompra .btn.secondary {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+#modalEliminarCompra .btn.secondary:hover {
+  background: #e2e8f0 !important;
+}
+
+#modalEliminarCompra .btn-danger {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+#modalEliminarCompra .btn-danger:hover {
+  background: #b91c1c !important;
+}
+
+@media (max-width: 420px) {
+  #modalEliminarCompra .modal-eliminar-compra-pro {
+    width: 94vw !important;
+    padding: 24px 18px !important;
+  }
+}
+
+/* =========================================================
+   MODAL ELIMINAR CLIENTE — confirmación compacta y profesional
+   Mismo lenguaje visual que "Eliminar venta" / "Eliminar compra"
+   Anclado a #modalEliminarCliente para no afectar otros modales
+   ========================================================= */
+
+#modalEliminarCliente, #modalEliminarCliente * {
+  box-sizing: border-box !important;
+}
+
+#modalEliminarCliente.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 1000 !important;
+}
+
+/* ---------- tarjeta compacta ---------- */
+#modalEliminarCliente .modal-eliminar-cliente-pro {
+  width: 400px !important;
+  max-width: 92vw !important;
+  padding: 30px 28px 24px !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  box-shadow: 0 20px 45px -12px rgba(15, 27, 51, 0.35) !important;
+  margin: 0 !important;
+  text-align: center;
+}
+
+/* ---------- ícono ---------- */
+#modalEliminarCliente .modal-eliminar-cliente-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 20px;
+}
+
+/* ---------- título y texto ---------- */
+#modalEliminarCliente h3 {
+  margin: 0 0 8px !important;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+#modalEliminarCliente p {
+  margin: 0 0 22px !important;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+/* ---------- acciones ---------- */
+#modalEliminarCliente .actions {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 10px !important;
+}
+
+#modalEliminarCliente .actions button {
+  border: none;
+  border-radius: 10px;
+  padding: 11px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+#modalEliminarCliente .btn.secondary {
+  background: #ffffff !important;
+  color: #374151 !important;
+  border: 1.5px solid #e5e7eb !important;
+}
+#modalEliminarCliente .btn.secondary:hover {
+  background: #f9fafb !important;
+}
+
+#modalEliminarCliente .btn-danger {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+#modalEliminarCliente .btn-danger:hover {
+  background: #b91c1c !important;
+}
+#modalEliminarCliente .btn-danger i {
+  margin-right: 6px;
+}
+
+@media (max-width: 440px) {
+  #modalEliminarCliente .modal-eliminar-cliente-pro {
+    width: 94vw !important;
+    padding: 24px 18px !important;
+  }
+}
+
+
+/* === CAJA: rediseño compacto y profesional === */
+
+/* --- Contenedor padre: deja de ser una sola tarjeta grande --- */
+.caja-top-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+@media (max-width: 720px){
+  .caja-top-grid{ grid-template-columns: 1fr; }
+}
+
+/* --- Cada caja-box es su propia tarjeta --- */
+.caja-box{
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  padding: 16px 18px;
+}
+.caja-box-head{ margin-bottom: 10px; }
+
+.caja-box-icon{
+  width:32px; height:32px;
+  display:flex; align-items:center; justify-content:center;
+  background:transparent !important;
+  color:#334155;
+  border:1px solid #e2e8f0;
+  border-radius:8px;
+  font-size:15px;
+}
+.caja-box-icon-efectivo{ color:#334155; }
+.caja-box-icon-transferencia{ color:#2563eb; }
+
+/* --- Fecha: label compacto + input angosto --- */
+.caja-box .label{
+  display:block;
+  font-size:12px;
+  font-weight:600;
+  color:#64748b;
+  margin-bottom:6px;
+}
+.caja-box input[type="date"].input{
+  width:auto !important;
+  max-width:160px !important;
+  flex:0 0 auto !important;
+  padding:6px 10px;
+  font-size:13px;
+  border:1px solid #e2e8f0;
+  border-radius:6px;
+  color:#334155;
+  margin-bottom:12px;
+}
+
+/* --- Botones: tamaño ajustado al contenido, alineados a la izquierda --- */
+.caja-btn-row{
+  display:flex;
+  gap:8px;
+  margin-bottom:10px; /* menos espacio antes del bloque de saldos */
+  justify-content:flex-start;
+}
+.caja-btn-row .btn-caja{
+  width:auto !important;
+  flex:0 0 auto !important;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:7px 14px;
+  border-radius:6px;
+  font-size:12.5px;
+  font-weight:600;
+  border:none;
+  cursor:pointer;
+  transition:filter .15s, transform .05s;
+  color:#fff;
+  white-space:nowrap;
+}
+.caja-btn-row .btn-caja i{ font-size:11px; }
+.caja-btn-row .btn-caja:active{ transform:scale(.98); }
+.caja-btn-row .btn-caja.abrir{ background:#059669; }
+.caja-btn-row .btn-caja.abrir:hover{ filter:brightness(1.08); }
+.caja-btn-row .btn-caja.cerrar{ background:#dc2626; }
+.caja-btn-row .btn-caja.cerrar:hover{ filter:brightness(1.08); }
+.caja-btn-row .btn-caja:disabled{ background:#e2e8f0; color:#94a3b8; cursor:not-allowed; }
+
+/* --- Estado (Caja ABIERTA / Saldos): separadas entre sí, sin hueco arriba --- */
+.caja-estado{
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.9;   /* separa Saldo GS / US / RS entre sí */
+  color: #334155;
+}
+.caja-estado > :first-child{
+  display: block;
+  margin-bottom: 4px; /* "Caja ABIERTA (...)" un poco separado de los saldos */
+}
+
+.estado-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:12px; font-weight:650; color:#059669;
+  background:#ecfdf5; padding:4px 10px; border-radius:999px;
+  margin-bottom:10px;
+}
+.estado-badge .dot{ width:6px; height:6px; border-radius:50%; background:#059669; }
+.estado-badge.cerrada{ color:#dc2626; background:#fef2f2; }
+.estado-badge.cerrada .dot{ background:#dc2626; }
+
+/* --- Resúmenes --- */
+.resumen-bloque h4{
+  display:flex; align-items:center; gap:6px;
+  font-size:12px; font-weight:650; color:#64748b;
+  text-transform:uppercase; letter-spacing:.04em;
+}
+.resumen-bloque h4 i{ font-size:11px; }
+.valor{ font-variant-numeric:tabular-nums; }
+
+

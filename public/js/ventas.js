@@ -318,6 +318,10 @@ function iniciarPOS() {
 }
 
 
+/* =========================================================
+   PAGO MODAL — formas de pago (versión real conectada a BD)
+   ========================================================= */
+
 async function cargarFormasPago() {
   try {
     const res = await fetch("/formas_pago", { credentials: "include" });
@@ -331,16 +335,34 @@ async function cargarFormasPago() {
 
     cont.innerHTML = "";
 
-    formas.forEach(fp => {
+    // --- Efectivo siempre primero, sin importar el orden que venga de la BD ---
+    const esEfectivoFp = fp =>
+      String(fp.tipo || "").toLowerCase() === "efectivo" ||
+      String(fp.nombre || "").toLowerCase() === "efectivo";
+
+    let ordenadas = formas;
+    const idxEfectivo = formas.findIndex(esEfectivoFp);
+    if (idxEfectivo > 0) {
+      ordenadas = [...formas];
+      const [efectivo] = ordenadas.splice(idxEfectivo, 1);
+      ordenadas.unshift(efectivo);
+    }
+
+    ordenadas.forEach(fp => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "btn btnFormaPago";
+
+      const esEfectivo = esEfectivoFp(fp);
+      const esOtroBanco = String(fp.nombre || "").toLowerCase().includes("otro banco");
+
+      btn.className = "btn btnFormaPago" + (esEfectivo ? " btnFormaPago-efectivo" : "");
       btn.dataset.id = fp.id;
       btn.dataset.nombre = fp.nombre;
-      btn.dataset.tipo = fp.tipo || ""; 
+      btn.dataset.tipo = fp.tipo || "";
+      if (esOtroBanco) btn.dataset.esOtroBanco = "true";
 
       let icono = "";
-      if (fp.nombre.toLowerCase().includes("efectivo")) icono = "";
+      if (esEfectivo) icono = "";
       else if (
         fp.nombre.toLowerCase().includes("banco") ||
         fp.nombre.toLowerCase().includes("bnf") ||
@@ -402,11 +424,42 @@ function seleccionarFormaPago(fp, btn) {
     if (!esOtroBanco) {
       const inp = document.getElementById("inputOtroBanco");
       if (inp) inp.value = "";
+      actualizarLabelOtroBanco(); // limpia el "(banco)" si se venía mostrando
+    } else {
+      actualizarLabelOtroBanco();
     }
   }
 
   console.log("Forma seleccionada:", fp);
 }
+
+/**
+ * Actualiza el texto del botón "Otro Banco" para que muestre
+ * el nombre tecleado entre paréntesis, ej: "Otro Banco (Itaú)".
+ * Se ejecuta al escribir en #inputOtroBanco y al seleccionar/deseleccionar
+ * la forma de pago "Otro Banco".
+ */
+function actualizarLabelOtroBanco() {
+  const btnOtroBanco = document.querySelector('.btnFormaPago[data-es-otro-banco="true"]');
+  if (!btnOtroBanco) return;
+
+  const nombreBase = btnOtroBanco.dataset.nombre || "Otro Banco";
+  const inp = document.getElementById("inputOtroBanco");
+  const valor = (inp && inp.value.trim()) || "";
+
+  btnOtroBanco.innerHTML = valor
+    ? `${nombreBase} (${valor})`
+    : nombreBase;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  cargarFormasPago();
+
+  const inputOtroBanco = document.getElementById("inputOtroBanco");
+  if (inputOtroBanco) {
+    inputOtroBanco.addEventListener("input", actualizarLabelOtroBanco);
+  }
+});
 async function cargarClientesVenta() {
   const select = document.getElementById("v_cliente");
   if (!select) return;
@@ -805,15 +858,6 @@ if (!formaPagoIdSeleccionada && !esOtroBanco) {
     return;
   }
 
-  // Validar Otro Banco
-  if (esOtroBanco) {
-    const otroBanco = (document.getElementById("inputOtroBanco")?.value || "").trim();
-    if (!otroBanco) {
-      alert("❌ Ingrese el nombre del banco");
-      return;
-    }
-    formaPagoFinal.nombre = `Otro Banco - ${otroBanco}`;
-  }
 
   let nro_comprobante = null;
   const requiereComprobante = !esEfectivo;
@@ -823,7 +867,7 @@ if (!formaPagoIdSeleccionada && !esOtroBanco) {
     const comp = (inp?.value || "").trim();
 
     if (!comp) {
-      alert("❌ Ingrese el número de comprobante");
+      alert("Ingrese el número de comprobante");
       return;
     }
 

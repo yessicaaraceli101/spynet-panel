@@ -1348,40 +1348,50 @@
     </div>
   </div>
 </div>
-      <div id="modalClaveEditar" class="modal">
-        <div class="sheet modal-clave">
+ <div id="modalClaveEditar" class="modal">
+  <div class="sheet modal-clave modal-clave-pro">
 
-          <h3 class="modal-title">
-            🔒 Confirmación requerida
-          </h3>
+    <h3 class="modal-title">
+      <span class="modal-title-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="12" cy="15.5" r="1.4" fill="currentColor"/>
+        </svg>
+      </span>
+      Confirmación requerida
+    </h3>
 
-          <p class="modal-subtitle">
-            Ingrese la contraseña para editar esta venta
-          </p>
+    <p class="modal-subtitle">
+      Ingrese la contraseña para editar esta venta
+    </p>
 
-          <div class="password-wrapper">
-            <input type="password" id="claveEditar" class="input" placeholder="Contraseña">
+    <div class="password-wrapper">
+      <input type="password" id="claveEditar" class="input" placeholder="Contraseña">
 
-            <span class="toggle-password" onclick="togglePasswordEditar()" title="Mostrar / ocultar">
-              👁️
-            </span>
-          </div>
+      <span class="toggle-password" onclick="togglePasswordEditar()" title="Mostrar / ocultar" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+      </span>
+    </div>
 
-          <!-- ❌ error -->
-          <div id="errorClaveEditar" class="error-msg"></div>
+   
+    <div id="errorClaveEditar" class="error-msg"></div>
 
-          <div class="actions spaced">
-            <button class="btn secondary" onclick="closeModal('modalClaveEditar')">
-              Cancelar
-            </button>
+    <div class="actions spaced">
+      <button class="btn secondary" onclick="closeModal('modalClaveEditar')">
+        Cancelar
+      </button>
 
-            <button class="btn primary" id="btnConfirmarClave" onclick="verificarClaveEditar()">
-              Confirmar
-            </button>
-          </div>
+      <button class="btn primary" id="btnConfirmarClave" onclick="verificarClaveEditar()">
+        Confirmar
+      </button>
+    </div>
 
-        </div>
-      </div>
+  </div>
+</div>
 
       <section id="ventas" class="view hidden">
 
@@ -1420,21 +1430,30 @@
       </section>
 
       <!-- ===== MODAL ELIMINAR ===== -->
-      <div id="modalEliminarVenta" class="modal-overlay" style="display:none">
-        <div class="modal-box danger">
-          <h3>Eliminar venta</h3>
-          <p>¿Está seguro de eliminar esta venta?</p>
+<div id="modalEliminarVenta" class="modal-overlay" style="display:none">
+  <div class="modal-box danger modal-eliminar-pro">
 
-          <div class="modal-actions">
-            <button class="btn-secondary" onclick="closeModal('modalEliminarVenta')">
-              Cancelar
-            </button>
-            <button class="btn-danger" onclick="eliminarVentaConfirmada()">
-              Eliminar
-            </button>
-          </div>
-        </div>
-      </div>
+    <div class="modal-eliminar-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 9v4M12 16.5h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+              stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <h3>Eliminar venta</h3>
+    <p>¿Está seguro de eliminar esta venta?</p>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modalEliminarVenta')">
+        Cancelar
+      </button>
+      <button class="btn-danger" onclick="eliminarVentaConfirmada()">
+        Eliminar
+      </button>
+    </div>
+  </div>
+</div>
 
       <!-- ===== MODAL EDITAR ===== -->
       <!-- ===== MODAL EDITAR ===== -->
@@ -1978,26 +1997,30 @@
           </div>
         </div>
         <!-- MODAL ELIMINAR COMPRA -->
-        <div id="modalEliminarCompra" class="modal-overlay" style="display:none;">
-          <div class="modal-content small-modal">
+<div id="modalEliminarCompra" class="modal-overlay" style="display:none;">
+  <div class="modal-content small-modal modal-eliminar-compra-pro">
 
-            <h3><i class="fa fa-trash"></i> Eliminar Compra</h3>
+    <div class="modal-eliminar-compra-icon" aria-hidden="true">
+      <i class="fa fa-trash"></i>
+    </div>
 
-            <p>¿Estás seguro de que deseas eliminar esta compra?</p>
+    <h3>Eliminar Compra</h3>
 
-            <!-- Aquí guardamos el ID -->
-            <input type="hidden" id="delete_compra_id">
+    <p>¿Estás seguro de que deseas eliminar esta compra?</p>
 
-            <div class="actions" style="margin-top:1rem;gap:1rem;justify-content:flex-end;">
-              <button class="btn secondary" onclick="closeModal('modalEliminarCompra')">Cancelar</button>
+    <!-- Aquí guardamos el ID -->
+    <input type="hidden" id="delete_compra_id">
 
-              <button class="btn btn-danger" onclick="eliminarCompraConfirmada()">
-                Eliminar
-              </button>
-            </div>
+    <div class="actions">
+      <button class="btn secondary" onclick="closeModal('modalEliminarCompra')">Cancelar</button>
 
-          </div>
-        </div>
+      <button class="btn btn-danger" onclick="eliminarCompraConfirmada()">
+        Eliminar
+      </button>
+    </div>
+
+  </div>
+</div>
 
         <!-- MODAL ELIMINAR PEDIDO -->
         <div id="modalEliminarPedido" class="modal-overlay" style="display:none;">
@@ -2021,10 +2044,10 @@
         </div>
         </section>
 
-        <section id="caja" class="view hidden caja-view">
+<section id="caja" class="view hidden caja-view">
           <div class="actions caja-actions-top">
             <button class="btn btn-primary" onclick="descargarInformeCajaPDF()">
-              <i class="fa-solid fa-file-pdf"></i> Descargar informe PDF
+              <i class="fa-regular fa-file-pdf"></i> Descargar informe PDF
             </button>
           </div>
 
@@ -2051,8 +2074,8 @@
               </div>
 
               <div class="actions caja-btn-row">
-                <button class="btn primary" onclick="abrirCaja('efectivo')">🟢 Abrir Caja</button>
-                <button class="btn red gris" onclick="cerrarCaja('efectivo')">🔴 Cerrar Caja</button>
+                <button class="btn-caja abrir" onclick="abrirCaja('efectivo')"><i class="fa-solid fa-lock-open"></i> Abrir Caja</button>
+                <button class="btn-caja cerrar" onclick="cerrarCaja('efectivo')"><i class="fa-solid fa-lock"></i> Cerrar Caja</button>
               </div>
 
               <div id="estadoCajaEfectivo" class="caja-estado"></div>
@@ -2061,7 +2084,7 @@
             <div class="caja-box">
               <div class="caja-box-head">
                 <div class="caja-box-icon caja-box-icon-transferencia">
-                  <i class="fa-solid fa-repeat"></i>
+                  <i class="fa-solid fa-right-left"></i>
                 </div>
                 <div>
                   <h3>Caja Transferencia</h3>
@@ -2076,8 +2099,8 @@
               </div>
 
               <div class="actions caja-btn-row">
-                <button class="btn primary" onclick="abrirCaja('transferencia')">🟢 Abrir Caja</button>
-                <button class="btn red gris" onclick="cerrarCaja('transferencia')">🔴 Cerrar Caja</button>
+                <button class="btn-caja abrir" onclick="abrirCaja('transferencia')"><i class="fa-solid fa-lock-open"></i> Abrir Caja</button>
+                <button class="btn-caja cerrar" onclick="cerrarCaja('transferencia')"><i class="fa-solid fa-lock"></i> Cerrar Caja</button>
               </div>
 
               <div id="estadoCajaTransferencia" class="caja-estado"></div>
@@ -2096,7 +2119,7 @@
 
               <div class="resumen-cols">
                 <div class="resumen-bloque">
-                  <h4>Efectivo</h4>
+                  <h4><i class="fa-solid fa-money-bill-wave"></i> Efectivo</h4>
 
                   <div class="resumen-item">
                     <span>Ingreso</span>
@@ -2115,7 +2138,7 @@
                 </div>
 
                 <div class="resumen-bloque">
-                  <h4>Transferencia</h4>
+                  <h4><i class="fa-solid fa-right-left"></i> Transferencia</h4>
 
                   <div class="resumen-item">
                     <span>Ingreso</span>
@@ -2149,7 +2172,7 @@
 
               <div class="resumen-cols">
                 <div class="resumen-bloque">
-                  <h4>Efectivo</h4>
+                  <h4><i class="fa-solid fa-money-bill-wave"></i> Efectivo</h4>
 
                   <div class="resumen-item">
                     <span>Ingreso</span>
@@ -2168,7 +2191,7 @@
                 </div>
 
                 <div class="resumen-bloque">
-                  <h4>Transferencia</h4>
+                  <h4><i class="fa-solid fa-right-left"></i> Transferencia</h4>
 
                   <div class="resumen-item">
                     <span>Ingreso</span>
@@ -2199,27 +2222,27 @@
         <section id="formas-pago" class="view hidden">
 
           <div class="card">
-            <h3><i class="fa fa-credit-card"></i> Formas de Pago</h3>
+            <h3><i class="fa-solid fa-credit-card"></i> Formas de Pago</h3>
 
             <div class="caja-horizontal" style="margin-top:1rem">
 
               <!-- EFECTIVO -->
               <div class="caja-col caja-resumen">
-                <h4>Efectivo</h4>
+                <h4><i class="fa-solid fa-money-bill-wave"></i> Efectivo</h4>
                 <p>Hoy: <b id="fp-dia-efectivo">Gs. 0</b></p>
                 <p>Mes: <b id="fp-mes-efectivo">Gs. 0</b></p>
               </div>
 
               <!-- TRANSFERENCIA -->
               <div class="caja-col caja-resumen">
-                <h4>Transferencia</h4>
+                <h4><i class="fa-solid fa-right-left"></i> Transferencia</h4>
                 <p>Hoy: <b id="fp-dia-transferencia">Gs. 0</b></p>
                 <p>Mes: <b id="fp-mes-transferencia">Gs. 0</b></p>
               </div>
 
               <!-- TOTAL -->
               <div class="caja-col caja-resumen">
-                <h4>Total</h4>
+                <h4><i class="fa-solid fa-scale-balanced"></i> Total</h4>
                 <p>Hoy: <b id="fp-dia-total">Gs. 0</b></p>
                 <p>Mes: <b id="fp-mes-total">Gs. 0</b></p>
               </div>
@@ -2230,7 +2253,7 @@
             <div id="fp-detalle" style="margin-top:1rem"></div>
             <!-- NUEVO: MOVIMIENTOS CON COMPROBANTE-->
             <div id="fp-movimientos" style="margin-top:1rem">
-              <h4 style="margin:0 0 .5rem 0;"> Últimos movimientos (con comprobante)</h4>
+              <h4 style="margin:0 0 .5rem 0;"><i class="fa-solid fa-receipt"></i> Últimos movimientos (con comprobante)</h4>
 
               <div style="overflow:auto; border:1px solid #e5e7eb; border-radius:10px;">
                 <table style="width:100%; border-collapse:collapse;">
@@ -2252,7 +2275,6 @@
 
           </div>
         </section>
-
 
 
         <!-- ============================
@@ -2526,35 +2548,28 @@
 </div>
 
       <div id="modalEliminarCliente" class="modal-overlay" style="display:none;">
-  <div class="modal-box danger" style="max-width:420px;padding:2rem;border-radius:16px;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.2);">
-    
-    <div style="text-align:center;margin-bottom:1.5rem;">
-      <div style="width:64px;height:64px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
-        <i class="fa-solid fa-trash" style="font-size:1.5rem;color:#ef4444;"></i>
-      </div>
-      <h3 style="margin:0 0 .5rem;font-size:1.2rem;font-weight:700;color:#111827;">Eliminar cliente</h3>
-      <p style="margin:0;color:#6b7280;font-size:.95rem;">¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer.</p>
+  <div class="modal-box danger modal-eliminar-cliente-pro">
+
+    <div class="modal-eliminar-cliente-icon" aria-hidden="true">
+      <i class="fa-solid fa-trash"></i>
     </div>
+
+    <h3>Eliminar cliente</h3>
+    <p>¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer.</p>
 
     <input type="hidden" id="delete_cliente_id">
 
-    <div style="display:flex;gap:.75rem;justify-content:center;">
-      <button onclick="closeModal('modalEliminarCliente')" style="
-        flex:1;padding:.75rem;border-radius:10px;border:1.5px solid #e5e7eb;
-        background:#fff;font-weight:600;cursor:pointer;color:#374151;font-size:.95rem;">
+    <div class="actions">
+      <button class="btn secondary" onclick="closeModal('modalEliminarCliente')">
         Cancelar
       </button>
-      <button onclick="confirmarEliminarCliente()" style="
-        flex:1;padding:.75rem;border-radius:10px;border:none;
-        background:#ef4444;color:#fff;font-weight:600;cursor:pointer;font-size:.95rem;
-        box-shadow:0 4px 12px rgba(239,68,68,.3);">
-        <i class="fa-solid fa-trash" style="margin-right:.4rem;"></i>Eliminar
+      <button class="btn btn-danger" onclick="confirmarEliminarCliente()">
+        <i class="fa-solid fa-trash"></i> Eliminar
       </button>
     </div>
 
   </div>
 </div>
-
 
 <div id="modalEliminarProveedor" class="modal-overlay" style="display:none;">
   <div class="modal-box danger" style="max-width:420px;padding:2rem;border-radius:16px;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.2);">
@@ -2650,156 +2665,94 @@
 </div>
 
 
-      <!-- ===== MODAL PAGO ===== -->
-      <div id="modalPago" class="modal-overlay" style="display:none;">
-        <div class="modal-content pago-modal pago-modal-pro">
+<!-- ===== MODAL PAGO ===== -->
+<div id="modalPago" class="modal-overlay" style="display:none;">
+  <div class="modal-content pago-modal pago-modal-pro">
 
-          <div class="pago-modal-header-pro">
-            <h3>Seleccionar Forma de Pago</h3>
-          </div>
+    <div class="pago-modal-header-pro">
+      <h3>Seleccionar Forma de Pago</h3>
+      <button type="button" class="pago-modal-close" onclick="closeModal('modalPago')" aria-label="Cerrar">
+        &times;
+      </button>
+    </div>
 
-          <!-- IMPORTANTE:
-         VACÍO.
-         Los botones ahora se cargan desde la BD -->
-          <div class="pago-grid" id="gridFormasPago"></div>
+    <div class="pago-modal-body">
 
-          <div id="mensajeFormaPago" class="mensaje-forma-pago-pro" style="display:none;">
-          </div>
+      <!-- ===== PANEL IZQUIERDO: métodos de pago ===== -->
+      <div class="pago-panel-left">
 
-          <!-- COMPROBANTE -->
-          <div id="wrapComprobante" class="pago-comprobante-card" style="display:none;">
+        <!-- IMPORTANTE:
+             Los botones se cargan desde la BD (ver pago-modal.js -> cargarFormasPago()).
+             Efectivo siempre se renderiza primero y con estilo destacado. -->
+        <div class="pago-grid" id="gridFormasPago"></div>
 
-            <label class="label">
-              Nro. de comprobante
-            </label>
+        <div id="mensajeFormaPago" class="mensaje-forma-pago-pro" style="display:none;"></div>
 
-            <input type="text" id="inputComprobante" class="input" placeholder="Ej: 00012345">
+        <!-- COMPROBANTE -->
+        <div id="wrapComprobante" class="pago-comprobante-card" style="display:none;">
+          <label class="label" for="inputComprobante">Nro. de comprobante</label>
+          <input type="text" id="inputComprobante" class="input" placeholder="Ej: 00012345">
+          <small class="pago-help-text">Obligatorio para QR y transferencias bancarias.</small>
+        </div>
 
-            <small class="pago-help-text">
-              Obligatorio para QR y transferencias bancarias.
-            </small>
-          </div>
+      </div>
 
-          <!-- OTRO BANCO -->
-<div id="wrapOtroBanco" style="display:none; margin-top:12px; padding: 0 16px;">
-  <label class="label">Nombre del banco</label>
-  <input type="text" id="inputOtroBanco" class="input" placeholder="Ej: Itaú, BBVA, Familiar...">
-</div>
+      <!-- ===== PANEL DERECHO: detalle del pago ===== -->
+      <div class="pago-panel-right">
 
-          <div class="pago-layout-pro">
+        <!-- EFECTIVO -->
+        <div id="bloqueEfectivo" class="pago-card efectivo-destacado" style="display:none;">
+          <label class="label" id="labelMontoRecibido" for="montoRecibido">Monto recibido</label>
+          <input type="text" id="montoRecibido" class="input input-efectivo" placeholder="0"
+                 oninput="formatearMontoRecibido()">
 
-            <!-- EFECTIVO -->
-            <div class="pago-col">
-
-              <div id="bloqueEfectivo" class="pago-card efectivo-destacado" style="display:none;">
-
-                <label class="label" id="labelMontoRecibido">
-                  Monto recibido
-                </label>
-
-                <input type="text" id="montoRecibido" class="input input-efectivo" placeholder="0"
-                  oninput="formatearMontoRecibido()">
-
-                <div class="vuelto-box-pro">
-
-                  <div class="vuelto-label">
-                    Vuelto
-                  </div>
-
-                  <div id="vuelto" class="vuelto-valor">
-                    Gs. 0
-                  </div>
-
-                </div>
-
-              </div>
-
-              <!-- MONEDA -->
-              <div class="pago-col">
-
-                <div class="pago-card">
-
-                  <label class="label">
-                    Moneda
-                  </label>
-
-                  <select id="v_moneda" class="input" onchange="toggleTipoCambioVenta()">
-                    <option value="PYG">
-                      Guaraníes (Gs.)
-                    </option>
-
-                    <option value="USD">
-                      Dólar (US$)
-                    </option>
-
-                    <option value="BRL">
-                      Real (R$)
-                    </option>
-                  </select>
-
-                  <div id="wrapTipoCambio" style="display:none; margin-top:12px;">
-
-                    <label class="label">
-                      Tipo de cambio a guaraníes
-                    </label>
-
-                    <input type="number" id="v_tipo_cambio" class="input" value="6350" readonly disabled tabindex="-1"
-                      style="
-                background:#f1f5f9;
-                cursor:not-allowed;
-                color:#475569;
-              ">
-
-                  </div>
-
-                </div>
-
-              </div>
-
-              <!-- RESUMEN -->
-              <div class="pago-col">
-
-                <div id="resumenMonedaVenta" class="pago-card pago-resumen-card">
-
-                  <div class="pago-resumen-title">
-                    Resumen de moneda
-                  </div>
-
-                  <div class="pago-resumen-line">
-                    Total en moneda:
-                    <strong id="v_total_moneda">
-                      Gs. 0
-                    </strong>
-                  </div>
-
-                  <div class="pago-resumen-line">
-                    Total en guaraníes:
-                    <strong id="v_total_pyg">
-                      Gs. 0
-                    </strong>
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            <!-- BOTONES -->
-            <div class="modal-actions pago-actions-pro">
-
-              <button class="btn primary" onclick="confirmarPagoFinal()">
-                Confirmar Pago
-              </button>
-
-              <button class="btn secondary" onclick="closeModal('modalPago')">
-                Cancelar
-              </button>
-
-            </div>
-
+          <div class="vuelto-box-pro">
+            <div class="vuelto-label">Vuelto</div>
+            <div id="vuelto" class="vuelto-valor">Gs. 0</div>
           </div>
         </div>
+
+        <!-- MONEDA -->
+        <div class="pago-card">
+          <label class="label" for="v_moneda">Moneda</label>
+          <select id="v_moneda" class="input" onchange="toggleTipoCambioVenta()">
+            <option value="PYG">Guaraníes (Gs.)</option>
+            <option value="USD">Dólar (US$)</option>
+            <option value="BRL">Real (R$)</option>
+          </select>
+
+          <div id="wrapTipoCambio" style="display:none; margin-top:12px;">
+            <label class="label" for="v_tipo_cambio">Tipo de cambio a guaraníes</label>
+            <input type="number" id="v_tipo_cambio" class="input input-disabled" value="6350"
+                   readonly disabled tabindex="-1">
+          </div>
+        </div>
+
+        <!-- RESUMEN -->
+        <div id="resumenMonedaVenta" class="pago-card pago-resumen-card">
+          <div class="pago-resumen-title">Resumen de moneda</div>
+          <div class="pago-resumen-line">
+            <span>Total en moneda:</span>
+            <strong id="v_total_moneda">Gs. 0</strong>
+          </div>
+          <div class="pago-resumen-line">
+            <span>Total en guaraníes:</span>
+            <strong id="v_total_pyg">Gs. 0</strong>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- BOTONES -->
+    <div class="modal-actions pago-actions-pro">
+      <button class="btn secondary" onclick="closeModal('modalPago')">Cancelar</button>
+      <button class="btn primary" onclick="confirmarPagoFinal()">Confirmar Pago</button>
+    </div>
+
+  </div>
+</div>
         </div>
 
         <!-- jsPDF -->
