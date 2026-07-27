@@ -207,7 +207,7 @@ async function toggleMonedaCompra() {
 
   if (productoSeleccionado) autocompletarCostoCompraDesdeMoneda();
 
-  // 🟢 NUEVO: recalcular todos los items antes de renderizar
+
   recalcularMonedaItemsCompra();
 
   renderItemsCompra();

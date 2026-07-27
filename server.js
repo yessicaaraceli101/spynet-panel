@@ -3448,7 +3448,8 @@ app.post("/compras", requireEmpresa, async (req, res) => {
     subtotal_moneda = 0,
     iva_moneda = 0,
     total_moneda = 0,
-    items
+    items,
+    calcular_iva = true   // 🔥 NUEVO FLAG (por defecto true para compras normales)
   } = req.body || {};
 
   const tipoPagoFinal = normTipoCaja(tipo_pago || "efectivo");
@@ -3517,8 +3518,17 @@ app.post("/compras", requireEmpresa, async (req, res) => {
       }
     }
 
-    const ivaPyg = Number(iva || Math.round(subtotalPyg * 0.10));
-    const totalPyg = Number(total || (subtotalPyg + ivaPyg));
+    // 🔥 CÁLCULO DE IVA SEGÚN EL FLAG
+    let ivaPyg, totalPyg;
+    if (calcular_iva === false) {
+      // Sin IVA: usamos el total enviado o el subtotal
+      ivaPyg = 0;
+      totalPyg = Number(total) || subtotalPyg;
+    } else {
+      // Con IVA: calculamos el 10%
+      ivaPyg = Number(iva || Math.round(subtotalPyg * 0.10));
+      totalPyg = Number(total || (subtotalPyg + ivaPyg));
+    }
 
     let subtotalMon = Number(subtotal_moneda || 0);
     let ivaMon = Number(iva_moneda || 0);
@@ -3673,7 +3683,6 @@ app.post("/compras", requireEmpresa, async (req, res) => {
     client.release();
   }
 });
-
 app.get("/compras/:id", requireEmpresa, async (req, res) => {
   const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
@@ -8259,6 +8268,406 @@ app.get("/empresas/:id", async (req, res) => {
     });
   }
 });
+
+
+
+
+
+
+// ============================================
+// RUTAS PARA INSUMOS (con Supabase)
+// ============================================
+
+// ---------- GET /insumos ----------
+app.get("/insumos", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+
+    const { data, error } = await supabase
+      .from("insumos")
+      .select("*")
+      .eq("empresa_id", empresaId)
+      .order("nombre", { ascending: true });
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (err) {
+    console.error("GET /insumos error:", err);
+    res.status(500).json({ error: "Error cargando insumos" });
+  }
+});
+
+// ---------- POST /insumos ----------
+app.post("/insumos", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const { nombre, unidad, stock, stock_min, costo_promedio } = req.body;
+
+    if (!nombre || !unidad) {
+      return res.status(400).json({ error: "Faltan nombre o unidad" });
+    }
+
+    const { data, error } = await supabase
+      .from("insumos")
+      .insert([
+        {
+          nombre,
+          unidad,
+          stock: stock || 0,
+          stock_min: stock_min || 0,
+          costo_promedio: costo_promedio || 0,
+          empresa_id: empresaId,
+        },
+      ])
+      .select();
+
+    if (error) throw error;
+
+    res.status(201).json(data[0]);
+  } catch (err) {
+    console.error("POST /insumos error:", err);
+
+    // Detectamos el caso más común: nombre duplicado para la misma empresa
+    // (constraint UNIQUE en la tabla insumos). Supabase/Postgres devuelve
+    // code "23505" para violación de unicidad.
+    if (err.code === "23505") {
+      return res.status(409).json({
+        error: `Ya existe un insumo con ese nombre. Elegí otro nombre o editá el insumo existente.`,
+      });
+    }
+
+    // Para cualquier otro error, devolvemos el mensaje real de Supabase
+    // en vez de un texto genérico, para poder diagnosticar rápido.
+    res.status(500).json({
+      error: "Error creando insumo",
+      detalle: err.message || err.details || String(err),
+    });
+  }
+});
+
+// ---------- PUT /insumos/:id ----------
+app.put("/insumos/:id", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const { id } = req.params;
+    const { nombre, unidad, stock, stock_min, costo_promedio } = req.body;
+
+    const { data, error } = await supabase
+      .from("insumos")
+      .update({
+        nombre,
+        unidad,
+        stock: stock || 0,
+        stock_min: stock_min || 0,
+        costo_promedio: costo_promedio || 0,
+        updated_at: new Date(),
+      })
+      .eq("id", id)
+      .eq("empresa_id", empresaId)
+      .select();
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: "Insumo no encontrado" });
+    }
+
+    res.json(data[0]);
+  } catch (err) {
+    console.error("PUT /insumos/:id error:", err);
+
+    if (err.code === "23505") {
+      return res.status(409).json({
+        error: `Ya existe un insumo con ese nombre. Elegí otro nombre.`,
+      });
+    }
+
+    res.status(500).json({
+      error: "Error actualizando insumo",
+      detalle: err.message || err.details || String(err),
+    });
+  }
+});
+
+// ---------- DELETE /insumos/:id ----------
+app.delete("/insumos/:id", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const { id } = req.params;
+
+    const { error } = await supabase
+      .from("insumos")
+      .delete()
+      .eq("id", id)
+      .eq("empresa_id", empresaId);
+
+    if (error) throw error;
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /insumos/:id error:", err);
+    res.status(500).json({
+      error: "Error eliminando insumo",
+      detalle: err.message || err.details || String(err),
+    });
+  }
+});
+
+// ---------- GET /compras-insumo ----------
+app.get("/compras-insumo", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+
+    // Como compras_insumo no tiene empresa_id directamente,
+    // filtramos por insumo_id que pertenezca a la empresa.
+    const { data, error } = await supabase
+      .from("compras_insumo")
+      .select(`
+        *,
+        insumo:insumos!inner (
+          nombre,
+          empresa_id
+        )
+      `)
+      .eq("insumo.empresa_id", empresaId)
+      .order("fecha", { ascending: false });
+
+    if (error) throw error;
+
+    // Quitamos el objeto "insumo" anidado y lo aplanamos
+    const result = data.map(item => ({
+      ...item,
+      insumo_nombre: item.insumo?.nombre || null,
+      // eliminamos el objeto insumo para no tener duplicados
+      insumo: undefined,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("GET /compras-insumo error:", err);
+    res.status(500).json({ error: "Error cargando compras de insumos" });
+  }
+});
+
+// ---------- POST /compras-insumo ----------
+app.post("/compras-insumo", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const {
+      insumo_id,
+      cantidad,
+      unidad,
+      cantidad_compra,
+      unidad_compra,
+      precio_total,
+      precio_unitario_base,
+      precio_por_100g,
+      fecha,
+      proveedor_id,
+      proveedor,
+      proveedor_ruc,   // 🔥 NUEVO
+      factura,
+    } = req.body;
+
+    // 🔥 Si no se envía factura, usar "S/F" por defecto
+    const facturaFinal = (factura && factura.trim()) || "S/F";
+    // 🔥 Si no se envía RUC, guardar null o cadena vacía
+    const rucFinal = (proveedor_ruc && proveedor_ruc.trim()) || null;
+
+    // Verificar que el insumo pertenece a la empresa
+    const { data: insumoCheck, error: insumoErr } = await supabase
+      .from("insumos")
+      .select("id, stock")
+      .eq("id", insumo_id)
+      .eq("empresa_id", empresaId)
+      .single();
+
+    if (insumoErr || !insumoCheck) {
+      return res.status(404).json({ error: "Insumo no encontrado o no pertenece a esta empresa" });
+    }
+
+    // Insertar compra
+    const { data, error } = await supabase
+      .from("compras_insumo")
+      .insert([
+        {
+          insumo_id,
+          cantidad,
+          unidad,
+          cantidad_compra,
+          unidad_compra,
+          precio_total,
+          precio_unitario_base,
+          precio_por_100g: precio_por_100g || 0,
+          fecha: fecha || new Date().toISOString().slice(0, 10),
+          proveedor_id,
+          proveedor,
+          proveedor_ruc: rucFinal,   // 🔥 NUEVO
+          factura: facturaFinal,
+        },
+      ])
+      .select();
+
+    if (error) throw error;
+
+    // 2. Actualizar stock del insumo usando la función SQL
+    await supabase.rpc("actualizar_stock_insumo", {
+      p_insumo_id: insumo_id,
+      p_cantidad: cantidad,
+    });
+
+    // 3. Recalcular costo promedio
+    await supabase.rpc("recalcular_costo_promedio", {
+      p_insumo_id: insumo_id,
+    });
+
+    res.status(201).json(data[0]);
+  } catch (err) {
+    console.error("POST /compras-insumo error:", err);
+    res.status(500).json({
+      error: "Error registrando compra de insumo",
+      detalle: err.message || err.details || String(err),
+    });
+  }
+});
+
+// ---------- GET /usos-insumo ----------
+app.get("/usos-insumo", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+
+    const { data, error } = await supabase
+      .from("usos_insumo")
+      .select(`
+        *,
+        insumo:insumos!inner (
+          nombre,
+          empresa_id
+        )
+      `)
+      .eq("insumo.empresa_id", empresaId)
+      .order("fecha", { ascending: false });
+
+    if (error) throw error;
+
+    const result = data.map(item => ({
+      ...item,
+      insumo_nombre: item.insumo?.nombre || null,
+      insumo: undefined,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("GET /usos-insumo error:", err);
+    res.status(500).json({ error: "Error cargando usos de insumos" });
+  }
+});
+// ---------- GET /usos-insumo ----------
+app.get("/usos-insumo", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+
+    const { data, error } = await supabase
+      .from("usos_insumo")
+      .select(`
+        *,
+        insumo:insumos!inner (
+          nombre,
+          empresa_id
+        )
+      `)
+      .eq("insumo.empresa_id", empresaId)
+      .order("fecha", { ascending: false });
+
+    if (error) throw error;
+
+    const result = data.map(item => ({
+      ...item,
+      insumo_nombre: item.insumo?.nombre || null,
+      insumo: undefined,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("GET /usos-insumo error:", err);
+    res.status(500).json({ error: "Error cargando usos de insumos" });
+  }
+});
+
+// ---------- POST /usos-insumo ----------
+app.post("/usos-insumo", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const {
+      insumo_id,
+      cantidad,
+      unidad,
+      cantidad_usada,
+      unidad_usada,
+      costo,
+      costo_promedio,
+      motivo,
+      fecha,
+    } = req.body;
+
+    // Verificar insumo
+    const { data: insumoCheck, error: insumoErr } = await supabase
+      .from("insumos")
+      .select("id, stock")
+      .eq("id", insumo_id)
+      .eq("empresa_id", empresaId)
+      .single();
+
+    if (insumoErr || !insumoCheck) {
+      return res.status(404).json({ error: "Insumo no encontrado" });
+    }
+
+    // Insertar uso
+    const { data, error } = await supabase
+      .from("usos_insumo")
+      .insert([
+        {
+          insumo_id,
+          cantidad,
+          unidad,
+          cantidad_usada,
+          unidad_usada,
+          costo: costo || 0,
+          costo_promedio: costo_promedio || 0,
+          motivo: motivo || "",
+          fecha: fecha || new Date().toISOString().slice(0, 10),
+        },
+      ])
+      .select();
+
+    if (error) throw error;
+
+    // Descontar stock
+    await supabase.rpc("descontar_stock_insumo", {
+      p_insumo_id: insumo_id,
+      p_cantidad: cantidad,
+    });
+
+    res.status(201).json(data[0]);
+  } catch (err) {
+    console.error("POST /usos-insumo error:", err);
+    res.status(500).json({
+      error: "Error registrando uso de insumo",
+      detalle: err.message || err.details || String(err),
+    });
+  }
+});
+
+
+
+
+
+
+
+
+
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

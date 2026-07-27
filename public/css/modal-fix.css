@@ -5411,3 +5411,75 @@ css.sheet-pro {
 .valor{ font-variant-numeric:tabular-nums; }
 
 
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.15); /* muy sutil, no oscurece de golpe */
+  z-index: 998;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.drawer-overlay.hidden {
+  display: none;
+}
+
+.drawer-overlay:not(.hidden) {
+  opacity: 1;
+}
+
+.drawer-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 520px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 20px 24px 28px;
+  box-shadow: 0 -8px 30px rgba(0,0,0,.12);
+  z-index: 999;
+  max-height: 88vh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.drawer-panel.hidden {
+  display: none;
+}
+
+.drawer-panel.open {
+  transform: translateY(0);
+}
+
+.drawer-handle {
+  width: 40px;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  margin: 0 auto 16px;
+}
+
+/* En pantallas grandes, se ve como un panel lateral en vez de bandeja inferior */
+@media (min-width: 900px) {
+  .drawer-panel {
+    top: 0;
+    bottom: 0;
+    left: auto;
+    right: 0;
+    max-width: 440px;
+    margin: 0;
+    border-radius: 0;
+    height: 100%;
+    max-height: none;
+    transform: translateX(100%);
+  }
+  .drawer-panel.open {
+    transform: translateX(0);
+  }
+  .drawer-handle {
+    display: none;
+  }
+}

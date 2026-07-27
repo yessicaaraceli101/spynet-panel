@@ -79,18 +79,25 @@
     </div>
   </div>
 
-  <!-- FINANZAS -->
+  <!-- COMPRAS -->
   <div class="nav-group">
     <button class="nav-group-toggle" onclick="toggleNavGroup(this)">
-      <span><i class="fa-solid fa-coins"></i> Finanzas</span>
+      <span><i class="fa-solid fa-cart-shopping"></i> Compras</span>
       <i class="fa-solid fa-chevron-down nav-chevron"></i>
     </button>
     <div class="nav-group-items">
-      <a href="#cuentas-pagar" data-link>
-        <i class="fas fa-file-invoice-dollar"></i> Cuentas a Pagar
+      <a href="#compras" data-link>
+        <i class="fa-solid fa-cart-shopping"></i> Compras
       </a>
-      <a href="#formas-pago" data-link>
-        <i class="fa fa-credit-card"></i> Formas de Pago
+       <a href="#insumos" data-link class="nav-link">
+       <i class="fa fa-cubes"></i> Compra Insumos
+       </a>
+
+      <a href="#pedidos" data-link>
+        <i class="fa-solid fa-file-invoice"></i> Pedido a Proveedor
+      </a>
+      <a href="#lista_pedidos" data-link>
+        <i class="fa-solid fa-list-check"></i> Lista de Pedidos
       </a>
     </div>
   </div>
@@ -117,6 +124,24 @@
     </div>
   </div>
 
+
+  <!-- FINANZAS -->
+  <div class="nav-group">
+    <button class="nav-group-toggle" onclick="toggleNavGroup(this)">
+      <span><i class="fa-solid fa-coins"></i> Finanzas</span>
+      <i class="fa-solid fa-chevron-down nav-chevron"></i>
+    </button>
+    <div class="nav-group-items">
+      <a href="#cuentas-pagar" data-link>
+        <i class="fas fa-file-invoice-dollar"></i> Cuentas a Pagar
+      </a>
+
+      <a href="#formas-pago" data-link>
+        <i class="fa fa-credit-card"></i> Formas de Pago
+      </a>
+    </div>
+  </div>
+
   <!-- REPORTES -->
   <div class="nav-group">
     <button class="nav-group-toggle" onclick="toggleNavGroup(this)">
@@ -126,25 +151,6 @@
     <div class="nav-group-items">
       <a href="#dashboard" data-link>
         <i class="fa-solid fa-gauge"></i> Dashboard
-      </a>
-    </div>
-  </div>
-
-  <!-- COMPRAS -->
-  <div class="nav-group">
-    <button class="nav-group-toggle" onclick="toggleNavGroup(this)">
-      <span><i class="fa-solid fa-cart-shopping"></i> Compras</span>
-      <i class="fa-solid fa-chevron-down nav-chevron"></i>
-    </button>
-    <div class="nav-group-items">
-      <a href="#compras" data-link>
-        <i class="fa-solid fa-cart-shopping"></i> Compras
-      </a>
-      <a href="#pedidos" data-link>
-        <i class="fa-solid fa-file-invoice"></i> Pedido a Proveedor
-      </a>
-      <a href="#lista_pedidos" data-link>
-        <i class="fa-solid fa-list-check"></i> Lista de Pedidos
       </a>
     </div>
   </div>
@@ -669,120 +675,131 @@
         </div>
       </section>
 
-      <!-- PEDIDOS -->
-      <!-- SECCIÓN ACTUALIZADA: Pedido a Proveedor -->
-      <!-- SECCIÓN: PEDIDO A PROVEEDOR -->
-      <!-- ================================================================= -->
-      <section id="pedidos" class="view hidden">
-        <div class="container-fluid py-3">
-          <div class="card shadow-sm border-0">
-            <div class="card-body p-4">
+      <!-- ============================================================
+     SECCIÓN: PEDIDO A PROVEEDOR (SIN IVA)
+     ============================================================ -->
+<section id="pedidos" class="view hidden">
+  <div class="container-fluid py-3">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
 
-              <!-- Header -->
-              <div class="d-flex align-items-center justify-content-between mb-4">
-                <div>
-                  <h3 class="mb-0 fw-semibold">
-                    Pedido a Proveedor <span id="pp_id" class="text-muted"></span>
-                  </h3>
-                  <small class="text-muted">Cargá proveedor, fechas e ítems del pedido</small>
-
-                </div>
-                <div class="header-actions">
-                  <a href="index.html" class="volver-btn">← Volver</a>
-                  <button type="button" class="btn btn-outline-secondary" onclick="nav('#lista_pedidos')">
-                  Lista de Pedidos
-                 </button>
-                </div>
-              </div>
-
-              <!-- Form grid -->
-              <div class="row g-3">
-
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Proveedor</label>
-                  <select id="pp_proveedor" class="form-select"></select>
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Productos del Pedido</label>
-                  <div>
-                    <button class="btn" style="background:#2563eb;color:#fff;border:1px solid #2563eb"
-                      onclick="abrirModalSelProducto()">+ Añadir productos</button>
-                  </div>
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Fecha del Pedido</label>
-                  <input id="pp_fecha" class="form-control" type="date">
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label fw-semibold">Fecha de Recepción</label>
-                  <input id="pp_fecha_recepcion" class="form-control" type="date">
-                </div>
-
-              </div>
-
-              <!-- Tabla -->
-              <div class="table-responsive mt-4">
-                <table class="table table-striped align-middle">
-                  <thead class="table-light">
-                    <tr>
-                      <th style="width:35%">Producto</th>
-                      <th style="width:15%">Cantidad</th>
-                      <th style="width:20%">Precio de Compra</th>
-                      <th style="width:20%">Subtotal</th>
-                      <th style="width:10%" class="text-center">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody id="pp_items"></tbody>
-                </table>
-              </div>
-
-              <!-- Totales -->
-              <div class="d-flex justify-content-end mt-3">
-                <div class="text-end">
-                  <div><span class="fw-semibold">Subtotal:</span> <span id="pp_subtotal">0</span></div>
-                  <div><span class="fw-semibold">Total:</span> <span id="pp_total">0</span></div>
-                  <div><span class="fw-semibold">IVA:</span> <span id="pp_iva">0</span></div>
-                </div>
-              </div>
-
-              <!-- Footer actions -->
-              <div class="d-flex justify-content-end gap-2 mt-4">
-
-  <button
-  type="button"
-  class="btn btn-primary"
-  onclick="guardarPedido(true)"
->
-  <i class="fa-solid fa-paper-plane"></i>
-  Guardar y Enviar al correo proveedor
-</button>
-
-  <button
-    type="button"
-    class="btn btn-success"
-    onclick="guardarPedido(false)"
-  >
-    <i class="fa-solid fa-floppy-disk"></i>
-    Guardar
-  </button>
-
-  <button
-    type="button"
-    class="btn btn-danger"
-    onclick="cancelarPedido()"
-  >
-    Cancelar
-  </button>
-
-</div>
-
-            </div>
+        <!-- HEADER -->
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <h3 class="mb-0 fw-semibold">
+              Pedido a Proveedor <span id="pp_id" class="text-muted"></span>
+            </h3>
+            <small class="text-muted">Cargá proveedor, fechas e ítems del pedido</small>
+          </div>
+          <div class="header-actions">
+            <a href="index.html" class="volver-btn">← Volver</a>
+            <button type="button" class="btn btn-outline-secondary" onclick="nav('#lista_pedidos')">
+              Lista de Pedidos
+            </button>
           </div>
         </div>
-      </section>
+
+        <!-- FORMULARIO -->
+        <div class="row g-3">
+
+          <!-- Proveedor -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Proveedor</label>
+            <select id="pp_proveedor" class="form-select"></select>
+          </div>
+
+          <!-- Botón añadir productos -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Productos del Pedido</label>
+            <div>
+              <button class="btn" style="background:#2563eb;color:#fff;border:1px solid #2563eb"
+                onclick="abrirModalSelProducto()">+ Añadir productos</button>
+            </div>
+          </div>
+
+          <!-- Fecha Pedido -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Fecha del Pedido</label>
+            <input id="pp_fecha" class="form-control" type="date">
+          </div>
+
+          <!-- Fecha Recepción -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Fecha de Recepción</label>
+            <input id="pp_fecha_recepcion" class="form-control" type="date">
+          </div>
+
+        </div>
+
+        <!-- TABLA DE ÍTEMS -->
+        <div class="table-responsive mt-4">
+          <table class="table table-striped align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width:35%">Producto</th>
+                <th style="width:15%">Cantidad</th>
+                <th style="width:20%">Precio de Compra</th>
+                <th style="width:20%">Subtotal</th>
+                <th style="width:10%" class="text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="pp_items"></tbody>
+          </table>
+        </div>
+
+        <!-- =========================================================
+     TOTALES – SIN IVA (desactivado)
+     El IVA se fija en 0 tanto en el frontend (calcularTotalesPP)
+     como en el backend (guardarPedido).
+     ========================================================= -->
+<div class="d-flex justify-content-end mt-3">
+  <div class="text-end">
+    <!-- Subtotal -->
+    <div>
+      <span class="fw-semibold">Subtotal:</span>
+      <span id="pp_subtotal">0</span>
+    </div>
+    <!-- Total (igual al subtotal porque IVA = 0) -->
+    <div>
+      <span class="fw-semibold">Total:</span>
+      <span id="pp_total">0</span>
+    </div>
+    <!-- IVA ELIMINADO – ya no se muestra -->
+    <!--
+    <div>
+      <span class="fw-semibold">IVA:</span>
+      <span id="pp_iva">0</span>
+    </div>
+    -->
+  </div>
+</div>
+
+        <!-- BOTONES DE ACCIÓN -->
+        <div class="d-flex justify-content-end gap-2 mt-4">
+
+          <!-- Guardar y enviar por correo -->
+          <button type="button" class="btn btn-primary" onclick="guardarPedido(true)">
+            <i class="fa-solid fa-paper-plane"></i>
+            Guardar y Enviar al correo proveedor
+          </button>
+
+          <!-- Guardar solo -->
+          <button type="button" class="btn btn-success" onclick="guardarPedido(false)">
+            <i class="fa-solid fa-floppy-disk"></i>
+            Guardar
+          </button>
+
+          <!-- Cancelar -->
+          <button type="button" class="btn btn-danger" onclick="cancelarPedido()">
+            Cancelar
+          </button>
+
+        </div>
+
+      </div> <!-- /card-body -->
+    </div> <!-- /card -->
+  </div> <!-- /container -->
+</section>
       <!-- ================================================================= -->
 <!-- SECCIÓN: LISTA DE PEDIDOS -->
 <!-- ================================================================= -->
@@ -2325,6 +2342,509 @@
         </section>
 
 
+
+        <!-- ============================================
+     ÍCONOS (inline, sin dependencias externas)
+     Pegar una sola vez en tu archivo, ej. antes de </body>
+============================================ -->
+<svg style="display:none">
+  <symbol id="icon-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 8L12 3 3 8v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/>
+  </symbol>
+  <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 5v14M5 12h14"/>
+  </symbol>
+  <symbol id="icon-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+  </symbol>
+  <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/>
+  </symbol>
+  <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16z"/>
+  </symbol>
+  <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+  </symbol>
+  <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+  </symbol>
+  <symbol id="icon-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 12h14"/>
+  </symbol>
+</svg>
+
+<style>
+  /* Utilidad para usar los símbolos de arriba: <svg class="icon"><use href="#icon-box"/></svg> */
+  .icon{width:18px;height:18px;flex-shrink:0}
+  .icon-sm{width:15px;height:15px}
+  .btn-icon-inline{display:inline-flex;align-items:center;gap:6px}
+
+  /* Estado vacío dentro del modal de compra */
+  .empty-state{
+    display:flex;flex-direction:column;align-items:center;text-align:center;
+    gap:10px;padding:28px 20px;background:#f8fafc;border:1px dashed #cbd5e1;
+    border-radius:10px;color:#475569;
+  }
+  .empty-state .icon{width:28px;height:28px;color:#94a3b8}
+  .empty-state strong{color:#1e293b;font-size:0.95rem}
+  .empty-state p{margin:0;font-size:0.85rem;color:#64748b}
+
+  /* Botones circulares de acción en tabla (consistentes con el resto del panel) */
+  .action-icon-btn{
+    width:32px;height:32px;border-radius:50%;border:none;
+    display:inline-flex;align-items:center;justify-content:center;
+    cursor:pointer;transition:filter .15s ease;
+  }
+  .action-icon-btn:hover{filter:brightness(0.92)}
+  .action-icon-btn.edit{background:#2563eb;color:#fff}
+  .action-icon-btn.delete{background:#dc2626;color:#fff}
+
+  /* Select con estado deshabilitado más claro cuando no hay datos */
+  select.input:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed}
+
+  .stock-low{color:#dc2626;font-weight:600}
+  .stock-ok{color:#16a34a;font-weight:600}
+
+  /* Resumen de Consumo */
+  .btn-chip{
+    background:#eef2ff;color:#3730a3;border:1px solid #e0e7ff;
+    padding:6px 14px;border-radius:20px;font-size:0.82rem;font-weight:600;
+  }
+  .btn-chip:hover{background:#e0e7ff}
+  .resumen-subtitulo{margin:0 0 10px;font-size:0.9rem;color:#475569;font-weight:700}
+  .kpi-row{display:flex;gap:14px;margin:16px 0 20px;flex-wrap:wrap}
+  .kpi-card{
+    flex:1;min-width:180px;background:#f8fafc;border:1px solid #e2e8f0;
+    border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;
+  }
+  .kpi-label{font-size:0.78rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .kpi-value{font-size:1.3rem;font-weight:700;color:#1e293b}
+  .tabla-paginacion{
+    display:flex;justify-content:center;align-items:center;gap:12px;
+    padding:12px 0 4px;font-size:0.85rem;color:#475569;
+  }
+  .tabla-paginacion button{
+    background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;
+    padding:5px 12px;cursor:pointer;font-size:0.82rem;color:#334155;
+  }
+  .tabla-paginacion button:disabled{opacity:0.4;cursor:not-allowed}
+  .tabla-paginacion button:hover:not(:disabled){background:#e2e8f0}
+</style>
+<!-- ===== SECCIÓN INSUMOS ===== -->
+<section id="insumos" class="view hidden">
+  <div class="card">
+    <div class="actions" style="justify-content:space-between;align-items:center">
+      <div class="btn-icon-inline">
+        <svg class="icon"><use href="#icon-box"/></svg>
+        <b>Compra Insumos</b>
+        <span class="tag">Materia prima</span>
+      </div>
+      <div class="actions">
+        <div class="search">
+          <svg class="icon icon-sm" style="position:relative;left:22px;color:#94a3b8"><use href="#icon-search"/></svg>
+          <input id="insumoSearch" style="padding-left:30px" placeholder="Buscar insumo..." oninput="filtrarInsumos(this.value)" />
+        </div>
+        <a href="index.html" class="volver-btn">← Volver</a>
+        <button class="btn btn-blue btn-icon-inline" onclick="abrirNuevoInsumo()">
+          <svg class="icon icon-sm"><use href="#icon-plus"/></svg> Agregar Insumo
+        </button>
+        <button class="btn btn-green btn-icon-inline" onclick="abrirCompraInsumo()">
+          <svg class="icon icon-sm"><use href="#icon-cart"/></svg> Compra
+        </button>
+        <button class="btn btn-icon-inline" style="background:#f97316;color:#fff" onclick="abrirUsoInsumo()">
+          <svg class="icon icon-sm"><use href="#icon-minus"/></svg> Registrar Uso
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive mt-3 mobile-scroll">
+      <table class="table table-striped table-hover">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Unidad base</th>
+            <th>Stock</th>
+            <th>Stock mínimo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-insumos">
+          <!-- Fila de estado vacío se inyecta desde JS -->
+        </tbody>
+      </table>
+    </div>
+    <div id="insumos-paginacion" class="tabla-paginacion"></div>
+  </div>
+
+  <!-- ===== RESUMEN DE CONSUMO ===== -->
+  <div class="card" style="margin-top:16px">
+    <div class="actions" style="justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+      <div class="btn-icon-inline" style="gap:12px;">
+        <svg class="icon"><use href="#icon-box"/></svg>
+        <b>Resumen de Consumo</b>
+        <button class="btn btn-blue btn-icon-inline" onclick="verHistorialComprasInsumo()" style="font-size:0.85rem; padding:4px 12px;">
+          <svg class="icon icon-sm"><use href="#icon-search"/></svg> Ver compras
+        </button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+        <div class="actions" style="flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-chip" onclick="setRangoResumen('hoy')">Hoy</button>
+          <button class="btn btn-chip" onclick="setRangoResumen('semana')">Esta semana</button>
+          <button class="btn btn-chip" onclick="setRangoResumen('finde')">Fin de semana</button>
+          <button class="btn btn-chip" onclick="setRangoResumen('mes')">Este mes</button>
+        </div>
+        <div class="actions" style="flex-wrap:wrap">
+          <label class="label" style="margin:0">Desde</label>
+          <input id="resumen_desde" class="input" type="date" style="width:auto" onchange="renderResumenInsumos()">
+          <label class="label" style="margin:0">Hasta</label>
+          <input id="resumen_hasta" class="input" type="date" style="width:auto" onchange="renderResumenInsumos()">
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <span class="kpi-label">Total gastado en el período</span>
+        <span class="kpi-value" id="kpi-total-gastado">Gs. 0</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Insumo más usado</span>
+        <span class="kpi-value" id="kpi-insumo-top">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Días con consumo</span>
+        <span class="kpi-value" id="kpi-dias-consumo">0</span>
+      </div>
+    </div>
+
+    <h4 class="resumen-subtitulo">Gasto por día</h4>
+    <div class="table-responsive mobile-scroll">
+      <table class="table table-striped table-hover">
+        <thead class="table-dark">
+          <tr><th>Día</th><th>Fecha</th><th>Cantidad total</th><th>Gasto</th></tr>
+        </thead>
+        <tbody id="resumen-dias-tbody"></tbody>
+      </table>
+    </div>
+    <div id="resumen-dias-paginacion" class="tabla-paginacion"></div>
+
+    <h4 class="resumen-subtitulo" style="margin-top:20px">Detalle por insumo</h4>
+    <div class="table-responsive mobile-scroll">
+      <table class="table table-striped table-hover">
+        <thead class="table-dark">
+          <tr><th>Fecha</th><th>Día</th><th>Insumo</th><th>Cantidad</th><th>Costo</th><th>Motivo</th></tr>
+        </thead>
+        <tbody id="resumen-detalle-tbody"></tbody>
+      </table>
+    </div>
+    <div id="resumen-detalle-paginacion" class="tabla-paginacion"></div>
+  </div>
+</section>
+
+<!-- ===== MODAL NUEVO/EDITAR INSUMO ===== -->
+<div class="modal" id="modalInsumo">
+  <div class="sheet">
+    <input type="hidden" id="insumo_id">
+
+    <h3 id="insumo_titulo" class="btn-icon-inline">
+      <svg class="icon"><use href="#icon-box"/></svg> Nuevo Insumo
+    </h3>
+
+    <div class="grid cols-2">
+
+      <div>
+        <label class="label">Nombre</label>
+        <input id="insumo_nombre" class="input" placeholder="Ej: Queso mozzarella">
+      </div>
+
+      <div>
+        <label class="label">Unidad base</label>
+        <select id="insumo_unidad" class="input" onchange="renderStockRapido()">
+          <option value="Kg">Kilogramo (Kg)</option>
+          <option value="g">Gramo (g)</option>
+          <option value="L">Litro (L)</option>
+          <option value="ml">Mililitro (ml)</option>
+          <option value="Unidad">Unidad</option>
+          <option value="Docena">Docena</option>
+          <option value="Metro">Metro (m)</option>
+          <option value="cm">Centímetro (cm)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="label">Stock inicial</label>
+        <input id="insumo_stock" class="input" type="number" step="0.01" value="0" oninput="marcarStockManual()">
+        <small style="color:#64748b;display:block;margin-top:4px">
+          Cuánto tenés ahora. Si arrancás de cero, dejalo en 0 — después sube solo con las compras.
+        </small>
+        <div id="stock_rapido_botones" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"></div>
+      </div>
+
+      <div>
+        <label class="label">Alertarme cuando quede menos de</label>
+        <input id="insumo_stock_min" class="input" type="number" step="0.01" value="0">
+        <small style="color:#64748b;display:block;margin-top:4px">
+          Opcional. Solo pinta el stock en rojo en la tabla, no afecta nada más.
+        </small>
+      </div>
+
+      <div class="cols-2-span" style="grid-column:1 / -1;border-top:1px solid #e5e7eb;margin-top:4px;padding-top:16px">
+        <label class="label" style="display:flex;align-items:center;gap:6px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#2563eb">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          Costo de referencia (Gs. por unidad base)
+        </label>
+        <input id="insumo_costo_promedio" class="input" type="number" step="0.01" min="0" placeholder="Ej: 25000" value="0">
+        <small style="color:#64748b;display:block;margin-top:4px">
+          Opcional. Se usa para calcular el costo estimado al registrar un uso, mientras todavía no hayas cargado ninguna compra para este insumo.
+        </small>
+      </div>
+
+    </div>
+
+    <div class="actions" style="margin-top:1rem">
+      <button class="btn btn-green" onclick="guardarInsumo()">Guardar</button>
+      <button class="btn btn-red" onclick="closeModal('modalInsumo')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL COMPRA DE INSUMO (SIN FACTURA VISIBLE) ===== -->
+<div class="modal" id="modalCompraInsumo">
+  <div class="sheet" style="max-width:650px;">
+    <h3 class="btn-icon-inline">
+      <svg class="icon"><use href="#icon-cart"/></svg> Registrar Compra de Insumo
+    </h3>
+
+    <!-- Estado vacío -->
+    <div id="ci_empty_state" class="empty-state hidden">
+      <svg class="icon"><use href="#icon-alert"/></svg>
+      <strong>Todavía no cargaste ningún insumo</strong>
+      <p>Primero necesitás crear al menos un insumo (ej: Queso, Harina, Tornillos) para poder registrar una compra.</p>
+      <button class="btn btn-blue btn-icon-inline" onclick="closeModal('modalCompraInsumo'); abrirNuevoInsumo()">
+        <svg class="icon icon-sm"><use href="#icon-plus"/></svg> Crear el primer insumo
+      </button>
+    </div>
+
+    <div id="ci_form_fields" class="grid cols-2">
+      <!-- Insumo -->
+      <div>
+        <label class="label">Insumo</label>
+        <select id="ci_insumo_id" class="input" onchange="actualizarUnidadCompraInsumo()">
+          <option value="">Seleccionar insumo...</option>
+        </select>
+      </div>
+
+      <!-- Unidad base (solo lectura) -->
+      <div>
+        <label class="label">Unidad base</label>
+        <input id="ci_unidad_base" class="input" readonly style="background:#f1f5f9;cursor:default;" placeholder="Kg, L, etc.">
+      </div>
+
+      <!-- Cantidad comprada -->
+      <div>
+        <label class="label">Cantidad comprada</label>
+        <input id="ci_cantidad" class="input" type="number" step="0.01" min="0" value="1000" oninput="calcularTotalCompraInsumo()">
+      </div>
+
+      <!-- Unidad de compra -->
+      <div>
+        <label class="label">Unidad de compra</label>
+        <select id="ci_unidad_compra" class="input" onchange="calcularTotalCompraInsumo()">
+          <option value="Kg">Kilogramo (Kg)</option>
+          <option value="g" selected>Gramo (g)</option>
+          <option value="L">Litro (L)</option>
+          <option value="ml">Mililitro (ml)</option>
+          <option value="Unidad">Unidad</option>
+        </select>
+        <div id="ci_rapido_botones" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;"></div>
+      </div>
+
+      <!-- Precio por 100 gramos -->
+      <div>
+        <label class="label">Precio por 100 gramos (Gs.)</label>
+        <input id="ci_precio_por_100g" class="input" type="number" step="0.01" min="0" value="600" oninput="calcularTotalCompraInsumo()">
+        <small style="color:#64748b;display:block;margin-top:4px;">Ej: si 100g cuestan 600 Gs., ingresá 600</small>
+      </div>
+
+      <!-- Precio por Kg (calculado) -->
+      <div>
+        <label class="label">Precio por Kg (Gs.)</label>
+        <input id="ci_precio_por_kilo" class="input" readonly style="background:#f1f5f9;font-weight:bold;" placeholder="Se calcula automáticamente">
+        <small style="color:#22c55e;display:block;margin-top:4px;">= precio por 100g × 10</small>
+      </div>
+
+      <!-- Precio total (calculado) -->
+      <div>
+        <label class="label">Precio total (Gs.)</label>
+        <input id="ci_precio_total" class="input" readonly style="background:#f1f5f9;font-weight:bold;" placeholder="Se calcula automáticamente">
+        <small style="color:#2563eb;display:block;margin-top:4px;">= (cantidad / 100) × precio por 100g</small>
+      </div>
+
+      <!-- Fecha -->
+      <div>
+        <label class="label">Fecha</label>
+        <input id="ci_fecha" class="input" type="date">
+      </div>
+
+      <!-- Proveedor -->
+      <div>
+        <label class="label">Proveedor</label>
+        <select id="ci_proveedor_id" class="input">
+          <option value="">Seleccionar proveedor...</option>
+        </select>
+      </div>
+
+      <!-- RUC (solo lectura) -->
+      <div>
+        <label class="label">RUC</label>
+        <input id="ci_ruc_mostrado" class="input" readonly style="background:#f1f5f9;cursor:default;" placeholder="RUC del proveedor">
+      </div>
+
+      <!-- ============================================================
+           CAMPOS OCULTOS (para compatibilidad con el JavaScript)
+           - proveedor_ruc: sincronizado con el RUC del proveedor
+           - ci_factura: valor fijo "S/F" porque no se usa factura
+      ============================================================ -->
+      <input type="hidden" id="proveedor_ruc" value="">
+      <input type="hidden" id="ci_factura" value="S/F">
+    </div>
+
+    <div id="ci_form_actions" class="actions" style="margin-top:1rem">
+      <button class="btn btn-green" onclick="guardarCompraInsumo()">Registrar compra</button>
+      <button class="btn btn-red" onclick="closeModal('modalCompraInsumo')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DRAWER: REGISTRAR USO DE INSUMO ===== -->
+<div id="drawerOverlay" class="drawer-overlay hidden" onclick="cerrarDrawerUsoInsumo()"></div>
+
+<div id="drawerUsoInsumo" class="drawer-panel hidden">
+  <div class="drawer-handle"></div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <h3 style="margin:0;font-size:1.15rem;font-weight:700;display:flex;align-items:center;gap:8px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2">
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Registrar uso de insumo
+    </h3>
+    <button onclick="cerrarDrawerUsoInsumo()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8;line-height:1">&times;</button>
+  </div>
+
+  <div id="uso_empty_state" class="empty-state hidden">
+    <svg class="icon"><use href="#icon-alert"/></svg>
+    <strong>Todavía no cargaste ningún insumo</strong>
+    <p>Primero creá el insumo desde "Agregar Insumo".</p>
+  </div>
+
+  <div id="uso_form_fields">
+
+    <div style="margin-bottom:16px">
+      <label class="label">Insumo</label>
+      <select id="uso_insumo_id" class="input" onchange="actualizarUnidadUso()">
+        <option value="">Seleccionar insumo...</option>
+      </select>
+      <small id="uso_stock_actual" style="color:#64748b;display:block;margin-top:4px"></small>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label class="label" id="uso_cantidad_label">Cantidad usada (g)</label>
+      <input id="uso_cantidad" class="input" type="number" step="1" min="0" value="100" oninput="calcularCostoUso()" style="font-size:1.1rem">
+      <div id="uso_rapido_botones" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;"></div>
+    </div>
+
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:#475569;font-size:.9rem">Costo de esta salida</span>
+        <span id="uso_costo_estimado" style="font-weight:800;font-size:1.4rem;color:#0f172a">Gs. 0</span>
+      </div>
+      <small id="uso_costo_referencia" style="color:#94a3b8;display:block;margin-top:4px"></small>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label class="label">Fecha</label>
+      <input id="uso_fecha" class="input" type="date">
+    </div>
+
+    <div>
+      <label class="label">Motivo (opcional)</label>
+      <input id="uso_motivo" class="input" placeholder="Ej: Pizza muzzarella x3">
+    </div>
+
+    <input type="hidden" id="uso_unidad_base">
+    <input type="hidden" id="uso_unidad_compra" value="g">
+
+  </div>
+
+  <div id="uso_form_actions" class="actions" style="margin-top:1.2rem">
+    <button class="btn" style="background:#f97316;color:#fff" onclick="guardarUsoInsumo()">Descontar del stock</button>
+    <button class="btn btn-red" onclick="cerrarDrawerUsoInsumo()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ===== MODAL ELIMINAR INSUMO ===== -->
+<div id="modalEliminarInsumo" class="modal-overlay" style="display:none;">
+  <div class="modal-box danger">
+    <h3 class="btn-icon-inline"><svg class="icon"><use href="#icon-trash"/></svg> Eliminar insumo</h3>
+    <p>¿Está seguro de eliminar este insumo?</p>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="closeModal('modalEliminarInsumo')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarEliminarInsumo()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL HISTORIAL DE COMPRAS DE INSUMOS ===== -->
+<div id="modalHistorialComprasInsumo" class="modal-overlay" style="display:none;">
+  <div class="modal-content" style="max-width:900px; width:95%; max-height:85vh; overflow-y:auto; background:#fff; border-radius:16px; padding:1.8rem; box-shadow:0 20px 60px rgba(0,0,0,.25);">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+      <h3 style="margin:0; font-weight:700; display:flex; align-items:center; gap:8px;">
+        <svg class="icon" style="width:24px;height:24px;"><use href="#icon-cart"/></svg>
+        Historial de compras de insumos
+      </h3>
+      <button onclick="closeModal('modalHistorialComprasInsumo')" style="background:none; border:none; font-size:28px; cursor:pointer; color:#6b7280;">&times;</button>
+    </div>
+
+    <div style="margin-bottom:1rem; display:flex; gap:12px; flex-wrap:wrap;">
+      <input id="filtroHistorialCompras" class="input" placeholder="Buscar por proveedor o insumo..." oninput="filtrarHistorialCompras()" style="flex:1; min-width:200px;">
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table class="table table-striped table-hover" style="width:100%;">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Proveedor</th>
+            <th>RUC</th>    <!-- ← CAMBIADO: antes era "Factura" -->
+            <th>Insumo</th>
+            <th>Cantidad</th>
+            <th>Unidad</th>
+            <th>Precio unit.</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody id="tablaHistorialCompras"></tbody>
+      </table>
+    </div>
+    <div id="paginacionHistorialCompras" class="tabla-paginacion"></div>
+
+    <div style="margin-top:1rem; display:flex; justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="closeModal('modalHistorialComprasInsumo')">Cerrar</button>
+    </div>
+  </div>
+</div>
         <!-- ============================
    MODAL — NUEVA COMPRA
 ============================ -->
@@ -2530,6 +3050,12 @@
       </button>
     </div>
 
+    <!-- NUEVAS PESTAÑAS -->
+    <div class="filtro-tabs" style="display:flex; gap:0.5rem; margin:0.5rem 1rem 1rem;">
+      <button class="btn btn-sm btn-primary" data-tipo="productos" id="tabProductos">Productos</button>
+      <button class="btn btn-sm btn-secondary" data-tipo="insumos" id="tabInsumos">Insumos</button>
+    </div>
+
     <div class="modal-body-pos">
       <div class="search-wrap-pos">
         <i class="ti ti-search search-icon-pos"></i>
@@ -2549,8 +3075,7 @@
 
   </div>
 </div>
-
-<!-- MODAL EDICIÓN / AGREGAR PRODUCTO -->
+<!-- MODAL EDICIÓN / AGREGAR PRODUCTO (con controles para insumos) -->
 <div class="modal" id="modalEditarPP" style="display:none;">
   <div class="sheet modal-editar-pos">
 
@@ -2563,28 +3088,68 @@
 
     <div class="modal-body-pos" style="display:flex;flex-direction:column;gap:12px;">
 
+      <!-- Campo: Producto (solo lectura) -->
       <div class="campo-pos">
         <label class="label-pos">Producto</label>
         <input id="pp_edit_nombre" class="input input-disabled-pos" disabled>
       </div>
 
+      <!-- =========================================================
+           CONTROLES ESPECÍFICOS PARA INSUMOS (ocultos por defecto)
+           ========================================================= -->
+      <div id="insumo_controls" style="display:none; background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:4px;">
+
+        <!-- Selector de unidad (solo para insumos) -->
+        <div class="campo-pos">
+          <label class="label-pos">Unidad</label>
+          <select id="pp_edit_unidad_select" class="input">
+            <option value="Kg">Kilogramo (Kg)</option>
+            <option value="g">Gramo (g)</option>
+            <option value="L">Litro (L)</option>
+            <option value="ml">Mililitro (ml)</option>
+            <option value="Unidad">Unidad</option>
+          </select>
+        </div>
+
+        <!-- Botones rápidos para fracciones -->
+        <div style="margin-top:8px;">
+          <label class="label-pos">Cantidad rápida</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setCantidadInsumo(0.25)">¼</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setCantidadInsumo(0.5)">½</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setCantidadInsumo(1)">1</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setCantidadInsumo(5)">5</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setCantidadInsumo(10)">10</button>
+          </div>
+          <small style="color:#64748b; display:block; margin-top:4px;">
+            La cantidad se expresa en la unidad seleccionada (ej: ½ Kg = 0.5 Kg)
+          </small>
+        </div>
+
+      </div>
+      <!-- Fin controles insumos -->
+
+      <!-- Campo: Cantidad (común para productos e insumos) -->
       <div class="campo-pos">
         <label class="label-pos">Cantidad</label>
-        <input id="pp_edit_cantidad" type="number" min="1" class="input">
+        <input id="pp_edit_cantidad" type="number" min="1" step="any" class="input" value="1">
       </div>
 
-      <div class="campo-pos">
-        <label class="label-pos">Unidad</label>
+      <!-- Campo: Unidad (para productos, se oculta cuando es insumo) -->
+      <div class="campo-pos" id="campo_unidad_producto">
+        <label class="label-pos">Unidad (producto)</label>
         <input id="pp_edit_unidad" class="input" placeholder="Unidad / Caja / Pack">
       </div>
 
+      <!-- Campo: Costo -->
       <div class="campo-pos">
-        <label class="label-pos">Costo</label>
+        <label class="label-pos">Costo (Gs.)</label>
         <input id="pp_edit_costo" class="input" type="text" inputmode="numeric" placeholder="0"
           oninput="formatearMilesPY(this)">
       </div>
 
-      <div class="actions-pos">
+      <!-- Botones de acción -->
+      <div class="actions-pos" style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px;">
         <button class="btn btn-cancelar-pos" type="button" onclick="closeModal('modalEditarPP')">Cancelar</button>
         <button class="btn btn-primary-pos" type="button" onclick="guardarProductoAListaPP()">
           <i class="ti ti-circle-plus"></i> Agregar
@@ -2801,7 +3366,7 @@
 
   </div>
 </div>
-        </div>
+</div>
 
         <!-- jsPDF -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
