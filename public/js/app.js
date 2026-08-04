@@ -172,16 +172,20 @@ mustAuth();
 /* =========================================
    FECHAS / CAJA
 ========================================= */
-function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
+function hoyLocal() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function asegurarFechasCaja() {
   const fE = document.getElementById("fechaCajaEfectivo");
   const fT = document.getElementById("fechaCajaTransferencia");
 
-  if (fE && !fE.value) fE.value = hoyISO();
-  if (fT && !fT.value) fT.value = hoyISO();
+  if (fE && !fE.value) fE.value = hoyLocal();   
+  if (fT && !fT.value) fT.value = hoyLocal();
 }
 
 /* =========================================
@@ -197,11 +201,8 @@ function qsa(s) {
 
 function fmtDate(d) {
   if (!d) return "-";
-
-  const f = new Date(d);
-  if (isNaN(f)) return "-";
-
-  return f.toISOString().slice(0, 10);
+  const fecha = toYMD(d);
+  return fecha || "-";
 }
 
 /* =========================================
@@ -666,7 +667,7 @@ async function exportarPDF_Proveedor(proveedorNombre) {
     return;
   }
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyLocal();   // ← CAMBIADO: antes era new Date().toISOString().slice(0, 10)
 
   const pedidosProveedor = pedidos.filter(p =>
     String(p.proveedor_nombre || "").trim().toLowerCase() ===
@@ -850,7 +851,6 @@ async function exportarPDF_Proveedor(proveedorNombre) {
 
   doc.save(nombreArchivo);
 }
-
 function confirmarEliminarPedido(id) {
   if (!confirm("¿Está seguro de eliminar este pedido?")) return;
   eliminarPedido(id);
@@ -4459,12 +4459,13 @@ async function exportarPDF_Listado() {
     margin: { left: 10, right: 10 }
   });
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyLocal();   
   const nombreArchivo =
     `Lista_de_Pedidos_${limpiarNombreArchivo(emp.nombre || "Empresa")}_${hoy}.pdf`;
 
   doc.save(nombreArchivo);
 }
+
 async function imgToDataURL(url) {
   const res = await fetch(url, {
     credentials: "include",
@@ -6600,7 +6601,7 @@ async function cargarRecaudacionFecha() {
     const fecha =
       (document.getElementById("fechaCajaEfectivo")?.value || "").trim() ||
       (document.getElementById("fechaCajaTransferencia")?.value || "").trim() ||
-      hoyISO();
+      hoyLocal(); 
 
     // =========================
     // RESUMEN DÍA
@@ -6628,97 +6629,39 @@ async function cargarRecaudacionFecha() {
     // =========================
     // DÍA
     // =========================
-    setText(
-      "dia-ingreso-efectivo",
-      dia.ingreso_efectivo
-    );
-
-    setText(
-      "dia-egreso-efectivo",
-      dia.egreso_efectivo
-    );
-
-    setText(
-      "dia-efectivo",
-      dia.saldo_efectivo
-    );
-
-    setText(
-      "dia-ingreso-transferencia",
-      dia.ingreso_transferencia
-    );
-
-    setText(
-      "dia-egreso-transferencia",
-      dia.egreso_transferencia
-    );
-
-    setText(
-      "dia-transferencia",
-      dia.saldo_transferencia
-    );
-
-    setText(
-      "dia-total",
-      dia.saldo_total
-    );
+    setText("dia-ingreso-efectivo", dia.ingreso_efectivo);
+    setText("dia-egreso-efectivo", dia.egreso_efectivo);
+    setText("dia-efectivo", dia.saldo_efectivo);
+    setText("dia-ingreso-transferencia", dia.ingreso_transferencia);
+    setText("dia-egreso-transferencia", dia.egreso_transferencia);
+    setText("dia-transferencia", dia.saldo_transferencia);
+    setText("dia-total", dia.saldo_total);
 
     // =========================
     // MES
     // =========================
-    setText(
-      "mes-ingreso-efectivo",
-      mes.ingreso_efectivo
-    );
-
-    setText(
-      "mes-egreso-efectivo",
-      mes.egreso_efectivo
-    );
-
-    setText(
-      "mes-efectivo",
-      mes.saldo_efectivo
-    );
-
-    setText(
-      "mes-ingreso-transferencia",
-      mes.ingreso_transferencia
-    );
-
-    setText(
-      "mes-egreso-transferencia",
-      mes.egreso_transferencia
-    );
-
-    setText(
-      "mes-transferencia",
-      mes.saldo_transferencia
-    );
-
-    setText(
-      "mes-total",
-      mes.saldo_total
-    );
+    setText("mes-ingreso-efectivo", mes.ingreso_efectivo);
+    setText("mes-egreso-efectivo", mes.egreso_efectivo);
+    setText("mes-efectivo", mes.saldo_efectivo);
+    setText("mes-ingreso-transferencia", mes.ingreso_transferencia);
+    setText("mes-egreso-transferencia", mes.egreso_transferencia);
+    setText("mes-transferencia", mes.saldo_transferencia);
+    setText("mes-total", mes.saldo_total);
 
     console.log("RESUMEN DIA:", dia);
     console.log("RESUMEN MES:", mes);
 
   } catch (e) {
-
-    console.error(
-      "Error recaudación:",
-      e
-    );
-
+    console.error("Error recaudación:", e);
   }
 }
+
 async function cargarFormasPagoResumen() {
   try {
     const ventas = await jget("/ventas");
 
-    const hoy = hoyISO();
-    const mes = hoy.slice(0, 7);
+    const hoy = hoyLocal();      
+    const mes = hoy.slice(0, 7); 
 
     let diaE = 0;
     let diaT = 0;
@@ -6785,12 +6728,12 @@ function _getVal(id) {
 
 async function verificarCaja() {
   try {
-    console.log("➡️ verificarCaja ejecutándose");
+    console.log("verificarCaja ejecutándose");
 
     const fecha =
       document.getElementById("fechaCajaEfectivo")?.value ||
       document.getElementById("fechaCajaTransferencia")?.value ||
-      hoyISO();
+      hoyLocal();  
 
     console.log("fecha:", fecha);
 
@@ -6812,14 +6755,14 @@ async function verificarCaja() {
         "estadoCajaEfectivo",
         "Efectivo",
         cajaE,
-        diaResumen?.saldo_efectivo // <- saldo neto real
+        diaResumen?.saldo_efectivo
       );
 
       pintarEstadoCaja(
         "estadoCajaTransferencia",
         "Transferencia",
         cajaT,
-        diaResumen?.saldo_transferencia // <- saldo neto real
+        diaResumen?.saldo_transferencia
       );
     } else {
       console.error("❌ pintarEstadoCaja no existe");
@@ -6845,6 +6788,7 @@ async function verificarCaja() {
     console.error("Error verificando caja:", e);
   }
 }
+
 (function bindCajaEventos() {
   const bind = (el) => {
     if (!el) return;
@@ -7056,7 +7000,7 @@ async function pagarCuentaPagar(id) {
     monto: Number(item.monto_pyg ?? item.monto ?? 0),
     vencimiento: item.vencimiento ? toYMD(item.vencimiento) : null,
     estado: "pagado",
-    fecha_pago: hoyISO(),
+    fecha_pago: hoyLocal(),   
     caja_tipo: tipo
   };
 
@@ -7117,7 +7061,7 @@ async function guardarCuentaPagar() {
     monto_moneda: montoMoneda,
     vencimiento,
     estado,
-    fecha_pago: estado === "pagado" ? hoyISO() : null,
+    fecha_pago: estado === "pagado" ? hoyLocal() : null,  
     caja_tipo: estado === "pagado" ? "efectivo" : null
   };
 
@@ -7255,9 +7199,8 @@ async function descargarInformeCajaPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("p", "mm", "a4");
 
-  const fechaActual = new Date();
-  const fechaISO = fechaActual.toISOString().slice(0, 10);
-  const fechaHora = fechaActual.toLocaleString("es-PY");
+  const fechaISO = hoyLocal();   // ← CAMBIADO: ahora usa fecha local
+  const fechaHora = new Date().toLocaleString("es-PY");  // ← hora local
 
   const usuario =
     window.USUARIO_ACTUAL?.nombre ||
@@ -7561,7 +7504,6 @@ async function descargarInformeCajaPDF() {
 
   doc.save(`informe_caja_${limpiarNombreArchivo(emp.nombre || "empresa")}_${fechaISO}.pdf`);
 }
-
 async function confirmLogout() {
   try {
     await jpost("/logout", {});
@@ -8269,7 +8211,7 @@ async function abrirCompraInsumo() {
     document.getElementById("ci_precio_por_100g").value = "600";
     document.getElementById("ci_precio_por_kilo").value = "";
     document.getElementById("ci_precio_total").value = "";
-    document.getElementById("ci_fecha").value = hoyISO();
+    document.getElementById("ci_fecha").value = hoyLocal();   
     document.getElementById("ci_proveedor_id").value = "";
     document.getElementById("ci_ruc_mostrado").value = "";
 
@@ -8285,7 +8227,7 @@ async function abrirCompraInsumo() {
 }
 
 async function guardarCompraInsumo() {
-  // 🔥 Prevenir doble clic
+  // Prevenir doble clic
   const btn = document.querySelector('#modalCompraInsumo .btn-green, #modalCompraInsumo .btn-primary');
   if (btn && btn.disabled) return;
 
@@ -8307,7 +8249,7 @@ async function guardarCompraInsumo() {
     return toast("Error: precio total no calculado. Verificá los datos.", "error");
   }
 
-  const fecha = document.getElementById("ci_fecha").value || hoyISO();
+  const fecha = document.getElementById("ci_fecha").value || hoyLocal();   
   const unidadCompra = document.getElementById("ci_unidad_compra").value;
 
   const insumo = insumos.find(i => i.id === insumo_id);
@@ -8328,7 +8270,6 @@ async function guardarCompraInsumo() {
   
   const selectProveedor = document.getElementById("ci_proveedor_id");
   const proveedorNombre = selectProveedor.options[selectProveedor.selectedIndex]?.text || "Sin proveedor";
-  // 🔥 Obtener el RUC del proveedor
   const proveedorRuc = selectProveedor.options[selectProveedor.selectedIndex]?.dataset?.ruc || "";
 
   // Deshabilitar botón
@@ -8337,7 +8278,6 @@ async function guardarCompraInsumo() {
     btn.textContent = "Guardando...";
   }
 
-  
   const factura = document.getElementById("ci_factura").value.trim() || "S/F";
   console.log("FACTURA CAPTURADA:", factura);
 
@@ -8353,7 +8293,7 @@ async function guardarCompraInsumo() {
     fecha,
     proveedor_id,
     proveedor: proveedorNombre,
-    proveedor_ruc: proveedorRuc,   
+    proveedor_ruc: proveedorRuc,
     factura: factura
   };
 
@@ -8413,7 +8353,6 @@ async function guardarCompraInsumo() {
 /* ============================================
    USOS DE INSUMOS (con API)
    ============================================ */
-
 async function abrirUsoInsumo() {
   try {
     const insumosApi = await jget("/insumos") || [];
@@ -8454,7 +8393,7 @@ async function abrirUsoInsumo() {
     if (insumosApi.length > 0) sel.value = insumosApi[0].id;
 
     document.getElementById("uso_cantidad").value = "100";
-    document.getElementById("uso_fecha").value = hoyISO();
+    document.getElementById("uso_fecha").value = hoyLocal();   
     document.getElementById("uso_motivo").value = "";
     document.getElementById("uso_stock_actual").textContent = "";
     document.getElementById("uso_rapido_botones").innerHTML = "";
@@ -8475,7 +8414,6 @@ function cerrarDrawerUsoInsumo() {
     drawer.classList.add("hidden");
   }, 300);
 }
-
 async function guardarUsoInsumo() {
   const insumo_id = Number(document.getElementById("uso_insumo_id").value);
   if (!insumo_id) return toast("Seleccioná un insumo.", "error");
@@ -8483,7 +8421,7 @@ async function guardarUsoInsumo() {
   const cantidadUso = parseFloat(document.getElementById("uso_cantidad").value) || 0;
   if (cantidadUso <= 0) return toast("La cantidad debe ser mayor a 0.", "error");
 
-  const fecha = document.getElementById("uso_fecha").value || hoyISO();
+  const fecha = document.getElementById("uso_fecha").value || hoyLocal();   
   const motivo = document.getElementById("uso_motivo").value.trim() || "";
   const unidadUso = document.getElementById("uso_unidad_compra").value;
 
@@ -8517,7 +8455,6 @@ async function guardarUsoInsumo() {
     toast("Error al registrar uso", "error");
   }
 }
-
 /* ============================================
    RESUMEN DE CONSUMO (con API)
    ============================================ */
@@ -8546,7 +8483,7 @@ function sumarDias(fechaStr, dias) {
 }
 
 function setRangoResumen(tipo) {
-  const hoy = hoyISO();
+  const hoy = hoyLocal();  
   const diaSemanaHoy = fechaISOaDate(hoy).getDay();
   const diffLunes = diaSemanaHoy === 0 ? -6 : 1 - diaSemanaHoy;
   const lunes = sumarDias(hoy, diffLunes);
