@@ -290,6 +290,7 @@ function requireAdmin(req, res, next) {
 }
 
 /* ----------------------------- PostgreSQL Pool ------------------------------ */
+/* ----------------------------- PostgreSQL Pool ------------------------------ */
 const sslRequired = String(process.env.PGSSLMODE || "").trim().toLowerCase() === "require";
 
 const pool = new Pool({
@@ -302,24 +303,128 @@ const pool = new Pool({
   ssl: sslRequired ? { rejectUnauthorized: false } : false,
 
   max: Number(process.env.PGPOOL_MAX || 10),
-  idleTimeoutMillis: 30_000,
-  connectionTimeoutMillis: 10_000,
+  idleTimeoutMillis: 60_000,           // Aumentado para dar más tiempo
+  connectionTimeoutMillis: 30_000,     // Aumentado para dar más tiempo
 });
 
 pool.on("error", (err) => {
   console.error("Pool error:", err.message);
 });
 
+// Fijar timezone en cada conexión
+pool.on('connect', async (client) => {
+  await client.query('SET TIMEZONE = "America/Asuncion"');
+  console.log('Timezone de sesión fijado a America/Asuncion');
+});
 
+// ------------------------------------------
+// FUNCIONES DE BOOTSTRAP (sin cambios)
+// ------------------------------------------
+async function bootstrapUsuarios() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        usuario TEXT UNIQUE NOT NULL,
+        nombre  TEXT,
+        password_hash TEXT NOT NULL,
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    const adminUser = process.env.ADMIN_USER || "admin";
+    const adminPass = process.env.ADMIN_PASS || "1234";
+
+    const { rows } = await pool.query("SELECT 1 FROM usuarios WHERE usuario=$1", [adminUser]);
+    if (rows.length === 0) {
+      const hash = await bcrypt.hash(adminPass, 10);
+      await pool.query(
+        "INSERT INTO usuarios (usuario, nombre, password_hash) VALUES ($1,$2,$3)",
+        [adminUser, "Administrador", hash]
+      );
+      console.log(`👤 Usuario admin creado -> ${adminUser}/${adminPass}`);
+    }
+  } catch (e) {
+    console.error("Bootstrap usuarios:", e.message);
+  }
+}
+
+async function bootstrapFormasPagoTodasEmpresas() {
+  try {
+    const formasBase = [
+      { nombre: "Efectivo",       tipo: "efectivo" },
+      { nombre: "Débito",         tipo: "transferencia" },
+      { nombre: "Crédito",        tipo: "transferencia" },
+      { nombre: "QR",             tipo: "transferencia" },
+      { nombre: "BNF",            tipo: "transferencia" },
+      { nombre: "Continental",    tipo: "transferencia" },
+      { nombre: "Banco Familiar", tipo: "transferencia" },
+      { nombre: "Ueno Bank",      tipo: "transferencia" },
+      { nombre: "Banco Basa",     tipo: "transferencia" },
+      { nombre: "Mango",          tipo: "transferencia" },
+      { nombre: "Otro Banco",     tipo: "transferencia" },
+    ];
+
+    const { rows: empresas } = await pool.query(
+      `SELECT id FROM empresas`
+    );
+
+    for (const emp of empresas) {
+      for (const f of formasBase) {
+        await pool.query(
+          `
+          INSERT INTO formas_pago (nombre, tipo, activo, empresa_id)
+          SELECT 
+            $1::text,
+            $2::text,
+            true,
+            $3::int
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM formas_pago
+            WHERE LOWER(nombre) = LOWER($1::text)
+              AND empresa_id = $3::int
+          )
+          `,
+          [f.nombre, f.tipo, emp.id]
+        );
+      }
+    }
+
+    console.log("Formas de pago sincronizadas para todas las empresas");
+  } catch (e) {
+    console.error("bootstrapFormasPagoTodasEmpresas:", e);
+  }
+}
+
+// ------------------------------------------
+// BLOQUE PRINCIPAL DE CONEXIÓN Y BOOTSTRAP
+// ------------------------------------------
 (async () => {
   try {
     const client = await pool.connect();
-    console.log("🟢 Conectado a PostgreSQL");
+    console.log("Conectado a PostgreSQL");
     const info = await client.query(
       "SELECT current_database() AS db, current_schema() AS schema"
     );
-    console.log("📦 DB:", info.rows[0]);
+    console.log("DB:", info.rows[0]);
     client.release();
+
+    // EJECUTAR BOOTSTRAPS AHORA, DESPUÉS DE CONFIRMAR CONEXIÓN
+    try {
+      await bootstrapUsuarios();
+      console.log('Usuarios bootstrap finalizado');
+    } catch (e) {
+      console.error('❌ Error en bootstrapUsuarios:', e.message);
+    }
+
+    try {
+      await bootstrapFormasPagoTodasEmpresas();
+      console.log('Formas de pago bootstrap finalizado');
+    } catch (e) {
+      console.error('❌ Error en bootstrapFormasPagoTodasEmpresas:', e.message);
+    }
+
   } catch (err) {
     console.error("❌ Error al conectar PostgreSQL:", err.message);
   }
@@ -373,88 +478,6 @@ function saveDataUrlToFile(dataUrl, prefix = "prod") {
   fs.writeFileSync(filePath, Buffer.from(b64, "base64"));
   return `/uploads/${fname}`;
 }
-
-/* ------------------------------ Bootstrap admin ----------------------------- */
-async function bootstrapUsuarios() {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS usuarios (
-        id SERIAL PRIMARY KEY,
-        usuario TEXT UNIQUE NOT NULL,
-        nombre  TEXT,
-        password_hash TEXT NOT NULL,
-        creado_en TIMESTAMP DEFAULT NOW()
-      );
-    `);
-
-    const adminUser = process.env.ADMIN_USER || "admin";
-    const adminPass = process.env.ADMIN_PASS || "1234";
-
-    const { rows } = await pool.query("SELECT 1 FROM usuarios WHERE usuario=$1", [adminUser]);
-    if (rows.length === 0) {
-      const hash = await bcrypt.hash(adminPass, 10);
-      await pool.query(
-        "INSERT INTO usuarios (usuario, nombre, password_hash) VALUES ($1,$2,$3)",
-        [adminUser, "Administrador", hash]
-      );
-      console.log(`👤 Usuario admin creado -> ${adminUser}/${adminPass}`);
-    }
-  } catch (e) {
-    console.error("Bootstrap usuarios:", e.message);
-  }
-}
-bootstrapUsuarios();
-
-// Bootstrap formas de pago para todas las empresas
-async function bootstrapFormasPagoTodasEmpresas() {
-  try {
-    const formasBase = [
-      { nombre: "Efectivo",       tipo: "efectivo" },
-      { nombre: "Débito",         tipo: "transferencia" },
-      { nombre: "Crédito",        tipo: "transferencia" },
-      { nombre: "QR",             tipo: "transferencia" },
-      { nombre: "BNF",            tipo: "transferencia" },
-      { nombre: "Continental",    tipo: "transferencia" },
-      { nombre: "Banco Familiar", tipo: "transferencia" },
-      { nombre: "Ueno Bank",      tipo: "transferencia" },
-      { nombre: "Banco Basa",     tipo: "transferencia" },
-      { nombre: "Mango",          tipo: "transferencia" },
-      { nombre: "Otro Banco",     tipo: "transferencia" },
-    ];
-
-    const { rows: empresas } = await pool.query(
-      `SELECT id FROM empresas`
-    );
-
-    for (const emp of empresas) {
-      for (const f of formasBase) {
-        await pool.query(
-          `
-          INSERT INTO formas_pago (nombre, tipo, activo, empresa_id)
-          SELECT 
-            $1::text,
-            $2::text,
-            true,
-            $3::int
-          WHERE NOT EXISTS (
-            SELECT 1
-            FROM formas_pago
-            WHERE LOWER(nombre) = LOWER($1::text)
-              AND empresa_id = $3::int
-          )
-          `,
-          [f.nombre, f.tipo, emp.id]
-        );
-      }
-    }
-
-    console.log("Formas de pago sincronizadas para todas las empresas");
-  } catch (e) {
-    console.error("bootstrapFormasPagoTodasEmpresas:", e);
-  }
-}
-
-bootstrapFormasPagoTodasEmpresas();
 
 /* --------------------------------- Auth/Sesión ------------------------------ */
 function requireAuth(req, res, next) {
@@ -1848,7 +1871,17 @@ if (!fs.existsSync(PDF_DIR)) fs.mkdirSync(PDF_DIR, { recursive: true });
 
 const moneyPY = (n) => Number(n || 0);
 const fmtPY = (n) => new Intl.NumberFormat("es-PY").format(Number(n || 0));
-const hoyStr = () => new Date().toISOString().slice(0, 10);
+const hoyStr = () => {
+  const ahora = new Date();
+  // Forzar la fecha en zona horaria America/Asuncion
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Asuncion",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  return formatter.format(ahora);
+};
 
 function costoPromedio(costoAnterior, stockAnterior, costoCompra, cantidadCompra) {
   const sa = Number(stockAnterior || 0);
@@ -2124,6 +2157,20 @@ async function generarPDFPedido(pool, pedidoId, empresaId) {
   // DATOS PEDIDO
   // =====================================================
 
+  // 🔥 NUEVA FUNCIÓN AUXILIAR PARA FORMATEAR FECHA EN ZONA HORARIA DE PARAGUAY
+  const formatFechaPY = (fecha) => {
+    if (!fecha) return "-";
+    const d = new Date(fecha);
+    if (isNaN(d.getTime())) return "-";
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Asuncion",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    });
+    return formatter.format(d);
+  };
+
   doc
     .roundedRect(40, 130, 515, 80, 8)
     .fillAndStroke("#ffffff", COLOR_BORDER);
@@ -2139,11 +2186,7 @@ async function generarPDFPedido(pool, pedidoId, empresaId) {
     .fontSize(10)
     .text(`Pedido N°: ${pedido.id}`, 55, 170)
     .text(
-      `Fecha: ${
-        pedido.fecha_pedido
-          ?.toISOString()
-          ?.slice(0, 10) || "-"
-      }`,
+      `Fecha: ${formatFechaPY(pedido.fecha_pedido)}`,
       220,
       170
     );
@@ -6697,6 +6740,80 @@ app.get("/debug/db", async (_req, res) => {
   }
 });
 
+
+
+app.post("/caja/cerrar/:id", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const cajaId = Number(req.params.id);
+
+    // Log para depuración (verás esto en la consola del servidor)
+    console.log("🔴 POST /caja/cerrar/:id - ID:", cajaId, "Body:", req.body);
+
+    if (!cajaId || isNaN(cajaId)) {
+      return res.status(400).json({ ok: false, msg: "ID de caja inválido" });
+    }
+
+    // 1. Verificar que la caja existe, está abierta y pertenece a la empresa
+    const cajaQ = await pool.query(
+      `SELECT id, saldo_inicial FROM caja 
+       WHERE id = $1 
+         AND empresa_id = $2 
+         AND estado = 'abierta'`,
+      [cajaId, empresaId]
+    );
+
+    if (cajaQ.rows.length === 0) {
+      return res.status(404).json({ ok: false, msg: "Caja no encontrada o ya cerrada" });
+    }
+
+    const saldoInicial = Number(cajaQ.rows[0].saldo_inicial || 0);
+
+    // 2. Calcular el total de ventas asociadas a esta caja (sin anuladas)
+    const ventasSum = await pool.query(
+      `SELECT COALESCE(SUM(total), 0) AS total_ventas
+       FROM ventas
+       WHERE caja_id = $1 AND empresa_id = $2 AND (estado_pago IS NULL OR estado_pago <> 'anulado')`,
+      [cajaId, empresaId]
+    );
+    const totalVentas = Number(ventasSum.rows[0].total_ventas || 0);
+    const saldoCierre = saldoInicial + totalVentas;
+
+    // 3. Actualizar la caja (cerrarla)
+    const result = await pool.query(
+      `
+      UPDATE caja
+      SET estado = 'cerrada',
+          cerrado_en = NOW(),
+          saldo_cierre = $1
+      WHERE id = $2
+        AND empresa_id = $3
+        AND estado = 'abierta'
+      RETURNING id
+      `,
+      [saldoCierre, cajaId, empresaId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ ok: false, msg: "No se pudo cerrar la caja (posiblemente ya cerrada)" });
+    }
+
+    // Éxito
+    return res.json({ ok: true, caja_id: cajaId });
+
+  } catch (err) {
+    console.error("POST /caja/cerrar/:id - Error:", err);
+
+    // Si el error es del trigger de la base de datos (por horario), lo manejamos
+    if (err.code === 'P0001' && err.message && err.message.includes('23:59')) {
+      return res.status(400).json({ ok: false, msg: err.message });
+    }
+
+    // Cualquier otro error, devolvemos 500 con el mensaje
+    return res.status(500).json({ ok: false, msg: "Error al cerrar caja", error: err.message });
+  }
+});
+
 app.get("/debug/formas-pago-pool", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
@@ -7000,7 +7117,21 @@ function drawSimpleTable(doc, {
 app.get("/caja/informe/pdf", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
-    const fechaParam = req.query.fecha || new Date().toISOString().slice(0, 10);
+    
+    // 🔥 FUNCIÓN LOCAL PARA FECHA EN ZONA HORARIA DE PARAGUAY
+    const hoyLocalPY = () => {
+      const ahora = new Date();
+      const formatter = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Asuncion",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      });
+      return formatter.format(ahora);
+    };
+
+    // 🔥 FECHA PARAM: si no viene, usa fecha local de Paraguay
+    const fechaParam = req.query.fecha || hoyLocalPY();
     const fecha = toISODate(fechaParam);
     const usuarioNombre = req.session?.user?.nombre || req.session?.user?.usuario || "Usuario";
 
@@ -7014,14 +7145,15 @@ app.get("/caja/informe/pdf", requireEmpresa, async (req, res) => {
     const logoPath = path.join(process.cwd(), "public", "img", "logo2.png");
 
     const empresaQ = await pool.query(
-  "SELECT nombre, telefono, email FROM empresas WHERE id=$1 LIMIT 1",
-  [empresaId]
-);
+      "SELECT nombre, telefono, email FROM empresas WHERE id=$1 LIMIT 1",
+      [empresaId]
+    );
 
-const empresaNombre = empresaQ.rows[0]?.nombre || "Empresa";
-const empresaTelefono = empresaQ.rows[0]?.telefono || "";
-const empresaEmail = empresaQ.rows[0]?.email || "";
+    const empresaNombre = empresaQ.rows[0]?.nombre || "Empresa";
+    const empresaTelefono = empresaQ.rows[0]?.telefono || "";
+    const empresaEmail = empresaQ.rows[0]?.email || "";
 
+    // 🔥 TODAS LAS CONSULTAS USAN `fecha` (YYYY-MM-DD) y la BD ya está en America/Asuncion
     const diaQ = await pool.query(
       `
       SELECT
@@ -7144,14 +7276,14 @@ const empresaEmail = empresaQ.rows[0]?.email || "";
     doc.pipe(res);
 
     if (fs.existsSync(logoPath)) {
-  doc.image(logoPath, 40, 32, { width: 70 });
-}
+      doc.image(logoPath, 40, 32, { width: 70 });
+    }
 
-doc.font("Helvetica-Bold").fontSize(24).fillColor(darkText).text("Informe de Caja", 120, 40);
-doc.font("Helvetica").fontSize(11).fillColor(mutedText)
-  .text(`${empresaNombre}`, 120, 72)
-  .text(empresaTelefono ? `Tel: ${empresaTelefono}` : "", 120, 88)
-  .text(empresaEmail ? `Email: ${empresaEmail}` : "", 120, 104);
+    doc.font("Helvetica-Bold").fontSize(24).fillColor(darkText).text("Informe de Caja", 120, 40);
+    doc.font("Helvetica").fontSize(11).fillColor(mutedText)
+      .text(`${empresaNombre}`, 120, 72)
+      .text(empresaTelefono ? `Tel: ${empresaTelefono}` : "", 120, 88)
+      .text(empresaEmail ? `Email: ${empresaEmail}` : "", 120, 104);
 
     doc.moveTo(40, 128).lineTo(555, 128).strokeColor(lineColor).lineWidth(1).stroke();
     doc.y = 145;
@@ -7202,9 +7334,23 @@ doc.font("Helvetica").fontSize(11).fillColor(mutedText)
     doc.font("Helvetica-Bold").fontSize(16).fillColor(darkText).text("Detalle de Ventas del Día", 40, 30);
     y = 70;
 
+    // 🔥 Formatear fecha en zona horaria de Paraguay para la tabla (usamos la misma lógica de hoyLocalPY)
+    const formatFechaParaTabla = (fechaObj) => {
+      if (!fechaObj) return "-";
+      const d = new Date(fechaObj);
+      if (isNaN(d)) return "-";
+      const formatter = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Asuncion",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      });
+      return formatter.format(d);
+    };
+
     const rowsVentas = ventasQ.rows.length
       ? ventasQ.rows.map(v => [
-          new Date(v.fecha).toISOString().slice(0, 10),
+          formatFechaParaTabla(v.fecha),
           v.cliente,
           v.detalle_productos,
           v.forma_pago,
@@ -7232,7 +7378,7 @@ doc.font("Helvetica").fontSize(11).fillColor(mutedText)
 
     const rowsCompras = comprasQ.rows.length
       ? comprasQ.rows.map(c => [
-          new Date(c.fecha).toISOString().slice(0, 10),
+          formatFechaParaTabla(c.fecha),
           c.proveedor,
           c.detalle_productos,
           c.tipo_pago,
@@ -7260,7 +7406,7 @@ doc.font("Helvetica").fontSize(11).fillColor(mutedText)
 
     const rowsEgresos = egresosRows.length
       ? egresosRows.map(e => [
-          new Date(e.fecha).toISOString().slice(0, 10),
+          formatFechaParaTabla(e.fecha),
           e.concepto,
           e.descripcion,
           fmtGs(e.monto)
