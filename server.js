@@ -4208,94 +4208,93 @@ app.post("/ventas", requireEmpresa, async (req, res) => {
       });
     }
 
-
     console.log("=================================");
-console.log("FORMA PAGO RECIBIDA:");
-console.log("forma_pago_id:", forma_pago_id);
-console.log("fpId:", fpId);
-console.log("empresaId:", empresaId);
+    console.log("FORMA PAGO RECIBIDA:");
+    console.log("forma_pago_id:", forma_pago_id);
+    console.log("fpId:", fpId);
+    console.log("empresaId:", empresaId);
 
-const debugFormas = await client.query(`
-  SELECT id, nombre, empresa_id
-  FROM formas_pago
-  ORDER BY id
-`);
-
-console.table(debugFormas.rows);
-console.log("=================================");
+    const debugFormas = await client.query(`
+      SELECT id, nombre, empresa_id
+      FROM formas_pago
+      ORDER BY id
+    `);
+    console.table(debugFormas.rows);
+    console.log("=================================");
 
     const formaPagoQ = await client.query(
-  `
-  SELECT id, nombre, tipo
-  FROM formas_pago
-  WHERE id = $1
-    AND empresa_id = $2
-  LIMIT 1
-  `,
-  [fpId, empresaId]
-);
+      `
+      SELECT id, nombre, tipo
+      FROM formas_pago
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      `,
+      [fpId, empresaId]
+    );
 
-if (!formaPagoQ.rowCount) {
-  return res.status(404).json({
-    ok: false,
-    msg: "Forma de pago no encontrada o no pertenece a esta empresa"
-  });
-}
+    if (!formaPagoQ.rowCount) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Forma de pago no encontrada o no pertenece a esta empresa"
+      });
+    }
 
-const formaPago = formaPagoQ.rows[0];
+    const formaPago = formaPagoQ.rows[0];
 
-const REQUIERE_COMPROBANTE = [
-  "QR",
-  "BNF",
-  "Continental",
-  "Banco Familiar",
-  "Ueno Bank",
-  "Banco Basa",
-  "Mango",
-  "Débito",
-  "Crédito",
-  "Otro Banco"
-];
+    const REQUIERE_COMPROBANTE = [
+      "QR",
+      "BNF",
+      "Continental",
+      "Banco Familiar",
+      "Ueno Bank",
+      "Banco Basa",
+      "Mango",
+      "Débito",
+      "Crédito",
+      "Otro Banco"
+    ];
 
-const compStr = (nro_comprobante || "").toString().trim();
+    const compStr = (nro_comprobante || "").toString().trim();
 
-if (
-  REQUIERE_COMPROBANTE.includes(formaPago.nombre) &&
-  !compStr
-) {
-  return res.status(400).json({
-    ok: false,
-    msg: "Falta nro_comprobante"
-  });
-}
+    if (
+      REQUIERE_COMPROBANTE.includes(formaPago.nombre) &&
+      !compStr
+    ) {
+      return res.status(400).json({
+        ok: false,
+        msg: "Falta nro_comprobante"
+      });
+    }
 
-const tipoCajaNecesaria =
-  formaPago.tipo === "efectivo"
-    ? "efectivo"
-    : "transferencia";
+    const tipoCajaNecesaria =
+      formaPago.tipo === "efectivo"
+        ? "efectivo"
+        : "transferencia";
+    
     await client.query("BEGIN");
 
     const fechaFinal = fecha || new Date().toLocaleDateString("en-CA", {
       timeZone: "America/Asuncion"
     });
 
+    // 🔥 CAMBIO CLAVE: usar CURRENT_DATE en lugar de fechaFinal
     const cajaQ = await client.query(
       `
       SELECT id, tipo
       FROM caja
       WHERE estado = 'abierta'
         AND lower(tipo) = lower($1)
-        AND fecha::date = $2::date
-        AND empresa_id = $3
+        AND fecha::date = CURRENT_DATE   -- ← Ahora siempre la fecha del servidor
+        AND empresa_id = $2
       ORDER BY id DESC
       LIMIT 1
       `,
-      [tipoCajaNecesaria, fechaFinal, empresaId]
+      [tipoCajaNecesaria, empresaId]
     );
 
     if (cajaQ.rows.length === 0) {
       await client.query("ROLLBACK");
-
       return res.status(400).json({
         ok: false,
         msg: `Debe abrir la caja de ${tipoCajaNecesaria} antes de realizar una venta`,
@@ -4321,7 +4320,6 @@ const tipoCajaNecesaria =
 
       if (!clienteQ.rowCount) {
         await client.query("ROLLBACK");
-
         return res.status(404).json({
           ok: false,
           msg: "Cliente no encontrado o no pertenece a esta empresa"
@@ -4336,70 +4334,70 @@ const tipoCajaNecesaria =
       "Sin usuario";
 
     const compFinal =
-  REQUIERE_COMPROBANTE.includes(formaPago.nombre)
-    ? compStr
-    : null;
+      REQUIERE_COMPROBANTE.includes(formaPago.nombre)
+        ? compStr
+        : null;
 
-const nombreFormaPago = String(formaPago.nombre || "")
-  .trim()
-  .toLowerCase();
-
-const esOtroBanco =
-  nombreFormaPago.includes("otro banco");
-
-const bancoNombreFinal = esOtroBanco
-  ? String(banco_nombre || "").trim()
-  : null;
-
-console.log("=================================");
-console.log("FORMA PAGO:", formaPago.nombre);
-console.log("BANCO RECIBIDO:", banco_nombre);
-console.log("BANCO FINAL:", bancoNombreFinal);
-console.log("=================================");
-
-const v = await client.query(
-  `
-  INSERT INTO ventas (
-    fecha,
-    cliente_id,
-    caja_id,
-    usuario_id,
-    cajero_nombre,
-    total,
-    total_pyg,
-    total_moneda,
-    moneda,
-    tipo_cambio,
-    forma_pago_id,
-    estado_pago,
-    nro_comprobante,
-    banco_nombre,
-    empresa_id
-  )
-  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-  RETURNING id
-  `,
-  [
-    fechaFinal,
-    clienteIdFinal,
-    caja_id_final,
-    usuarioId,
-    cajeroNombre,
-    totalFinal,
-    totalPygFinal,
-    totalMonedaFinal,
-    monedaFinal,
-    tipoCambioFinal,
-    fpId,
-    (estado_pago || "pendiente")
-      .toString()
+    const nombreFormaPago = String(formaPago.nombre || "")
       .trim()
-      .toLowerCase(),
-    compFinal,
-    bancoNombreFinal,
-    empresaId
-  ]
-);
+      .toLowerCase();
+
+    const esOtroBanco =
+      nombreFormaPago.includes("otro banco");
+
+    const bancoNombreFinal = esOtroBanco
+      ? String(banco_nombre || "").trim()
+      : null;
+
+    console.log("=================================");
+    console.log("FORMA PAGO:", formaPago.nombre);
+    console.log("BANCO RECIBIDO:", banco_nombre);
+    console.log("BANCO FINAL:", bancoNombreFinal);
+    console.log("=================================");
+
+    const v = await client.query(
+      `
+      INSERT INTO ventas (
+        fecha,
+        cliente_id,
+        caja_id,
+        usuario_id,
+        cajero_nombre,
+        total,
+        total_pyg,
+        total_moneda,
+        moneda,
+        tipo_cambio,
+        forma_pago_id,
+        estado_pago,
+        nro_comprobante,
+        banco_nombre,
+        empresa_id
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+      RETURNING id
+      `,
+      [
+        fechaFinal,
+        clienteIdFinal,
+        caja_id_final,
+        usuarioId,
+        cajeroNombre,
+        totalFinal,
+        totalPygFinal,
+        totalMonedaFinal,
+        monedaFinal,
+        tipoCambioFinal,
+        fpId,
+        (estado_pago || "pendiente")
+          .toString()
+          .trim()
+          .toLowerCase(),
+        compFinal,
+        bancoNombreFinal,
+        empresaId
+      ]
+    );
 
     const ventaId = v.rows[0].id;
 
@@ -4411,7 +4409,6 @@ const v = await client.query(
 
       if (!productoId || productoId <= 0) {
         await client.query("ROLLBACK");
-
         return res.status(400).json({
           ok: false,
           msg: "Item con producto_id inválido"
@@ -4420,7 +4417,6 @@ const v = await client.query(
 
       if (!Number.isFinite(cantidad) || cantidad <= 0) {
         await client.query("ROLLBACK");
-
         return res.status(400).json({
           ok: false,
           msg: "Item con cantidad inválida"
@@ -4429,7 +4425,6 @@ const v = await client.query(
 
       if (!Number.isFinite(precio) || precio < 0) {
         await client.query("ROLLBACK");
-
         return res.status(400).json({
           ok: false,
           msg: "Item con precio inválido"
@@ -4450,7 +4445,6 @@ const v = await client.query(
 
       if (!prodQ.rowCount) {
         await client.query("ROLLBACK");
-
         return res.status(404).json({
           ok: false,
           msg: `Producto ID ${productoId} no encontrado o no pertenece a esta empresa`
@@ -4497,7 +4491,6 @@ const v = await client.query(
 
       if (upd.rows.length === 0) {
         await client.query("ROLLBACK");
-
         return res.status(400).json({
           ok: false,
           msg: `Stock insuficiente para el producto ID ${productoId}`
@@ -5453,7 +5446,6 @@ app.post("/caja/abrir", requireEmpresa, async (req, res) => {
 
   const {
     tipo,
-    fecha,
     saldo_gs = 0,
     saldo_us = 0,
     saldo_rs = 0,
@@ -5462,25 +5454,24 @@ app.post("/caja/abrir", requireEmpresa, async (req, res) => {
 
   try {
     const tipoNorm = normTipoCaja(tipo);
-    const fechaISO = toISODate(fecha);
 
+    // 🔥 Verificar si ya existe una caja abierta del mismo tipo (sin filtrar por fecha)
     const existeQ = await pool.query(
       `
       SELECT id
       FROM caja
       WHERE estado = 'abierta'
         AND tipo = $1
-        AND fecha::date = $2::date
-        AND empresa_id = $3
+        AND empresa_id = $2
       LIMIT 1
       `,
-      [tipoNorm, fechaISO, empresaId]
+      [tipoNorm, empresaId]
     );
 
     if (existeQ.rowCount > 0) {
       return res.status(400).json({
         ok: false,
-        msg: `Ya existe una caja ${tipoNorm} abierta`
+        msg: `Ya existe una caja ${tipoNorm} abierta. Debe cerrarla antes de abrir una nueva.`
       });
     }
 
@@ -5488,6 +5479,7 @@ app.post("/caja/abrir", requireEmpresa, async (req, res) => {
     const saldoUsFinal = Number(saldo_us || 0);
     const saldoRsFinal = Number(saldo_rs || 0);
 
+    // 🔥 Insertar con fecha actual (solo como dato histórico)
     const q = await pool.query(
       `
       INSERT INTO caja (
@@ -5500,12 +5492,11 @@ app.post("/caja/abrir", requireEmpresa, async (req, res) => {
         estado,
         empresa_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 'abierta', $7)
+      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, 'abierta', $6)
       RETURNING *
       `,
       [
         tipoNorm,
-        fechaISO,
         saldoGsFinal,
         saldoGsFinal,
         saldoUsFinal,
@@ -5520,8 +5511,7 @@ app.post("/caja/abrir", requireEmpresa, async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ /caja/abrir:", err);
-
+    console.error("/caja/abrir:", err);
     return res.status(500).json({
       ok: false,
       msg: "Error al abrir caja"
@@ -5533,7 +5523,6 @@ app.get("/caja/abierta", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
     const tipo = req.query.tipo ? normTipoCaja(req.query.tipo) : null;
-    const fecha = req.query.fecha ? toISODate(req.query.fecha) : null;
 
     let q = `
       SELECT *
@@ -5541,51 +5530,30 @@ app.get("/caja/abierta", requireEmpresa, async (req, res) => {
       WHERE estado = 'abierta'
         AND empresa_id = $1
     `;
-
     const params = [empresaId];
 
     if (tipo) {
       params.push(tipo);
-      q += ` AND lower(tipo) = lower($${params.length})`;
+      q += ` AND tipo = $${params.length}`;
     }
 
-    if (fecha) {
-      params.push(fecha);
-      q += ` AND fecha::date = $${params.length}::date`;
-    }
-
-    q += `
-      ORDER BY id DESC
-      LIMIT 1
-    `;
+    q += ` ORDER BY id DESC LIMIT 1`;
 
     const r = await pool.query(q, params);
 
     if (!r.rowCount) {
-      return res.json({
-        abierta: false,
-        caja: null
-      });
+      return res.json({ abierta: false, caja: null });
     }
 
     const caja = r.rows[0];
 
+    // Calcular totales de ventas asociadas
     const ventasQ = await pool.query(
       `
       SELECT
         COALESCE(SUM(COALESCE(total_pyg, total, 0)), 0)::numeric AS total_ventas_gs,
-
-        COALESCE(SUM(CASE 
-          WHEN COALESCE(moneda, 'PYG') = 'USD'
-          THEN COALESCE(total_moneda, 0) 
-          ELSE 0 
-        END), 0)::numeric AS total_ventas_us,
-
-        COALESCE(SUM(CASE 
-          WHEN COALESCE(moneda, 'PYG') = 'BRL'
-          THEN COALESCE(total_moneda, 0) 
-          ELSE 0 
-        END), 0)::numeric AS total_ventas_rs
+        COALESCE(SUM(CASE WHEN COALESCE(moneda, 'PYG') = 'USD' THEN COALESCE(total_moneda, 0) ELSE 0 END), 0)::numeric AS total_ventas_us,
+        COALESCE(SUM(CASE WHEN COALESCE(moneda, 'PYG') = 'BRL' THEN COALESCE(total_moneda, 0) ELSE 0 END), 0)::numeric AS total_ventas_rs
       FROM ventas
       WHERE caja_id = $1
         AND empresa_id = $2
@@ -5602,30 +5570,22 @@ app.get("/caja/abierta", requireEmpresa, async (req, res) => {
     const saldo_inicial_us = Number(caja.saldo_us || 0);
     const saldo_inicial_rs = Number(caja.saldo_rs || 0);
 
-    const saldo_actual_gs = saldo_inicial_gs + total_ventas_gs;
-    const saldo_actual_us = saldo_inicial_us + total_ventas_us;
-    const saldo_actual_rs = saldo_inicial_rs + total_ventas_rs;
-
     return res.json({
       abierta: true,
       caja: {
         ...caja,
-
         total_ventas_gs,
         total_ventas_us,
         total_ventas_rs,
-
-        saldo_actual_gs,
-        saldo_actual_us,
-        saldo_actual_rs,
-
-        saldo_actual: saldo_actual_gs
+        saldo_actual_gs: saldo_inicial_gs + total_ventas_gs,
+        saldo_actual_us: saldo_inicial_us + total_ventas_us,
+        saldo_actual_rs: saldo_inicial_rs + total_ventas_rs,
+        saldo_actual: saldo_inicial_gs + total_ventas_gs
       }
     });
 
   } catch (err) {
     console.error("GET /caja/abierta", err);
-
     return res.status(500).json({
       abierta: false,
       msg: "Error consultando caja"
@@ -5636,19 +5596,11 @@ app.get("/caja/estado", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
     const tipo = req.query.tipo ? normTipoCaja(req.query.tipo) : null;
-    const fecha = req.query.fecha ? toISODate(req.query.fecha) : null;
 
     if (!tipo) {
       return res.status(400).json({
         abierta: false,
         msg: "Falta tipo (efectivo/transferencia)"
-      });
-    }
-
-    if (!fecha) {
-      return res.status(400).json({
-        abierta: false,
-        msg: "Falta fecha (YYYY-MM-DD)"
       });
     }
 
@@ -5658,19 +5610,15 @@ app.get("/caja/estado", requireEmpresa, async (req, res) => {
       FROM caja
       WHERE estado = 'abierta'
         AND tipo = $1
-        AND fecha::date = $2::date
-        AND empresa_id = $3
+        AND empresa_id = $2
       ORDER BY id DESC
       LIMIT 1
       `,
-      [tipo, fecha, empresaId]
+      [tipo, empresaId]
     );
 
     if (!cajaQ.rowCount) {
-      return res.json({
-        abierta: false,
-        caja: null
-      });
+      return res.json({ abierta: false, caja: null });
     }
 
     const caja = cajaQ.rows[0];
@@ -6639,78 +6587,62 @@ app.post("/caja/cerrar", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
     const tipo = req.body?.tipo ? normTipoCaja(req.body.tipo) : null;
-    const fecha = req.body?.fecha ? toISODate(req.body.fecha) : null;
 
-    const r = await pool.query(
-      tipo && fecha
-        ? `
-          SELECT id
-          FROM caja
-          WHERE estado = 'abierta'
-            AND tipo = $1
-            AND fecha::date = $2::date
-            AND empresa_id = $3
-          ORDER BY id DESC
-          LIMIT 1
-        `
-        : tipo
-        ? `
-          SELECT id
-          FROM caja
-          WHERE estado = 'abierta'
-            AND tipo = $1
-            AND empresa_id = $2
-          ORDER BY id DESC
-          LIMIT 1
-        `
-        : `
-          SELECT id
-          FROM caja
-          WHERE estado = 'abierta'
-            AND empresa_id = $1
-          ORDER BY id DESC
-          LIMIT 1
-        `,
-      tipo && fecha
-        ? [tipo, fecha, empresaId]
-        : tipo
-        ? [tipo, empresaId]
-        : [empresaId]
-    );
+    // 🔥 Buscar caja abierta sin filtrar por fecha
+    let query = `
+      SELECT id
+      FROM caja
+      WHERE estado = 'abierta'
+        AND empresa_id = $1
+    `;
+    const params = [empresaId];
+    if (tipo) {
+      params.push(tipo);
+      query += ` AND tipo = $${params.length}`;
+    }
+    query += ` ORDER BY id DESC LIMIT 1`;
+
+    const r = await pool.query(query, params);
 
     if (!r.rowCount) {
       return res.status(400).json({
         ok: false,
-        msg: "No hay caja abierta para cerrar"
+        msg: `No hay caja abierta${tipo ? ' de tipo ' + tipo : ''} para cerrar`
       });
     }
 
     const cajaId = r.rows[0].id;
+
+    // Calcular saldo de cierre
+    const saldoCierre = await pool.query(
+      `
+      SELECT (COALESCE(c.saldo_inicial, 0) + COALESCE(SUM(v.total), 0))::numeric AS total
+      FROM caja c
+      LEFT JOIN ventas v ON v.caja_id = c.id AND v.empresa_id = $2
+      WHERE c.id = $1 AND c.empresa_id = $2
+      GROUP BY c.id
+      `,
+      [cajaId, empresaId]
+    );
+
+    const saldoFinal = Number(saldoCierre.rows[0]?.total || 0);
 
     await pool.query(
       `
       UPDATE caja
       SET estado = 'cerrada',
           cerrado_en = NOW(),
-          saldo_cierre = (
-            SELECT (COALESCE(c.saldo_inicial, 0) + COALESCE(SUM(v.total), 0))::numeric
-            FROM caja c
-            LEFT JOIN ventas v
-              ON v.caja_id = c.id
-             AND v.empresa_id = $2
-            WHERE c.id = $1
-              AND c.empresa_id = $2
-            GROUP BY c.id
-          )
-      WHERE id = $1
-        AND empresa_id = $2
+          saldo_cierre = $1
+      WHERE id = $2
+        AND empresa_id = $3
       `,
-      [cajaId, empresaId]
+      [saldoFinal, cajaId, empresaId]
     );
 
     return res.json({
       ok: true,
-      caja_id: cajaId
+      caja_id: cajaId,
+      saldo_cierre: saldoFinal
     });
 
   } catch (err) {
@@ -6721,7 +6653,6 @@ app.post("/caja/cerrar", requireEmpresa, async (req, res) => {
     });
   }
 });
-
 
 app.get("/debug/db", async (_req, res) => {
   try {
@@ -8804,15 +8735,6 @@ app.post("/usos-insumo", requireEmpresa, async (req, res) => {
     });
   }
 });
-
-
-
-
-
-
-
-
-
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
