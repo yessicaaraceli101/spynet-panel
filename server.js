@@ -4278,21 +4278,19 @@ app.post("/ventas", requireEmpresa, async (req, res) => {
       timeZone: "America/Asuncion"
     });
 
-    // 🔥 CAMBIO CLAVE: usar CURRENT_DATE en lugar de fechaFinal
+   
     const cajaQ = await client.query(
       `
       SELECT id, tipo
       FROM caja
       WHERE estado = 'abierta'
         AND lower(tipo) = lower($1)
-        AND fecha::date = CURRENT_DATE   -- ← Ahora siempre la fecha del servidor
         AND empresa_id = $2
       ORDER BY id DESC
       LIMIT 1
       `,
       [tipoCajaNecesaria, empresaId]
     );
-
     if (cajaQ.rows.length === 0) {
       await client.query("ROLLBACK");
       return res.status(400).json({
