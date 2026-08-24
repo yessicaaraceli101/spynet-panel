@@ -6625,6 +6625,45 @@ app.post("/usos-insumo", requireEmpresa, async (req, res) => {
   }
 });
 
+app.delete("/cuentas-pagar/:id", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const id = Number(req.params.id);
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ ok: false, msg: "ID inválido" });
+    }
+
+    // Verificar que la cuenta exista y pertenezca a esta empresa
+    const check = await pool.query(
+      `SELECT id FROM cuentas_pagar WHERE id = $1 AND empresa_id = $2`,
+      [id, empresaId]
+    );
+
+    if (check.rowCount === 0) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Cuenta no encontrada o no pertenece a esta empresa"
+      });
+    }
+
+    // Ejecutar eliminación
+    await pool.query(
+      `DELETE FROM cuentas_pagar WHERE id = $1 AND empresa_id = $2`,
+      [id, empresaId]
+    );
+
+    return res.json({ ok: true, msg: "Cuenta eliminada correctamente" });
+  } catch (err) {
+    console.error("DELETE /cuentas-pagar/:id error:", err);
+    return res.status(500).json({
+      ok: false,
+      msg: "Error al eliminar la cuenta",
+      error: err.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
