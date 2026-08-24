@@ -4745,7 +4745,8 @@ app.get("/ventas/:id/pagare", requireEmpresa, async (req, res) => {
          COALESCE(e.email,     '')                         AS empresa_email,
          COALESCE(e.timbrado,  '')                         AS timbrado,
          COALESCE(e.nro_establecimiento, '001')            AS nro_est,
-         COALESCE(e.nro_punto_expedicion, '001')           AS nro_punto
+         COALESCE(e.nro_punto_expedicion, '001')           AS nro_punto,
+         e.logo                                            AS empresa_logo   -- <<< NUEVO
          FROM ventas v
          LEFT JOIN clientes       c  ON c.id = v.cliente_id      AND c.empresa_id = $2
          LEFT JOIN formas_pago    fp ON fp.id = v.forma_pago_id  AND fp.empresa_id = $2
@@ -4810,10 +4811,26 @@ app.get("/ventas/:id/pagare", requireEmpresa, async (req, res) => {
     const hdrY = M;
     lw(1.2);
     doc.rect(M, hdrY, PAGE_W - M * 2, hdrH).stroke(COLOR_BORDE);
-    const logoPath = path.join(process.cwd(), "public", "img", "logo2.png");
+
+    // ============================================================
+    // LOGO MULTIEMPRESA (usa el logo de la empresa desde la BD)
+    // ============================================================
+    let logoPath = null;
+    if (venta.empresa_logo) {
+      const clean = venta.empresa_logo.replace(/^\//, '');
+      const candidate = path.join(process.cwd(), "public", clean);
+      if (fs.existsSync(candidate)) {
+        logoPath = candidate;
+      }
+    }
+    // Fallback al logo genérico si no se encontró
+    if (!logoPath) {
+      logoPath = path.join(process.cwd(), "public", "img", "logo2.png");
+    }
     if (fs.existsSync(logoPath)) {
       doc.image(logoPath, M + 6, hdrY + 8, { width: 52 });
     }
+
     doc.font("Helvetica-Bold").fontSize(13)
        .fillColor(COLOR_BORDE)
        .text(venta.empresa_nombre || "EMPRESA", M + 64, hdrY + 10, {
@@ -5635,6 +5652,20 @@ app.get("/caja/informe/pdf", requireEmpresa, async (req, res) => {
 app.get("/cuentas-pagar", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
+
+    // Leer parámetros de paginación desde la query string
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 10);
+    const offset = (page - 1) * limit;
+
+    // 1. Contar el total de registros para esta empresa
+    const countResult = await pool.query(
+      `SELECT COUNT(*) AS total FROM cuentas_pagar WHERE empresa_id = $1`,
+      [empresaId]
+    );
+    const total = parseInt(countResult.rows[0].total) || 0;
+
+    // 2. Obtener solo los registros de la página solicitada
     const { rows } = await pool.query(
       `
       SELECT
@@ -5656,12 +5687,20 @@ app.get("/cuentas-pagar", requireEmpresa, async (req, res) => {
       FROM cuentas_pagar
       WHERE empresa_id = $1
       ORDER BY id DESC
+      LIMIT $2 OFFSET $3
       `,
-      [empresaId]
+      [empresaId, limit, offset]
     );
-    res.json(rows);
+
+    // 3. Responder con el objeto paginado
+    res.json({
+      data: rows,
+      total: total,
+      page: page,
+      totalPages: Math.ceil(total / limit)
+    });
   } catch (err) {
-    console.error("GET /cuentas-pagar", err);
+    console.error("GET /cuentas-pagar error:", err);
     res.status(500).json({ error: "Error al listar cuentas a pagar" });
   }
 });

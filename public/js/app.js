@@ -93,6 +93,10 @@ let FP_MOV_CACHE = [];
 let cuentasPagar = [];
 let cuentasPagarFiltradas = [];
 let egresosCuentasPagar = [];
+let cuentasPagarPagina = 1;
+const cuentasPagarPorPagina = 10;
+let cuentasPagarTotal = 0;
+let cuentasPagarTotalPages = 0;
 
 function guardarCuentasPagarStorage() {
   localStorage.setItem(
@@ -2980,20 +2984,31 @@ function closeLogoutModal() {
 }
 
 /* ================== CUENTAS A PAGAR ================== */
-async function cargarCuentasPagar() {
+async function cargarCuentasPagar(page = cuentasPagarPagina) {
   try {
-    cuentasPagar = await jget("/cuentas-pagar");
-    cuentasPagar = Array.isArray(cuentasPagar) ? cuentasPagar : [];
+    const url = `/cuentas-pagar?page=${page}&limit=${cuentasPagarPorPagina}`;
+    const resp = await jget(url);
+    cuentasPagar = resp.data || [];
+    cuentasPagarTotal = resp.total || 0;
+    cuentasPagarTotalPages = resp.totalPages || 0;
+    cuentasPagarPagina = resp.page || 1;
     cuentasPagarFiltradas = [...cuentasPagar];
     renderCuentasPagar(cuentasPagarFiltradas);
-  } catch (err) { console.error("Error cargando cuentas a pagar:", err); alert("No se pudieron cargar las cuentas a pagar."); }
+  } catch (err) {
+    console.error("Error cargando cuentas a pagar:", err);
+    alert("No se pudieron cargar las cuentas a pagar.");
+  }
 }
 
 function renderCuentasPagar(lista = cuentasPagar) {
   const tbody = document.getElementById("tabla-cuentas-pagar");
   if (!tbody) return;
   const data = Array.isArray(lista) ? lista : [];
-  if (!data.length) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">No hay cuentas a pagar para esta empresa.</td></tr>`; return; }
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">No hay cuentas a pagar para esta empresa.</td></tr>`;
+    renderPaginacionCuentasPagar(); 
+    return;
+  }
   const nfDecimal = (n) => Number(n || 0).toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const renderMontoCuenta = (item) => {
     const moneda = String(item.moneda || "PYG").toUpperCase();
@@ -3009,8 +3024,28 @@ function renderCuentasPagar(lista = cuentasPagar) {
     const tipoCaja = item.caja_tipo || item.tipo_caja || item.caja || "-";
     return `<tr><td>${Number(item.id)}</td><td>${escapeHtml(item.proveedor || "")}</td><td>${escapeHtml(item.concepto || "")}</td><td>${renderMontoCuenta(item)}</td><td>${item.vencimiento ? toYMD(item.vencimiento) : "-"}</td><td>${estado === "pagado" ? '<span class="badge bg-success">Pagado</span>' : '<span class="badge bg-warning text-dark">Pendiente</span>'}</td><td><div class="acciones-tabla">${estado !== "pagado" ? `<button class="btn btn-sm btn-success" onclick="pagarCuentaPagar(${Number(item.id)})">Pagar</button>` : ""}<button class="btn-icon edit" title="Editar" onclick="editarCuentaPagar(${Number(item.id)})"><i class="fa fa-pen"></i></button><button class="btn-icon delete" title="Eliminar" onclick="eliminarCuentaPagar(${Number(item.id)})"><i class="fa fa-trash"></i></button></div>${estado === "pagado" ? `<div style="margin-top:.35rem; font-size:.82rem; color:#6b7280;">Pago: ${escapeHtml(fechaPago)} | Caja: ${escapeHtml(tipoCaja)}</div>` : ""}</td></tr>`;
   }).join("");
+
+  renderPaginacionCuentasPagar(); 
 }
 
+function renderPaginacionCuentasPagar() {
+  const div = document.getElementById("cuentas-pagar-paginacion");
+  if (!div) return;
+  div.innerHTML = "";
+  if (cuentasPagarTotalPages <= 1) return;
+
+  div.innerHTML += `<button class="pag-btn" onclick="cambiarPaginaCuentasPagar(${cuentasPagarPagina - 1})" ${cuentasPagarPagina === 1 ? "disabled" : ""}>‹</button>`;
+  for (let i = 1; i <= cuentasPagarTotalPages; i++) {
+    div.innerHTML += `<button class="pag-btn ${i === cuentasPagarPagina ? "active" : ""}" onclick="cambiarPaginaCuentasPagar(${i})">${i}</button>`;
+  }
+  div.innerHTML += `<button class="pag-btn" onclick="cambiarPaginaCuentasPagar(${cuentasPagarPagina + 1})" ${cuentasPagarPagina === cuentasPagarTotalPages ? "disabled" : ""}>›</button>`;
+}
+
+function cambiarPaginaCuentasPagar(nueva) {
+  if (nueva < 1 || nueva > cuentasPagarTotalPages) return;
+  cuentasPagarPagina = nueva;
+  cargarCuentasPagar(nueva);
+}
 async function pagarCuentaPagar(id) {
   const item = cuentasPagar.find(x => Number(x.id) === Number(id));
   if (!item) return alert("Cuenta no encontrada.");
@@ -3072,7 +3107,13 @@ async function guardarCuentaPagar() {
 
 function filtrarCuentasPagar(texto) {
   const t = String(texto || "").toLowerCase().trim();
-  cuentasPagarFiltradas = cuentasPagar.filter(item => String(item.proveedor || "").toLowerCase().includes(t) || String(item.concepto || "").toLowerCase().includes(t) || String(item.estado || "").toLowerCase().includes(t) || String(item.factura || "").toLowerCase().includes(t));
+  cuentasPagarFiltradas = cuentasPagar.filter(item =>
+    String(item.proveedor || "").toLowerCase().includes(t) ||
+    String(item.concepto || "").toLowerCase().includes(t) ||
+    String(item.estado || "").toLowerCase().includes(t) ||
+    String(item.factura || "").toLowerCase().includes(t)
+  );
+  cuentasPagarPagina = 1;
   renderCuentasPagar(cuentasPagarFiltradas);
 }
 
