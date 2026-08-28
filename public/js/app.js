@@ -2738,25 +2738,43 @@ async function abrirCaja(tipoParam) {
     const saldoGs = Number((document.getElementById(tipo === "efectivo" ? "saldoGs" : "saldoGsTransferencia")?.value || "0").replace(/\D/g, "")) || 0;
     const saldoUs = parseFloat((document.getElementById(tipo === "efectivo" ? "saldoUs" : "saldoUsTransferencia")?.value || "0").replace(",", ".")) || 0;
     const saldoRs = parseFloat((document.getElementById(tipo === "efectivo" ? "saldoRs" : "saldoRsTransferencia")?.value || "0").replace(",", ".")) || 0;
+
     if (!fecha) { alert("Seleccione una fecha"); return; }
+
     const data = await jpost("/caja/abrir", { tipo, fecha, saldo_gs: saldoGs, saldo_us: saldoUs, saldo_rs: saldoRs });
-    const id = data?.caja?.id ?? data?.data?.caja?.id ?? data?.id ?? data?.caja_id ?? data?.cajaId ?? null;
-    window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
-    if (id) { window.cajasActuales[tipo] = data.caja || { id, tipo, fecha, saldo_gs: saldoGs, saldo_us: saldoUs, saldo_rs: saldoRs }; } else {
-      if (typeof verificarCaja === "function") await verificarCaja();
-      if (window.cajaActual?.id) window.cajasActuales[tipo] = window.cajaActual;
-      if (!window.cajasActuales[tipo]?.id) { alert("La caja se abrió, pero no se pudo obtener el ID."); console.error("Respuesta /caja/abrir:", data); return; }
+
+    // Tomar la caja de la respuesta
+    const cajaCreada = data?.caja ?? data?.data?.caja ?? { id: data?.id, tipo, fecha, saldo_gs: saldoGs, saldo_us: saldoUs, saldo_rs: saldoRs };
+    if (!cajaCreada?.id) {
+      alert("La caja se abrió, pero no se pudo obtener el ID.");
+      console.error("Respuesta /caja/abrir:", data);
+      return;
     }
-    window.cajaActual = window.cajasActuales[tipo];
+
+    // Actualizar estado local
+    window.cajasActuales = window.cajasActuales || {};
+    window.cajasActuales[tipo] = cajaCreada;
+    window.cajaActual = cajaCreada;
+
+    // Actualizar UI manualmente (sin llamar a verificarCaja)
     const estadoEl = document.getElementById(tipo === "efectivo" ? "estadoCajaEfectivo" : "estadoCajaTransferencia");
     if (estadoEl) {
       const label = tipo === "efectivo" ? "Efectivo" : "Transferencia";
-      estadoEl.innerHTML = `Caja ABIERTA (${label})<br>Saldo GS: ${saldoGs.toLocaleString("es-PY")}<br>Saldo US: ${saldoUs.toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>Saldo RS: ${saldoRs.toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      estadoEl.innerHTML = `Caja ABIERTA (${label})<br>Saldo GS: ${Number(saldoGs).toLocaleString("es-PY")}<br>Saldo US: ${Number(saldoUs).toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>Saldo RS: ${Number(saldoRs).toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    toast(`Caja ${tipo === "efectivo" ? "Efectivo" : "Transferencia"} abierta`, "success");
-    if (typeof cargarRecaudacionFecha === "function") cargarRecaudacionFecha();
-    if (typeof verificarCaja === "function") await verificarCaja();
-  } catch (err) { console.error("abrirCaja:", err); alert("Error al abrir caja."); }
+
+    toast(`Caja ${tipo} abierta`, "success");
+
+    // Solo refrescar resúmenes, NO verificar estado
+    await cargarRecaudacionFecha();
+
+    // Si quieres, puedes forzar que el input de fecha no dispare eventos ahora
+    // (pero no es necesario si no llamas a verificarCaja)
+
+  } catch (err) {
+    console.error("abrirCaja:", err);
+    alert("Error al abrir caja.");
+  }
 }
 
 function formatearNumeroMoneda(valor, decimales = 2) {
@@ -2951,17 +2969,18 @@ async function verificarCaja() {
     if (el.dataset.bound === "1") return;
     el.dataset.bound = "1";
     el.addEventListener("change", async () => {
+      // Solo actualizamos los resúmenes y las formas de pago, NO verificamos el estado de la caja
       await cargarRecaudacionFecha();
-      await verificarCaja();
       if (location.hash === "#formas-pago" && typeof listarFP === "function") listarFP();
     });
   };
   bind(document.getElementById("fechaCajaEfectivo"));
   bind(document.getElementById("fechaCajaTransferencia"));
   bind(document.getElementById("fechaCaja"));
+
+  // Al cargar la página, verificamos el estado de la caja UNA SOLA VEZ
   verificarCaja();
 })();
-
 /* ================== LOGOUT ================== */
 function closeAllModals() {
   document.querySelectorAll(".modal").forEach(m => { m.style.display = "none"; m.classList.remove("show"); });
