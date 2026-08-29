@@ -1677,42 +1677,40 @@ function togglePasswordEditar() {
 
 async function refrescarCajaAbierta(tipo = "efectivo", fecha = null) {
   try {
-    let tipoKey = normalizarTipoCaja(tipo);
+    const tipoKey = normalizarTipoCaja(tipo);
 
-    const fechaInput = (fecha || document.getElementById("v_fecha")?.value || "").trim();
-    const ymd = fechaInput || new Date().toISOString().slice(0, 10);
-
-    const qs = `tipo=${encodeURIComponent(tipoKey)}&fecha=${encodeURIComponent(ymd)}`;
-
+    // 🔥 Ya no enviamos fecha al backend porque el estado de caja es único por tipo
+    const qs = `tipo=${encodeURIComponent(tipoKey)}`;
     const r = await fetch(`/caja/estado?${qs}`, {
       credentials: "include",
       cache: "no-store"
     });
-
     const data = await r.json().catch(() => ({}));
     const caja = data?.caja ?? data?.data?.caja ?? data?.data ?? null;
 
     window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
     window.cajasActuales[tipoKey] = (caja && caja.id) ? caja : null;
-
     window.cajaActual = caja;
     window.cajaAbierta = !!(caja && caja.id);
+
+    // Actualizar input de fecha con la fecha de la caja encontrada (si existe)
+    if (caja?.fecha) {
+      const inputFecha = document.getElementById("v_fecha");
+      if (inputFecha) {
+        inputFecha.value = caja.fecha.slice(0, 10);
+      }
+    }
 
     return window.cajaAbierta;
   } catch (e) {
     console.error("No se pudo consultar caja:", e);
-
-    let tipoKey = normalizarTipoCaja(tipo);
-
-    window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
+    const tipoKey = normalizarTipoCaja(tipo);
     window.cajasActuales[tipoKey] = null;
-
     window.cajaActual = null;
     window.cajaAbierta = false;
     return false;
   }
 }
-
 async function nuevaVenta() {
   openModal("modalVenta");
 

@@ -2741,9 +2741,14 @@ async function abrirCaja(tipoParam) {
 
     if (!fecha) { alert("Seleccione una fecha"); return; }
 
-    const data = await jpost("/caja/abrir", { tipo, fecha, saldo_gs: saldoGs, saldo_us: saldoUs, saldo_rs: saldoRs });
+    const data = await jpost("/caja/abrir", {
+      tipo,
+      fecha,
+      saldo_gs: saldoGs,
+      saldo_us: saldoUs,
+      saldo_rs: saldoRs
+    });
 
-    // Tomar la caja de la respuesta
     const cajaCreada = data?.caja ?? data?.data?.caja ?? { id: data?.id, tipo, fecha, saldo_gs: saldoGs, saldo_us: saldoUs, saldo_rs: saldoRs };
     if (!cajaCreada?.id) {
       alert("La caja se abrió, pero no se pudo obtener el ID.");
@@ -2751,29 +2756,28 @@ async function abrirCaja(tipoParam) {
       return;
     }
 
-    // Actualizar estado local
     window.cajasActuales = window.cajasActuales || {};
     window.cajasActuales[tipo] = cajaCreada;
     window.cajaActual = cajaCreada;
 
-    // Actualizar UI manualmente (sin llamar a verificarCaja)
     const estadoEl = document.getElementById(tipo === "efectivo" ? "estadoCajaEfectivo" : "estadoCajaTransferencia");
     if (estadoEl) {
       const label = tipo === "efectivo" ? "Efectivo" : "Transferencia";
       estadoEl.innerHTML = `Caja ABIERTA (${label})<br>Saldo GS: ${Number(saldoGs).toLocaleString("es-PY")}<br>Saldo US: ${Number(saldoUs).toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>Saldo RS: ${Number(saldoRs).toLocaleString("es-PY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
+    const fechaReal = cajaCreada.fecha?.slice(0, 10);
+    if (fechaReal && fechaEl) {
+      fechaEl.value = fechaReal;
+    }
+
     toast(`Caja ${tipo} abierta`, "success");
-
-    // Solo refrescar resúmenes, NO verificar estado
     await cargarRecaudacionFecha();
-
-    // Si quieres, puedes forzar que el input de fecha no dispare eventos ahora
-    // (pero no es necesario si no llamas a verificarCaja)
 
   } catch (err) {
     console.error("abrirCaja:", err);
-    alert("Error al abrir caja.");
+    const msg = err.message || err.msg || "Error al abrir caja.";
+    alert(msg);
   }
 }
 
@@ -2799,42 +2803,38 @@ function pintarEstadoCaja(idElemento, label, caja, saldoNetoGs) {
   el.innerHTML = `Caja ABIERTA (${label})<br>Saldo GS: ${Number(saldoGs).toLocaleString("es-PY")}<br>Saldo US: ${formatearNumeroMoneda(saldoUs)}<br>Saldo RS: ${formatearNumeroMoneda(saldoRs)}`;
 }
 
-// 🔥 NUEVA FUNCIÓN CERRAR CAJA (REESCRITA)
 async function cerrarCaja(tipoParam) {
   try {
     const tipo = (tipoParam || "efectivo").toLowerCase().trim();
+    const fechaEl = document.getElementById(tipo === "efectivo" ? "fechaCajaEfectivo" : "fechaCajaTransferencia");
+    const fecha = (fechaEl?.value || "").trim();
 
-    // 1. Obtener el estado real de la caja desde el servidor (sin depender de fecha)
-    const estado = await jget(`/caja/abierta?tipo=${tipo}`);
-    if (!estado.abierta || !estado.caja?.id) {
-      alert(`No hay caja abierta de tipo "${tipo}".`);
+    if (!fecha) { alert("Seleccione una fecha"); return; }
+
+    const caja = window.cajasActuales?.[tipo];
+
+    if (!caja || !caja.id) {
+      alert(`No hay caja abierta de tipo "${tipo}" para la fecha ${fecha}.`);
+      const estadoEl = document.getElementById(tipo === "efectivo" ? "estadoCajaEfectivo" : "estadoCajaTransferencia");
+      if (estadoEl) estadoEl.innerHTML = "Caja CERRADA";
       return;
     }
 
-    const id = estado.caja.id;
-
-    // 2. Cerrar usando el endpoint con ID (más fiable)
+    const id = caja.id;
     const data = await jpost(`/caja/cerrar/${id}`, {});
     if (!data?.ok) {
       throw new Error(data?.msg || "Error al cerrar la caja");
     }
 
-    // 3. Limpiar variables locales
-    window.cajasActuales = window.cajasActuales || {};
     window.cajasActuales[tipo] = null;
     if (window.cajaActual?.id === id) window.cajaActual = null;
 
-    // 4. Actualizar UI
-    const estadoEl = document.getElementById(
-      tipo === "efectivo" ? "estadoCajaEfectivo" : "estadoCajaTransferencia"
-    );
+    const estadoEl = document.getElementById(tipo === "efectivo" ? "estadoCajaEfectivo" : "estadoCajaTransferencia");
     if (estadoEl) estadoEl.innerHTML = "Caja CERRADA";
 
-    toast(`Caja ${tipo === "efectivo" ? "Efectivo" : "Transferencia"} cerrada`, "success");
+    toast(`Caja ${tipo} cerrada`, "success");
 
-    // 5. Refrescar resúmenes
     if (typeof cargarRecaudacionFecha === "function") await cargarRecaudacionFecha();
-    if (typeof verificarCaja === "function") await verificarCaja();
 
   } catch (err) {
     console.error("cerrarCaja:", err);
@@ -2934,43 +2934,57 @@ async function cargarFormasPagoResumen() {
 function _setHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
 function _getVal(id) { const el = document.getElementById(id); return el ? String(el.value || "").trim() : ""; }
 
+// 🔥 verificarCaja() completada para ambos tipos y actualiza window.cajasActuales
 async function verificarCaja() {
   try {
     console.log("verificarCaja ejecutándose");
-    const fecha = document.getElementById("fechaCajaEfectivo")?.value || document.getElementById("fechaCajaTransferencia")?.value || hoyLocal();
-    console.log("fecha:", fecha);
-    const [eData, tData, diaResumen] = await Promise.all([
-      jget(`/caja/abierta?tipo=efectivo&fecha=${encodeURIComponent(fecha)}`),
-      jget(`/caja/abierta?tipo=transferencia&fecha=${encodeURIComponent(fecha)}`),
-      jget(`/caja/resumen-dia?fecha=${encodeURIComponent(fecha)}`).catch(() => null)
-    ]);
-    const cajaE = eData?.caja || null;
-    const cajaT = tData?.caja || null;
-    window.cajasActuales = { efectivo: cajaE, transferencia: cajaT };
-    window.cajaActual = cajaE?.id ? cajaE : (cajaT?.id ? cajaT : null);
-    if (typeof pintarEstadoCaja === "function") {
-      pintarEstadoCaja("estadoCajaEfectivo", "Efectivo", cajaE, diaResumen?.saldo_efectivo);
-      pintarEstadoCaja("estadoCajaTransferencia", "Transferencia", cajaT, diaResumen?.saldo_transferencia);
-    } else { console.error("❌ pintarEstadoCaja no existe"); }
-    const estadoCajaViejo = document.getElementById("estadoCaja");
-    if (estadoCajaViejo) {
-      const totalGs = Number(diaResumen?.saldo_total ?? 0);
-      const totalUs = totalGs / 6350;
-      const totalRs = totalGs / 1255;
-      estadoCajaViejo.innerHTML = `Saldo total del día<br>GS: ${Number(totalGs).toLocaleString("es-PY")}<br>US: ${formatearNumeroMoneda(totalUs)}<br>RS: ${formatearNumeroMoneda(totalRs)}`;
+    const fechaE = document.getElementById("fechaCajaEfectivo")?.value || "";
+    const fechaT = document.getElementById("fechaCajaTransferencia")?.value || "";
+
+    window.cajasActuales = window.cajasActuales || { efectivo: null, transferencia: null };
+
+    // Consultar efectivo
+    if (fechaE) {
+      const rE = await fetch(`/caja/estado?tipo=efectivo&fecha=${encodeURIComponent(fechaE)}`, { credentials: "include" });
+      const dataE = await rE.json();
+      const cajaE = dataE?.caja || null;
+      window.cajasActuales.efectivo = cajaE;
+      if (cajaE) {
+        pintarEstadoCaja("estadoCajaEfectivo", "Efectivo", cajaE, cajaE.saldo_actual);
+      } else {
+        document.getElementById("estadoCajaEfectivo").innerHTML = "Caja CERRADA";
+      }
     }
+
+    // Consultar transferencia
+    if (fechaT) {
+      const rT = await fetch(`/caja/estado?tipo=transferencia&fecha=${encodeURIComponent(fechaT)}`, { credentials: "include" });
+      const dataT = await rT.json();
+      const cajaT = dataT?.caja || null;
+      window.cajasActuales.transferencia = cajaT;
+      if (cajaT) {
+        pintarEstadoCaja("estadoCajaTransferencia", "Transferencia", cajaT, cajaT.saldo_actual);
+      } else {
+        document.getElementById("estadoCajaTransferencia").innerHTML = "Caja CERRADA";
+      }
+    }
+
+    // Resúmenes ya se actualizan en el evento change
     console.log("verificarCaja OK");
-  } catch (e) { console.error("Error verificando caja:", e); }
+  } catch (e) {
+    console.error("Error verificando caja:", e);
+  }
 }
 
+// 🔥 bindCajaEventos: al cambiar fecha, primero verificar estado y luego actualizar resúmenes
 (function bindCajaEventos() {
   const bind = (el) => {
     if (!el) return;
     if (el.dataset.bound === "1") return;
     el.dataset.bound = "1";
     el.addEventListener("change", async () => {
-      // Solo actualizamos los resúmenes y las formas de pago, NO verificamos el estado de la caja
-      await cargarRecaudacionFecha();
+      await verificarCaja();                // actualiza el estado de la caja según la fecha
+      await cargarRecaudacionFecha();       // actualiza los resúmenes
       if (location.hash === "#formas-pago" && typeof listarFP === "function") listarFP();
     });
   };
@@ -2978,9 +2992,10 @@ async function verificarCaja() {
   bind(document.getElementById("fechaCajaTransferencia"));
   bind(document.getElementById("fechaCaja"));
 
-  // Al cargar la página, verificamos el estado de la caja UNA SOLA VEZ
+  // Al cargar la página, verificamos el estado de la caja
   verificarCaja();
 })();
+
 /* ================== LOGOUT ================== */
 function closeAllModals() {
   document.querySelectorAll(".modal").forEach(m => { m.style.display = "none"; m.classList.remove("show"); });

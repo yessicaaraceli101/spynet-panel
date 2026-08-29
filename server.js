@@ -4098,49 +4098,36 @@ app.post("/caja/abrir", requireEmpresa, async (req, res) => {
     saldo_gs = 0,
     saldo_us = 0,
     saldo_rs = 0,
-    saldo_inicial = 0
+    saldo_inicial = 0,
+    fecha   // 👈 recibir fecha
   } = req.body || {};
   try {
     const tipoNorm = normTipoCaja(tipo);
-    // 1. Verificar si ya existe una caja abierta del mismo tipo
+
+    // Si no se envía fecha, usar la fecha actual
+    const fechaFinal = fecha || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Asuncion' });
+
+    // Verificar si ya existe una caja abierta para esa fecha y tipo
     const existeQ = await pool.query(
       `
       SELECT id
       FROM caja
       WHERE estado = 'abierta'
         AND tipo = $1
-        AND empresa_id = $2
+        AND fecha = $2
+        AND empresa_id = $3
       LIMIT 1
       `,
-      [tipoNorm, empresaId]
+      [tipoNorm, fechaFinal, empresaId]
     );
     if (existeQ.rowCount > 0) {
-      // Cerrar automáticamente la caja existente
-      const cajaId = existeQ.rows[0].id;
-      const saldoCierre = await pool.query(
-        `
-        SELECT (COALESCE(c.saldo_inicial, 0) + COALESCE(SUM(v.total), 0))::numeric AS total
-        FROM caja c
-        LEFT JOIN ventas v ON v.caja_id = c.id AND v.empresa_id = $2
-        WHERE c.id = $1 AND c.empresa_id = $2
-        GROUP BY c.id
-        `,
-        [cajaId, empresaId]
-      );
-      const saldoFinal = Number(saldoCierre.rows[0]?.total || 0);
-      await pool.query(
-        `
-        UPDATE caja
-        SET estado = 'cerrada',
-            cerrado_en = NOW(),
-            saldo_cierre = $1
-        WHERE id = $2
-          AND empresa_id = $3
-        `,
-        [saldoFinal, cajaId, empresaId]
-      );
+      return res.status(400).json({
+        ok: false,
+        msg: `Ya hay una caja de ${tipoNorm} abierta para la fecha ${fechaFinal}.`
+      });
     }
-    // 2. Abrir la nueva caja
+
+    // Abrir nueva caja con la fecha recibida
     const saldoGsFinal = Number(saldo_gs || saldo_inicial || 0);
     const saldoUsFinal = Number(saldo_us || 0);
     const saldoRsFinal = Number(saldo_rs || 0);
@@ -4156,11 +4143,12 @@ app.post("/caja/abrir", requireEmpresa, async (req, res) => {
         estado,
         empresa_id
       )
-      VALUES ($1, CURRENT_DATE, $2, $3, $4, $5, 'abierta', $6)
+      VALUES ($1, $2, $3, $4, $5, $6, 'abierta', $7)
       RETURNING *
       `,
       [
         tipoNorm,
+        fechaFinal,
         saldoGsFinal,
         saldoGsFinal,
         saldoUsFinal,
@@ -4248,9 +4236,11 @@ app.get("/caja/estado", requireEmpresa, async (req, res) => {
     const empresaId = getEmpresaId(req);
     const tipo = req.query.tipo ? normTipoCaja(req.query.tipo) : null;
     const fechaParam = req.query.fecha || null;
+
     if (!tipo) {
       return res.status(400).json({ abierta: false, msg: "Falta tipo (efectivo/transferencia)" });
     }
+
     let q = `
       SELECT *
       FROM caja
@@ -4260,16 +4250,20 @@ app.get("/caja/estado", requireEmpresa, async (req, res) => {
     `;
     const params = [tipo, empresaId];
     let idx = 3;
+
     if (fechaParam) {
       params.push(fechaParam);
-      q += ` AND fecha = $${idx++}`;
+      q += ` AND fecha::date = $${idx++}::date`;
     }
+
     q += ` ORDER BY id DESC LIMIT 1`;
     const cajaQ = await pool.query(q, params);
-    if (!cajaQ.rowCount) {
+    const caja = cajaQ.rows[0] || null;
+
+    if (!caja) {
       return res.json({ abierta: false, caja: null });
     }
-    const caja = cajaQ.rows[0];
+
     const ventasQ = await pool.query(
       `
       SELECT COALESCE(SUM(total), 0) AS total_ventas
@@ -4283,12 +4277,14 @@ app.get("/caja/estado", requireEmpresa, async (req, res) => {
     const saldo_inicial = Number(caja.saldo_inicial || 0);
     const total_ventas = Number(ventasQ.rows[0].total_ventas || 0);
     const saldo_actual = saldo_inicial + total_ventas;
+
     return res.json({ abierta: true, caja: { ...caja, total_ventas, saldo_actual } });
   } catch (err) {
     console.error("GET /caja/estado", err);
     res.status(500).json({ abierta: false, msg: "Error estado caja" });
   }
 });
+
 
 // Alias para compatibilidad
 app.get("/formas_pago", requireEmpresa, async (req, res) => {
