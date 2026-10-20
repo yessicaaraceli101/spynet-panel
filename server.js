@@ -6699,6 +6699,212 @@ app.delete("/cuentas-pagar/:id", requireEmpresa, async (req, res) => {
   }
 });
 
+
+
+
+
+
+
+/* =====================================================================
+   CONSUMO INTERNO (uso propio)
+   Pegar en server.js justo ANTES de:  app.listen(PORT, () => { ... })
+   Descuenta stock pero NO toca ventas ni caja.
+   ===================================================================== */
+
+async function bootstrapConsumos() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS consumos_internos (
+        id SERIAL PRIMARY KEY,
+        producto_id INTEGER NOT NULL REFERENCES productos(id),
+        cantidad NUMERIC NOT NULL CHECK (cantidad > 0),
+        costo_unitario NUMERIC DEFAULT 0,
+        motivo TEXT,
+        fecha TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    // Por si la tabla ya existía sin estas columnas
+    await pool.query(`ALTER TABLE consumos_internos ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id)`);
+    await pool.query(`ALTER TABLE consumos_internos ADD COLUMN IF NOT EXISTS usuario_id INTEGER`);
+    await pool.query(`ALTER TABLE consumos_internos ADD COLUMN IF NOT EXISTS usuario_nombre TEXT`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_consumos_internos_empresa ON consumos_internos(empresa_id)`);
+    console.log("Tabla consumos_internos lista");
+  } catch (e) {
+    console.error("bootstrapConsumos:", e.message);
+  }
+}
+bootstrapConsumos();
+
+// Listar consumos de la empresa
+app.get("/consumos", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const { rows } = await pool.query(
+      `
+      SELECT
+        ci.id,
+        ci.fecha,
+        ci.producto_id,
+        ci.cantidad,
+        COALESCE(ci.costo_unitario, 0) AS costo_unitario,
+        ci.cantidad * COALESCE(ci.costo_unitario, 0) AS costo_total,
+        ci.motivo,
+        COALESCE(ci.usuario_nombre, '-') AS usuario_nombre,
+        p.nombre AS producto_nombre,
+        p.codigo AS producto_codigo
+      FROM consumos_internos ci
+      LEFT JOIN productos p
+        ON p.id = ci.producto_id
+       AND p.empresa_id = $1
+      WHERE ci.empresa_id = $1
+      ORDER BY ci.id DESC
+      LIMIT 300
+      `,
+      [empresaId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /consumos", err);
+    res.status(500).json({ ok: false, msg: "Error listando consumos" });
+  }
+});
+
+// Registrar consumo: descuenta stock y guarda el movimiento
+app.post("/consumos", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
+  const productoId = Number(req.body?.producto_id || 0);
+  const cantidad = Number(req.body?.cantidad || 0);
+  const motivo = String(req.body?.motivo || "").trim() || null;
+
+  if (!productoId) {
+    return res.status(400).json({ ok: false, msg: "Seleccioná un producto" });
+  }
+  if (!Number.isFinite(cantidad) || cantidad <= 0) {
+    return res.status(400).json({ ok: false, msg: "Cantidad inválida" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const prodQ = await client.query(
+      `
+      SELECT id, nombre, COALESCE(stock, 0) AS stock, COALESCE(costo, 0) AS costo
+      FROM productos
+      WHERE id = $1
+        AND empresa_id = $2
+        AND COALESCE(activo, true) = true
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [productoId, empresaId]
+    );
+
+    if (!prodQ.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ ok: false, msg: "Producto no encontrado o no pertenece a esta empresa" });
+    }
+
+    const prod = prodQ.rows[0];
+    if (Number(prod.stock) < cantidad) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        ok: false,
+        msg: `Stock insuficiente de ${prod.nombre} (disponible: ${Number(prod.stock)})`
+      });
+    }
+
+    await client.query(
+      `
+      UPDATE productos
+      SET stock = stock - $1
+      WHERE id = $2
+        AND empresa_id = $3
+      `,
+      [cantidad, productoId, empresaId]
+    );
+
+    const usuarioId = req.session?.user?.id || null;
+    const usuarioNombre = req.session?.user?.nombre || req.session?.user?.usuario || null;
+
+    const ins = await client.query(
+      `
+      INSERT INTO consumos_internos (
+        producto_id, cantidad, costo_unitario, motivo,
+        usuario_id, usuario_nombre, empresa_id
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      RETURNING id
+      `,
+      [productoId, cantidad, Number(prod.costo), motivo, usuarioId, usuarioNombre, empresaId]
+    );
+
+    await client.query("COMMIT");
+    res.json({ ok: true, id: ins.rows[0].id, stock_restante: Number(prod.stock) - cantidad });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("POST /consumos", err);
+    res.status(500).json({ ok: false, msg: "Error registrando consumo", error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Eliminar consumo (por si se cargó mal): devuelve el stock
+app.delete("/consumos/:id", requireEmpresa, async (req, res) => {
+  const empresaId = getEmpresaId(req);
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ ok: false, msg: "ID inválido" });
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const cQ = await client.query(
+      `
+      SELECT producto_id, cantidad
+      FROM consumos_internos
+      WHERE id = $1
+        AND empresa_id = $2
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [id, empresaId]
+    );
+
+    if (!cQ.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ ok: false, msg: "Consumo no encontrado" });
+    }
+
+    const { producto_id, cantidad } = cQ.rows[0];
+
+    await client.query(
+      `
+      UPDATE productos
+      SET stock = stock + $1
+      WHERE id = $2
+        AND empresa_id = $3
+      `,
+      [Number(cantidad), producto_id, empresaId]
+    );
+
+    await client.query(
+      `DELETE FROM consumos_internos WHERE id = $1 AND empresa_id = $2`,
+      [id, empresaId]
+    );
+
+    await client.query("COMMIT");
+    res.json({ ok: true });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    console.error("DELETE /consumos/:id", err);
+    res.status(500).json({ ok: false, msg: "Error eliminando consumo" });
+  } finally {
+    client.release();
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

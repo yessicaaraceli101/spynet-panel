@@ -118,6 +118,9 @@
       <a href="#productos" data-link>
         <i class="fa-solid fa-box"></i> Productos
       </a>
+      <a href="#consumo-interno" data-link>
+        <i class="fa-solid fa-box-open"></i> Consumo interno
+      </a>
       <a href="#categorias" data-link>
         <i class="fa-solid fa-tags"></i> Categorías
       </a>
@@ -275,6 +278,19 @@
       <div>
         <span style="display:block;font-size:.95rem;font-weight:600;color:#1a2a3a;line-height:1.3;">Clientes</span>
         <small style="font-size:.78rem;color:#8a9bb0;">Ver y administrar clientes</small>
+      </div>
+      <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:10px;right:12px;font-size:.65rem;color:#c5cfd8;"></i>
+    </button>
+
+    <!-- Consumo interno -->
+    <button onclick="nav('#consumo-interno')"
+      style="background:#fff;border:1.5px solid #e8edf3;border-radius:12px;padding:1.1rem 1rem;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:10px;cursor:pointer;position:relative;text-align:left;transition:box-shadow .15s,transform .15s;min-height:110px;box-shadow:0 1px 4px rgba(0,0,0,0.05);"
+      onmouseover="this.style.boxShadow='0 4px 16px rgba(27,63,107,0.10)';this.style.transform='translateY(-2px)'"
+      onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.05)';this.style.transform='none'">
+      <i class="fa-solid fa-box-open" style="font-size:26px;color:#E87B2C;"></i>
+      <div>
+        <span style="display:block;font-size:.95rem;font-weight:600;color:#1a2a3a;line-height:1.3;">Consumo interno</span>
+        <small style="font-size:.78rem;color:#8a9bb0;">Uso propio sin venta</small>
       </div>
       <i class="fa-solid fa-arrow-right" style="position:absolute;bottom:10px;right:12px;font-size:.65rem;color:#c5cfd8;"></i>
     </button>
@@ -483,6 +499,89 @@
 
 </div>
 
+</section>
+<!-- ===================== CONSUMO INTERNO ===================== -->
+<section id="consumo-interno" class="view hidden">
+
+  <div class="dashboard-header">
+    <div class="header-top">
+      <div>
+        <h1 class="page-title">Consumo interno</h1>
+        <p class="page-subtitle">Productos usados por el negocio. Descuenta stock, pero no cuenta como venta ni entra en caja.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulario -->
+  <div style="background:#fff;border:1.5px solid #e8edf3;border-radius:12px;padding:1.2rem;margin:1.5rem 0;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+    <div class="consumo-form-grid">
+
+      <div style="position:relative;">
+        <label for="consumoBuscar" style="display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:6px;">Producto</label>
+        <input id="consumoBuscar" type="text" autocomplete="off" placeholder="Buscar por nombre o código"
+          style="width:100%;height:42px;padding:0 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
+        <div id="consumoListaProductos" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:#fff;border:1px solid #e5e7eb;border-radius:8px;margin-top:4px;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12);"></div>
+      </div>
+
+      <div>
+        <label for="consumoCantidad" style="display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:6px;">Cantidad</label>
+        <input id="consumoCantidad" type="number" min="1" step="1" value="1"
+          style="width:100%;height:42px;padding:0 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
+      </div>
+
+      <div>
+        <label for="consumoMotivo" style="display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:6px;">Motivo (opcional)</label>
+        <input id="consumoMotivo" type="text" placeholder="Ej: uso del local, limpieza, personal"
+          style="width:100%;height:42px;padding:0 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
+      </div>
+
+      <button id="btnRegistrarConsumo" type="button" onclick="registrarConsumoInterno()"
+        style="height:42px;padding:0 18px;border:none;border-radius:8px;cursor:pointer;background:#1B3F6B;color:#fff;font-size:.9rem;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;">
+        <i class="fa-solid fa-box-open"></i> Registrar consumo
+      </button>
+    </div>
+
+    <div id="consumoInfoProducto" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;background:#f8fafc;border:1px solid #e5e7eb;font-size:.85rem;color:#374151;"></div>
+  </div>
+
+  <!-- Historial -->
+  <div style="background:#fff;border:1.5px solid #e8edf3;border-radius:12px;padding:1.2rem;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+      <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:#1a2a3a;">Historial de consumos</h3>
+      <span style="font-size:.85rem;color:#6b7280;">Costo total consumido: <strong id="consumoTotalCosto" style="color:#1a2a3a;">Gs. 0</strong></span>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:.88rem;">
+        <thead>
+          <tr style="background:#f8fafc;color:#475569;text-align:left;">
+            <th style="padding:12px;">Fecha</th>
+            <th style="padding:12px;">Producto</th>
+            <th style="padding:12px;text-align:center;">Cant.</th>
+            <th style="padding:12px;text-align:right;">Costo</th>
+            <th style="padding:12px;">Motivo</th>
+            <th style="padding:12px;">Usuario</th>
+            <th style="padding:12px;text-align:center;">Acción</th>
+          </tr>
+        </thead>
+        <tbody id="tablaConsumos"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <style>
+    .consumo-form-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 2fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+    @media (max-width: 768px) {
+      .consumo-form-grid { grid-template-columns: 1fr 1fr; }
+      .consumo-form-grid > div:first-child,
+      .consumo-form-grid > button { grid-column: 1 / -1; }
+    }
+  </style>
 </section>
       <!-- CLIENTES -->
       <section id="clientes" class="view hidden">
@@ -3377,6 +3476,7 @@
         <script src="js/app.js?v=3"></script>
         <script src="js/compras.js?v=1001"></script>
         <script src="js/ventas.js?v=999"></script>
+        <script src="js/consumos.js?v=1"></script>
 
 
         <script>
@@ -3426,8 +3526,6 @@
             });
           });
         </script>
-
-
 
         <script>
           function toggleMenu() {
