@@ -6703,13 +6703,26 @@ app.delete("/cuentas-pagar/:id", requireEmpresa, async (req, res) => {
 
 
 
-
-
 /* =====================================================================
-   CONSUMO INTERNO (uso propio)
-   Pegar en server.js justo ANTES de:  app.listen(PORT, () => { ... })
-   Descuenta stock pero NO toca ventas ni caja.
+   CONSUMO INTERNO (uso propio) — bloque para server.js
+   ---------------------------------------------------------------------
+   CÓMO PEGARLO:
+   En server.js, BORRÁ el bloque viejo de consumo interno (desde el
+   comentario "CONSUMO INTERNO (uso propio)" hasta el app.listen del final)
+   y pegá este archivo completo en su lugar. Este bloque ya trae el
+   app.listen al final, así que NO tiene que quedar otro app.listen.
+
+   Descuenta stock, pero NO toca ventas ni caja.
+   Guarda el precio de venta para saber cuánta plata no entró a caja.
    ===================================================================== */
+
+function ciHoyAsuncion() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion" });
+}
+
+function ciEsFecha(v) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
+}
 
 async function bootstrapConsumos() {
   try {
@@ -6727,7 +6740,19 @@ async function bootstrapConsumos() {
     await pool.query(`ALTER TABLE consumos_internos ADD COLUMN IF NOT EXISTS empresa_id INTEGER REFERENCES empresas(id)`);
     await pool.query(`ALTER TABLE consumos_internos ADD COLUMN IF NOT EXISTS usuario_id INTEGER`);
     await pool.query(`ALTER TABLE consumos_internos ADD COLUMN IF NOT EXISTS usuario_nombre TEXT`);
+    await pool.query(`ALTER TABLE consumos_internos ADD COLUMN IF NOT EXISTS precio_unitario NUMERIC DEFAULT 0`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_consumos_internos_empresa ON consumos_internos(empresa_id)`);
+
+    // Consumos viejos sin precio: se completan con el precio actual del producto
+    await pool.query(`
+      UPDATE consumos_internos ci
+      SET precio_unitario = COALESCE(p.precio, 0)
+      FROM productos p
+      WHERE p.id = ci.producto_id
+        AND COALESCE(ci.precio_unitario, 0) = 0
+        AND COALESCE(p.precio, 0) > 0
+    `);
+
     console.log("Tabla consumos_internos lista");
   } catch (e) {
     console.error("bootstrapConsumos:", e.message);
@@ -6735,7 +6760,7 @@ async function bootstrapConsumos() {
 }
 bootstrapConsumos();
 
-// Listar consumos de la empresa
+/* ---------- Listar consumos de la empresa ---------- */
 app.get("/consumos", requireEmpresa, async (req, res) => {
   try {
     const empresaId = getEmpresaId(req);
@@ -6746,11 +6771,13 @@ app.get("/consumos", requireEmpresa, async (req, res) => {
         ci.fecha,
         ci.producto_id,
         ci.cantidad,
-        COALESCE(ci.costo_unitario, 0) AS costo_unitario,
-        ci.cantidad * COALESCE(ci.costo_unitario, 0) AS costo_total,
+        COALESCE(ci.costo_unitario, 0)  AS costo_unitario,
+        COALESCE(ci.precio_unitario, 0) AS precio_unitario,
+        ci.cantidad * COALESCE(ci.costo_unitario, 0)  AS costo_total,
+        ci.cantidad * COALESCE(ci.precio_unitario, 0) AS valor_venta,
         ci.motivo,
         COALESCE(ci.usuario_nombre, '-') AS usuario_nombre,
-        p.nombre AS producto_nombre,
+        COALESCE(p.nombre, 'Producto eliminado') AS producto_nombre,
         p.codigo AS producto_codigo
       FROM consumos_internos ci
       LEFT JOIN productos p
@@ -6769,7 +6796,110 @@ app.get("/consumos", requireEmpresa, async (req, res) => {
   }
 });
 
-// Registrar consumo: descuenta stock y guarda el movimiento
+/* ---------- Resumen por rango: cuántos productos y cuánta plata ---------- */
+app.get("/consumos/resumen", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const hoy = ciHoyAsuncion();
+    const desde = ciEsFecha(req.query.desde) ? req.query.desde : hoy.slice(0, 8) + "01";
+    const hasta = ciEsFecha(req.query.hasta) ? req.query.hasta : hoy;
+
+    const { rows } = await pool.query(
+      `
+      SELECT
+        COUNT(*)                                                  AS registros,
+        COUNT(DISTINCT producto_id)                               AS productos,
+        COALESCE(SUM(cantidad), 0)                                AS unidades,
+        COALESCE(SUM(cantidad * COALESCE(costo_unitario, 0)), 0)  AS costo,
+        COALESCE(SUM(cantidad * COALESCE(precio_unitario, 0)), 0) AS venta
+      FROM consumos_internos
+      WHERE empresa_id = $1
+        AND (fecha AT TIME ZONE 'America/Asuncion')::date BETWEEN $2::date AND $3::date
+      `,
+      [empresaId, desde, hasta]
+    );
+
+    const r = rows[0] || {};
+    res.json({
+      desde,
+      hasta,
+      registros: Number(r.registros || 0),
+      productos: Number(r.productos || 0),
+      unidades: Number(r.unidades || 0),
+      costo: Number(r.costo || 0),
+      venta: Number(r.venta || 0)
+    });
+  } catch (err) {
+    console.error("GET /consumos/resumen", err);
+    res.status(500).json({ ok: false, msg: "Error resumen consumo interno" });
+  }
+});
+
+/* ---------- Para la sección Caja (informativo: NO suma ni resta) ---------- */
+app.get("/consumos/caja", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const fecha = ciEsFecha(req.query.fecha) ? req.query.fecha : ciHoyAsuncion();
+
+    const diaQ = await pool.query(
+      `
+      SELECT
+        ci.id,
+        ci.fecha,
+        ci.cantidad,
+        COALESCE(ci.precio_unitario, 0) AS precio_unitario,
+        ci.cantidad * COALESCE(ci.costo_unitario, 0)  AS costo_total,
+        ci.cantidad * COALESCE(ci.precio_unitario, 0) AS valor_venta,
+        ci.motivo,
+        COALESCE(ci.usuario_nombre, '-') AS usuario_nombre,
+        COALESCE(p.nombre, 'Producto eliminado') AS producto_nombre
+      FROM consumos_internos ci
+      LEFT JOIN productos p ON p.id = ci.producto_id AND p.empresa_id = $1
+      WHERE ci.empresa_id = $1
+        AND (ci.fecha AT TIME ZONE 'America/Asuncion')::date = $2::date
+      ORDER BY ci.fecha DESC
+      `,
+      [empresaId, fecha]
+    );
+
+    const mesQ = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(ci.cantidad), 0) AS unidades,
+        COALESCE(SUM(ci.cantidad * COALESCE(ci.costo_unitario, 0)), 0)  AS costo,
+        COALESCE(SUM(ci.cantidad * COALESCE(ci.precio_unitario, 0)), 0) AS venta
+      FROM consumos_internos ci
+      WHERE ci.empresa_id = $1
+        AND date_trunc('month', (ci.fecha AT TIME ZONE 'America/Asuncion')::date)
+          = date_trunc('month', $2::date)
+      `,
+      [empresaId, fecha]
+    );
+
+    const dia = diaQ.rows.reduce((t, r) => ({
+      unidades: t.unidades + Number(r.cantidad || 0),
+      costo: t.costo + Number(r.costo_total || 0),
+      venta: t.venta + Number(r.valor_venta || 0)
+    }), { unidades: 0, costo: 0, venta: 0 });
+
+    const m = mesQ.rows[0] || {};
+
+    res.json({
+      fecha,
+      dia: { items: diaQ.rows, ...dia },
+      mes: {
+        unidades: Number(m.unidades || 0),
+        costo: Number(m.costo || 0),
+        venta: Number(m.venta || 0)
+      }
+    });
+  } catch (err) {
+    console.error("GET /consumos/caja", err);
+    res.status(500).json({ ok: false, msg: "Error cargando consumo interno para caja" });
+  }
+});
+
+/* ---------- Registrar consumo: descuenta stock y guarda el movimiento ---------- */
 app.post("/consumos", requireEmpresa, async (req, res) => {
   const empresaId = getEmpresaId(req);
   const productoId = Number(req.body?.producto_id || 0);
@@ -6789,7 +6919,10 @@ app.post("/consumos", requireEmpresa, async (req, res) => {
 
     const prodQ = await client.query(
       `
-      SELECT id, nombre, COALESCE(stock, 0) AS stock, COALESCE(costo, 0) AS costo
+      SELECT id, nombre,
+             COALESCE(stock, 0)  AS stock,
+             COALESCE(costo, 0)  AS costo,
+             COALESCE(precio, 0) AS precio
       FROM productos
       WHERE id = $1
         AND empresa_id = $2
@@ -6830,13 +6963,13 @@ app.post("/consumos", requireEmpresa, async (req, res) => {
     const ins = await client.query(
       `
       INSERT INTO consumos_internos (
-        producto_id, cantidad, costo_unitario, motivo,
+        producto_id, cantidad, costo_unitario, precio_unitario, motivo,
         usuario_id, usuario_nombre, empresa_id
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
       RETURNING id
       `,
-      [productoId, cantidad, Number(prod.costo), motivo, usuarioId, usuarioNombre, empresaId]
+      [productoId, cantidad, Number(prod.costo), Number(prod.precio), motivo, usuarioId, usuarioNombre, empresaId]
     );
 
     await client.query("COMMIT");
@@ -6850,7 +6983,7 @@ app.post("/consumos", requireEmpresa, async (req, res) => {
   }
 });
 
-// Eliminar consumo (por si se cargó mal): devuelve el stock
+/* ---------- Eliminar consumo (por si se cargó mal): devuelve el stock ---------- */
 app.delete("/consumos/:id", requireEmpresa, async (req, res) => {
   const empresaId = getEmpresaId(req);
   const id = Number(req.params.id);
@@ -6904,6 +7037,7 @@ app.delete("/consumos/:id", requireEmpresa, async (req, res) => {
     client.release();
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);

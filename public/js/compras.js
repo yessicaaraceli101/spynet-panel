@@ -1552,4 +1552,568 @@ window.onChangeProductoCompra = onChangeProductoCompra;
 window.verCompraDetalle = verCompraDetalle;
 
 
+/* =====================================================================
+   CONSUMO INTERNO (uso propio)
+   ---------------------------------------------------------------------
+   - Registrar consumo (descuenta stock, no toca caja)
+   - Resumen simple: cuántos productos se usaron y cuánta plata no entró
+   - Tarjeta informativa en Caja (no suma ni resta)
+   Va dentro de una función para que sus variables no choquen con
+   las de compras.js ni app.js.
+   ===================================================================== */
+(function () {
+let consumoProductoSel = null;
+let consumoBuscarTimer = null;
+let consumoRangoActual = "mes"; // hoy | semana | mes
 
+/* ---------- Utilidades ---------- */
+function fmtGsConsumo(n) {
+  return "Gs. " + new Intl.NumberFormat("es-PY").format(Math.round(Number(n || 0)));
+}
+
+function fmtNumConsumo(n) {
+  return new Intl.NumberFormat("es-PY").format(Number(n || 0));
+}
+
+function escConsumo(str) {
+  return String(str ?? "").replace(/[&<>"']/g, s => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[s]));
+}
+
+function hoyConsumo() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Asuncion" });
+}
+
+function fmtFechaConsumo(f) {
+  if (!f) return "-";
+  const d = new Date(f);
+  if (isNaN(d)) return "-";
+  return d.toLocaleString("es-PY", {
+    timeZone: "America/Asuncion",
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit"
+  });
+}
+
+function fmtHoraConsumo(f) {
+  const d = new Date(f);
+  if (isNaN(d)) return "-";
+  return d.toLocaleTimeString("es-PY", { timeZone: "America/Asuncion", hour: "2-digit", minute: "2-digit" });
+}
+
+function avisoConsumo(msg, tipo = "success") {
+  if (typeof toast === "function") toast(msg, tipo);
+  else if (typeof mostrarToastAccion === "function") mostrarToastAccion(msg);
+  else alert(msg);
+}
+
+/* ---------- Buscar producto ---------- */
+function buscarProductoConsumo(texto) {
+  clearTimeout(consumoBuscarTimer);
+  consumoBuscarTimer = setTimeout(() => buscarProductoConsumoAhora(texto), 250);
+}
+
+async function buscarProductoConsumoAhora(texto) {
+  const lista = document.getElementById("consumoListaProductos");
+  if (!lista) return;
+
+  const q = String(texto || "").trim();
+  consumoProductoSel = null;
+  actualizarInfoProductoConsumo();
+
+  if (q.length < 2) {
+    lista.style.display = "none";
+    lista.innerHTML = "";
+    return;
+  }
+
+  try {
+    const res = await fetch(`/productos?buscar=${encodeURIComponent(q)}`, { credentials: "include" });
+    const productos = await res.json();
+
+    lista.innerHTML = "";
+    lista.style.display = "block";
+
+    if (!Array.isArray(productos) || !productos.length) {
+      lista.innerHTML = `<div style="padding:10px;color:#6b7280;">No se encontraron productos</div>`;
+      return;
+    }
+
+    productos.slice(0, 15).forEach(p => {
+      const item = document.createElement("div");
+      item.style.cssText = "padding:10px 12px;border-bottom:1px solid #eef2f7;cursor:pointer;";
+      item.onmouseover = () => (item.style.background = "#f8fafc");
+      item.onmouseout = () => (item.style.background = "");
+      item.innerHTML = `
+        <strong style="color:#111827;">${escConsumo(p.nombre || "-")}</strong><br>
+        <small style="color:#6b7280;">Código: ${escConsumo(p.codigo || "-")} | Stock: ${Number(p.stock || 0)} | Precio: ${fmtGsConsumo(p.precio)}</small>
+      `;
+      item.addEventListener("click", () => seleccionarProductoConsumo(p));
+      lista.appendChild(item);
+    });
+  } catch (err) {
+    console.error("Error buscando productos (consumo):", err);
+    lista.style.display = "block";
+    lista.innerHTML = `<div style="padding:10px;color:#b91c1c;">Error al buscar productos</div>`;
+  }
+}
+
+function seleccionarProductoConsumo(p) {
+  consumoProductoSel = {
+    id: Number(p.id),
+    nombre: p.nombre,
+    stock: Number(p.stock || 0),
+    costo: Number(p.costo || 0),
+    precio: Number(p.precio || 0)
+  };
+
+  const input = document.getElementById("consumoBuscar");
+  const lista = document.getElementById("consumoListaProductos");
+  if (input) input.value = p.nombre || "";
+  if (lista) { lista.innerHTML = ""; lista.style.display = "none"; }
+
+  actualizarInfoProductoConsumo();
+  document.getElementById("consumoCantidad")?.focus();
+}
+
+function actualizarInfoProductoConsumo() {
+  const info = document.getElementById("consumoInfoProducto");
+  if (!info) return;
+
+  if (!consumoProductoSel) {
+    info.style.display = "none";
+    info.innerHTML = "";
+    return;
+  }
+
+  const cant = Number(document.getElementById("consumoCantidad")?.value || 0);
+  const valorVenta = cant * consumoProductoSel.precio;
+
+  info.style.display = "block";
+  info.innerHTML = `
+    Stock disponible: <strong>${consumoProductoSel.stock}</strong>
+    &nbsp;|&nbsp; Si se vendía: <strong style="color:#c2410c;">${fmtGsConsumo(valorVenta)}</strong>
+    (no entra a caja)
+  `;
+}
+
+/* ---------- Registrar ---------- */
+async function registrarConsumoInterno() {
+  if (!consumoProductoSel) {
+    alert("Seleccioná un producto");
+    return;
+  }
+
+  const cantidad = Number(document.getElementById("consumoCantidad")?.value || 0);
+  const motivo = (document.getElementById("consumoMotivo")?.value || "").trim();
+
+  if (!cantidad || cantidad <= 0) {
+    alert("Ingresá una cantidad válida");
+    return;
+  }
+  if (cantidad > consumoProductoSel.stock) {
+    alert(`Stock insuficiente. Disponible: ${consumoProductoSel.stock}`);
+    return;
+  }
+
+  const btn = document.getElementById("btnRegistrarConsumo");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch("/consumos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ producto_id: consumoProductoSel.id, cantidad, motivo })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data.ok) {
+      alert(data.msg || "Error registrando el consumo");
+      return;
+    }
+
+    avisoConsumo("Consumo registrado");
+    consumosPagina = 1;
+    limpiarFormConsumo();
+    await refrescarConsumoInterno();
+  } catch (err) {
+    console.error(err);
+    alert("Error registrando el consumo");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function limpiarFormConsumo() {
+  consumoProductoSel = null;
+  const b = document.getElementById("consumoBuscar");
+  const c = document.getElementById("consumoCantidad");
+  const m = document.getElementById("consumoMotivo");
+  if (b) b.value = "";
+  if (c) c.value = 1;
+  if (m) m.value = "";
+  actualizarInfoProductoConsumo();
+}
+
+/* ---------- Pedir datos al servidor con mensajes claros ---------- */
+async function pedirJsonConsumo(url) {
+  let res;
+  try {
+    res = await fetch(url, { credentials: "include", cache: "no-store" });
+  } catch {
+    throw new Error("No hay conexión con el servidor. Revisá que esté encendido.");
+  }
+  let data = null;
+  try { data = await res.json(); } catch { data = null; }
+
+  if (res.status === 404 && !data) {
+    throw new Error("El servidor que está corriendo no tiene las rutas nuevas de consumo interno. Cortalo (Ctrl + C) y volvé a iniciarlo.");
+  }
+  if (res.status === 401) {
+    throw new Error("La sesión venció. Volvé a iniciar sesión.");
+  }
+  if (!res.ok || !data) {
+    throw new Error((data && (data.msg || data.error)) || `Error del servidor (${res.status}). Mirá la terminal del servidor.`);
+  }
+  return data;
+}
+
+/* ---------- Resumen simple (Hoy / Semana / Mes) ---------- */
+function rangoConsumo(tipo) {
+  consumoRangoActual = tipo;
+  document.querySelectorAll(".ci-tabs button").forEach(b => {
+    b.classList.toggle("activo", b.dataset.rango === tipo);
+  });
+  cargarResumenConsumo();
+}
+
+function desdeRangoConsumo(tipo, hoy) {
+  if (tipo === "hoy") return hoy;
+  if (tipo === "semana") {
+    const d = new Date(hoy + "T12:00:00");
+    const dia = d.getDay(); // 0 = domingo
+    d.setDate(d.getDate() - (dia === 0 ? 6 : dia - 1)); // lunes
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+  return hoy.slice(0, 8) + "01"; // mes
+}
+
+async function cargarResumenConsumo() {
+  const elUnid = document.getElementById("ciKpiUnidades");
+  const elVenta = document.getElementById("ciKpiVenta");
+  const elFrase = document.getElementById("ciFrase");
+  if (!elUnid || !elVenta || !elFrase) return;
+
+  const hoy = hoyConsumo();
+  const desde = desdeRangoConsumo(consumoRangoActual, hoy);
+
+  try {
+    const r = await pedirJsonConsumo(`/consumos/resumen?desde=${desde}&hasta=${hoy}`);
+
+    const unidades = Number(r.unidades || 0);
+    const plata = fmtGsConsumo(r.venta);
+    const periodo = { hoy: "Hoy", semana: "Esta semana", mes: "Este mes" }[consumoRangoActual];
+
+    elUnid.textContent = fmtNumConsumo(unidades);
+    elVenta.textContent = plata;
+    elFrase.textContent = unidades > 0
+      ? `${periodo} se ${unidades === 1 ? "usó 1 producto" : `usaron ${fmtNumConsumo(unidades)} productos`} del negocio. ${unidades === 1 ? "Si se vendía, era" : "Si se vendían, eran"} ${plata}.`
+      : `${periodo} no se usó ningún producto del negocio.`;
+  } catch (e) {
+    console.error("Error resumen consumo interno:", e);
+    elFrase.textContent = e.message || "No se pudo cargar el resumen.";
+  }
+}
+
+/* Monto que no entró a caja; si el producto no tiene precio, lo avisa */
+function montoConsumoHtml(c) {
+  if (c.valor_venta === undefined) {
+    return `<span title="Reiniciá el servidor para ver este dato" style="color:#94a3b8;font-weight:500;">Reiniciar servidor</span>`;
+  }
+  if (Number(c.valor_venta) > 0) return fmtGsConsumo(c.valor_venta);
+  return `<span title="El producto no tiene precio de venta cargado. Cargalo en Productos." style="display:inline-block;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:.78rem;font-weight:600;">Sin precio</span>`;
+}
+
+/* ---------- Historial ---------- */
+let consumosLista = [];
+let consumosPagina = 1;
+const CONSUMOS_POR_PAGINA = 10;
+
+async function cargarConsumos() {
+  const tbody = document.getElementById("tablaConsumos");
+  if (!tbody) return;
+
+  try {
+    const res = await fetch("/consumos", { credentials: "include", cache: "no-store" });
+    const rows = await res.json();
+    consumosLista = Array.isArray(rows) ? rows : [];
+    renderConsumosPagina();
+  } catch (err) {
+    console.error("Error cargando consumos:", err);
+  }
+}
+
+function renderConsumosPagina() {
+  const tbody = document.getElementById("tablaConsumos");
+  if (!tbody) return;
+
+  const total = consumosLista.length;
+  const totalPaginas = Math.max(1, Math.ceil(total / CONSUMOS_POR_PAGINA));
+  if (consumosPagina > totalPaginas) consumosPagina = totalPaginas;
+  if (consumosPagina < 1) consumosPagina = 1;
+
+  tbody.innerHTML = "";
+
+  if (!total) {
+    tbody.innerHTML = `
+      <tr><td colspan="7" style="text-align:center;padding:32px;color:#6b7280;">
+        Todavía no hay consumos registrados.
+      </td></tr>`;
+    renderConsumosPaginacion(0, 1);
+    return;
+  }
+
+  const inicio = (consumosPagina - 1) * CONSUMOS_POR_PAGINA;
+  consumosLista.slice(inicio, inicio + CONSUMOS_POR_PAGINA).forEach(c => {
+    const tr = document.createElement("tr");
+    tr.style.borderTop = "1px solid #eef2f6";
+    tr.innerHTML = `
+      <td style="padding:12px;white-space:nowrap;color:#374151;">${fmtFechaConsumo(c.fecha)}</td>
+      <td style="padding:12px;font-weight:600;color:#111827;">${escConsumo(c.producto_nombre || "-")}</td>
+      <td style="padding:12px;text-align:center;">${Number(c.cantidad)}</td>
+      <td style="padding:12px;text-align:right;font-weight:600;color:#c2410c;">${montoConsumoHtml(c)}</td>
+      <td style="padding:12px;color:#4b5563;">${escConsumo(c.motivo || "-")}</td>
+      <td style="padding:12px;color:#4b5563;">${escConsumo(c.usuario_nombre || "-")}</td>
+      <td style="padding:12px;text-align:center;">
+        <button title="Eliminar y devolver stock" style="
+          width:34px;height:34px;border-radius:8px;border:1.5px solid #fca5a5;
+          background:#fff;color:#b91c1c;cursor:pointer;font-size:16px;">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </td>
+    `;
+    tr.querySelector("button").addEventListener("click", () => eliminarConsumo(c.id));
+    tbody.appendChild(tr);
+  });
+
+  renderConsumosPaginacion(total, totalPaginas);
+}
+
+function renderConsumosPaginacion(total, totalPaginas) {
+  const cont = document.getElementById("consumosPaginacion");
+  if (!cont) return;
+
+  if (total <= CONSUMOS_POR_PAGINA) {
+    cont.innerHTML = total
+      ? `<span class="cp-info">${total} ${total === 1 ? "consumo" : "consumos"}</span>`
+      : "";
+    return;
+  }
+
+  const desde = (consumosPagina - 1) * CONSUMOS_POR_PAGINA + 1;
+  const hasta = Math.min(consumosPagina * CONSUMOS_POR_PAGINA, total);
+
+  // Números visibles: primera, última y las cercanas a la actual
+  let botones = "";
+  for (let i = 1; i <= totalPaginas; i++) {
+    if (i === 1 || i === totalPaginas || Math.abs(i - consumosPagina) <= 1) {
+      botones += `<button type="button" data-pag="${i}" class="${i === consumosPagina ? "activo" : ""}"${i === consumosPagina ? ' aria-current="page"' : ""}>${i}</button>`;
+    } else if (Math.abs(i - consumosPagina) === 2) {
+      botones += `<span class="cp-puntos">…</span>`;
+    }
+  }
+
+  cont.innerHTML = `
+    <span class="cp-info">Mostrando ${desde}–${hasta} de ${total}</span>
+    <div class="cp-botones">
+      <button type="button" data-pag="${consumosPagina - 1}" ${consumosPagina === 1 ? "disabled" : ""} aria-label="Página anterior">‹</button>
+      ${botones}
+      <button type="button" data-pag="${consumosPagina + 1}" ${consumosPagina === totalPaginas ? "disabled" : ""} aria-label="Página siguiente">›</button>
+    </div>
+  `;
+
+  cont.querySelectorAll("button[data-pag]").forEach(b => {
+    b.addEventListener("click", () => {
+      consumosPagina = Number(b.dataset.pag);
+      renderConsumosPagina();
+    });
+  });
+}
+
+/* ---------- Eliminar ---------- */
+function confirmarEliminarConsumoModal() {
+  return new Promise(resolve => {
+    document.getElementById("modalEliminarConsumo")?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "modalEliminarConsumo";
+    overlay.style.cssText = `
+      position:fixed;inset:0;z-index:2147483647;
+      background:rgba(15,23,42,.55);
+      display:flex;align-items:center;justify-content:center;padding:16px;
+    `;
+
+    overlay.innerHTML = `
+      <div role="dialog" aria-modal="true" aria-labelledby="tituloEliminarConsumo" style="
+        width:min(420px,100%);background:#fff;border-radius:16px;padding:2rem;
+        box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center;">
+
+        <div style="width:64px;height:64px;border-radius:50%;background:#fee2e2;
+          display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+          <i class="fa-solid fa-trash" style="font-size:1.5rem;color:#ef4444;"></i>
+        </div>
+
+        <h3 id="tituloEliminarConsumo" style="margin:0 0 .5rem;font-size:1.2rem;font-weight:700;color:#111827;">
+          Eliminar consumo
+        </h3>
+        <p style="margin:0 0 1.5rem;color:#6b7280;font-size:.95rem;">
+          ¿Seguro que querés eliminar este consumo? El stock se devolverá al producto.
+        </p>
+
+        <div style="display:flex;gap:.75rem;">
+          <button type="button" data-accion="cancelar" style="
+            flex:1;padding:.75rem;border-radius:10px;border:none;cursor:pointer;
+            background:#e5e7eb;color:#374151;font-weight:600;font-size:.95rem;">
+            Cancelar
+          </button>
+          <button type="button" data-accion="eliminar" style="
+            flex:1;padding:.75rem;border-radius:10px;border:none;cursor:pointer;
+            background:#ef4444;color:#fff;font-weight:600;font-size:.95rem;
+            box-shadow:0 4px 12px rgba(239,68,68,.3);">
+            <i class="fa-solid fa-trash" style="margin-right:.4rem;"></i>Eliminar
+          </button>
+        </div>
+      </div>
+    `;
+
+    const cerrar = (resultado) => {
+      document.removeEventListener("keydown", onKey);
+      overlay.remove();
+      resolve(resultado);
+    };
+    const onKey = (e) => { if (e.key === "Escape") cerrar(false); };
+
+    overlay.addEventListener("click", e => {
+      if (e.target === overlay) return cerrar(false);
+      const accion = e.target.closest("button")?.dataset.accion;
+      if (accion === "cancelar") cerrar(false);
+      if (accion === "eliminar") cerrar(true);
+    });
+    document.addEventListener("keydown", onKey);
+
+    document.body.appendChild(overlay);
+    overlay.querySelector('[data-accion="cancelar"]').focus();
+  });
+}
+
+async function eliminarConsumo(id) {
+  const confirmado = await confirmarEliminarConsumoModal();
+  if (!confirmado) return;
+
+  try {
+    const res = await fetch(`/consumos/${id}`, { method: "DELETE", credentials: "include" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      alert(data.msg || "Error eliminando consumo");
+      return;
+    }
+    avisoConsumo("Consumo eliminado. El stock volvió al producto.");
+    await refrescarConsumoInterno();
+  } catch (err) {
+    console.error(err);
+    alert("Error eliminando consumo");
+  }
+}
+
+async function refrescarConsumoInterno() {
+  await Promise.all([cargarConsumos(), cargarResumenConsumo()]);
+}
+
+/* ---------- Tarjeta en Caja (informativa: no suma ni resta) ---------- */
+function fechaCajaConsumo() {
+  return (document.getElementById("fechaCajaEfectivo")?.value || "").trim() ||
+         (document.getElementById("fechaCajaTransferencia")?.value || "").trim() ||
+         hoyConsumo();
+}
+
+async function cargarConsumoCaja(fecha) {
+  const cont = document.getElementById("cic-lista");
+  if (!cont) return; // la tarjeta no está en el HTML
+
+  const f = fecha || fechaCajaConsumo();
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+
+  try {
+    const data = await pedirJsonConsumo(`/consumos/caja?fecha=${encodeURIComponent(f)}`);
+
+    const dia = data.dia || { items: [], unidades: 0, venta: 0 };
+    const mes = data.mes || { unidades: 0, venta: 0 };
+
+    set("cic-dia-unidades", fmtNumConsumo(dia.unidades));
+    set("cic-dia-venta", fmtGsConsumo(dia.venta));
+    set("cic-mes-unidades", fmtNumConsumo(mes.unidades));
+    set("cic-mes-venta", fmtGsConsumo(mes.venta));
+
+    cont.innerHTML = (dia.items || []).length
+      ? dia.items.map(c => `
+          <div class="cic-fila">
+            <span class="cic-hora">${fmtHoraConsumo(c.fecha)}</span>
+            <span class="cic-prod"><strong>${Number(c.cantidad)} × ${escConsumo(c.producto_nombre)}</strong>
+              <small>${escConsumo(c.usuario_nombre || "-")}${c.motivo ? " · " + escConsumo(c.motivo) : ""}</small>
+            </span>
+            <span class="cic-monto">${montoConsumoHtml(c)}</span>
+          </div>`).join("")
+      : `<div class="cic-vacio">Este día no se usó ningún producto del negocio.</div>`;
+  } catch (e) {
+    console.error("Error consumo interno en caja:", e);
+    cont.innerHTML = `<div class="cic-vacio" style="color:#b91c1c;">${escConsumo(e.message || "No se pudo cargar el consumo interno.")}</div>`;
+  }
+}
+
+/* ---------- Eventos ---------- */
+document.addEventListener("input", e => {
+  if (e.target.id === "consumoBuscar") buscarProductoConsumo(e.target.value);
+  if (e.target.id === "consumoCantidad") actualizarInfoProductoConsumo();
+});
+
+// Cambiar la fecha en Caja actualiza la tarjeta de consumo interno
+document.addEventListener("change", e => {
+  if (e.target.id === "fechaCajaEfectivo" || e.target.id === "fechaCajaTransferencia") {
+    cargarConsumoCaja(e.target.value);
+  }
+});
+
+// Cerrar la lista de búsqueda al tocar fuera
+document.addEventListener("click", e => {
+  const lista = document.getElementById("consumoListaProductos");
+  const input = document.getElementById("consumoBuscar");
+  if (!lista || lista.style.display === "none") return;
+  if (!lista.contains(e.target) && e.target !== input) lista.style.display = "none";
+});
+
+function enConsumoPage() {
+  return (location.hash || "").toLowerCase() === "#consumo-interno";
+}
+
+function enCajaPage() {
+  return (location.hash || "").toLowerCase() === "#caja";
+}
+
+function alCambiarPantallaConsumo() {
+  if (enConsumoPage()) refrescarConsumoInterno();
+  if (enCajaPage()) cargarConsumoCaja();
+}
+
+document.addEventListener("DOMContentLoaded", alCambiarPantallaConsumo);
+window.addEventListener("hashchange", alCambiarPantallaConsumo);
+
+window.registrarConsumoInterno = registrarConsumoInterno;
+window.cargarConsumos = cargarConsumos;
+window.eliminarConsumo = eliminarConsumo;
+window.limpiarFormConsumo = limpiarFormConsumo;
+window.rangoConsumo = rangoConsumo;
+window.cargarResumenConsumo = cargarResumenConsumo;
+window.cargarConsumoCaja = cargarConsumoCaja;
+})();

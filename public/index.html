@@ -512,8 +512,39 @@
     </div>
   </div>
 
+  <!-- Resumen: cuántos productos y cuánta plata -->
+  <div class="ci-resumen">
+    <div class="ci-resumen-top">
+      <h3>¿Cuánto se usó?</h3>
+      <div class="ci-tabs">
+        <button type="button" data-rango="hoy" onclick="rangoConsumo('hoy')">Hoy</button>
+        <button type="button" data-rango="semana" onclick="rangoConsumo('semana')">Semana</button>
+        <button type="button" data-rango="mes" onclick="rangoConsumo('mes')" class="activo">Mes</button>
+      </div>
+    </div>
+
+    <div class="ci-numeros">
+      <div class="ci-num">
+        <i class="fa-solid fa-box-open"></i>
+        <div>
+          <strong id="ciKpiUnidades">0</strong>
+          <span>productos usados</span>
+        </div>
+      </div>
+      <div class="ci-num plata">
+        <i class="fa-solid fa-sack-dollar"></i>
+        <div>
+          <strong id="ciKpiVenta">Gs. 0</strong>
+          <span>no entraron a caja</span>
+        </div>
+      </div>
+    </div>
+
+    <p id="ciFrase" class="ci-frase">Cargando…</p>
+  </div>
+
   <!-- Formulario -->
-  <div style="background:#fff;border:1.5px solid #e8edf3;border-radius:12px;padding:1.2rem;margin:1.5rem 0;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+  <div style="background:#fff;border:1.5px solid #e8edf3;border-radius:12px;padding:1.2rem;margin-bottom:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
     <div class="consumo-form-grid">
 
       <div style="position:relative;">
@@ -546,10 +577,7 @@
 
   <!-- Historial -->
   <div style="background:#fff;border:1.5px solid #e8edf3;border-radius:12px;padding:1.2rem;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-      <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:#1a2a3a;">Historial de consumos</h3>
-      <span style="font-size:.85rem;color:#6b7280;">Costo total consumido: <strong id="consumoTotalCosto" style="color:#1a2a3a;">Gs. 0</strong></span>
-    </div>
+    <h3 style="margin:0 0 12px;font-size:1.05rem;font-weight:700;color:#1a2a3a;">Historial de consumos</h3>
 
     <div style="overflow-x:auto;">
       <table style="width:100%;border-collapse:collapse;font-size:.88rem;">
@@ -558,7 +586,7 @@
             <th style="padding:12px;">Fecha</th>
             <th style="padding:12px;">Producto</th>
             <th style="padding:12px;text-align:center;">Cant.</th>
-            <th style="padding:12px;text-align:right;">Costo</th>
+            <th style="padding:12px;text-align:right;">No entró a caja</th>
             <th style="padding:12px;">Motivo</th>
             <th style="padding:12px;">Usuario</th>
             <th style="padding:12px;text-align:center;">Acción</th>
@@ -567,6 +595,7 @@
         <tbody id="tablaConsumos"></tbody>
       </table>
     </div>
+    <div id="consumosPaginacion" class="cp-paginacion"></div>
   </div>
 
   <style>
@@ -580,6 +609,41 @@
       .consumo-form-grid { grid-template-columns: 1fr 1fr; }
       .consumo-form-grid > div:first-child,
       .consumo-form-grid > button { grid-column: 1 / -1; }
+    }
+
+    .ci-resumen { background:#fff; border:1.5px solid #e8edf3; border-radius:12px; padding:1.2rem; margin:1.5rem 0; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+    .ci-resumen-top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+    .ci-resumen-top h3 { margin:0; font-size:1.05rem; font-weight:700; color:#1a2a3a; }
+
+    .ci-tabs { display:inline-flex; background:#f1f5f9; border-radius:10px; padding:4px; }
+    .ci-tabs button { border:none; background:transparent; padding:7px 16px; border-radius:8px; font-size:.88rem; font-weight:600; color:#64748b; cursor:pointer; }
+    .ci-tabs button.activo { background:#1B3F6B; color:#fff; }
+    .ci-tabs button:focus-visible { outline:2px solid #1B3F6B; outline-offset:2px; }
+
+    .ci-numeros { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .ci-num { display:flex; align-items:center; gap:14px; padding:16px 18px; border-radius:12px; background:#f0f5fb; border:1px solid #dbe6f3; }
+    .ci-num i { font-size:28px; color:#1B3F6B; }
+    .ci-num strong { display:block; font-size:2rem; font-weight:800; line-height:1.1; color:#1a2a3a; }
+    .ci-num span { font-size:.9rem; color:#64748b; }
+    .ci-num.plata { background:#fff7ed; border-color:#fed7aa; }
+    .ci-num.plata i, .ci-num.plata strong { color:#c2410c; }
+
+    .ci-frase { margin:12px 0 0; font-size:.92rem; color:#475569; }
+
+    .cp-paginacion { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:14px; }
+    .cp-paginacion:empty { display:none; }
+    .cp-info { font-size:.85rem; color:#64748b; }
+    .cp-botones { display:flex; align-items:center; gap:4px; }
+    .cp-botones button { min-width:34px; height:34px; padding:0 8px; border:1.5px solid #e5e7eb; border-radius:8px; background:#fff; color:#334155; font-size:.88rem; font-weight:600; cursor:pointer; }
+    .cp-botones button:hover:not(:disabled):not(.activo) { background:#f1f5f9; }
+    .cp-botones button.activo { background:#1B3F6B; border-color:#1B3F6B; color:#fff; }
+    .cp-botones button:disabled { opacity:.4; cursor:not-allowed; }
+    .cp-botones button:focus-visible { outline:2px solid #1B3F6B; outline-offset:2px; }
+    .cp-puntos { color:#94a3b8; padding:0 2px; }
+
+    @media (max-width:600px) {
+      .ci-numeros { grid-template-columns:1fr; }
+      .ci-num strong { font-size:1.6rem; }
     }
   </style>
 </section>
@@ -2382,6 +2446,57 @@
             </div>
 
           </div>
+
+          <!-- CONSUMO INTERNO (informativo: no suma ni resta en caja) -->
+<div class="cic-card">
+  <div class="cic-head">
+    <h3><i class="fa-solid fa-box-open"></i> Consumo interno</h3>
+    <span class="cic-pill">No suma ni resta en caja</span>
+  </div>
+  <p class="cic-texto">Productos que salieron del stock sin venderse. Explica por qué falta mercadería sin que haya entrado dinero.</p>
+
+  <div class="cic-numeros">
+    <div class="cic-num">
+      <span>Día</span>
+      <strong><b id="cic-dia-unidades">0</b> productos</strong>
+      <em id="cic-dia-venta">Gs. 0</em>
+    </div>
+    <div class="cic-num">
+      <span>Mes</span>
+      <strong><b id="cic-mes-unidades">0</b> productos</strong>
+      <em id="cic-mes-venta">Gs. 0</em>
+    </div>
+  </div>
+
+  <div id="cic-lista" class="cic-lista"></div>
+</div>
+
+<style>
+  .cic-card { background:#fff; border:1.5px solid #fed7aa; border-radius:14px; padding:1.2rem; margin-top:16px; }
+  .cic-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  .cic-head h3 { margin:0; font-size:1.05rem; font-weight:700; color:#1a2a3a; display:flex; align-items:center; gap:8px; }
+  .cic-head h3 i { color:#c2410c; }
+  .cic-pill { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; border-radius:999px; padding:4px 12px; font-size:.78rem; font-weight:700; }
+  .cic-texto { margin:8px 0 14px; font-size:.85rem; color:#64748b; }
+
+  .cic-numeros { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+  .cic-num { background:#fff7ed; border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:2px; }
+  .cic-num span { font-size:.8rem; font-weight:600; color:#9a3412; }
+  .cic-num strong { font-size:1.05rem; color:#1a2a3a; font-weight:600; }
+  .cic-num strong b { font-size:1.5rem; font-weight:800; }
+  .cic-num em { font-style:normal; font-size:1.15rem; font-weight:800; color:#c2410c; }
+
+  .cic-lista { border-top:1px solid #f1f5f9; }
+  .cic-fila { display:flex; align-items:center; gap:12px; padding:10px 2px; border-bottom:1px solid #f1f5f9; }
+  .cic-hora { font-size:.8rem; color:#94a3b8; min-width:48px; }
+  .cic-prod { flex:1; display:flex; flex-direction:column; font-size:.9rem; color:#1a2a3a; }
+  .cic-prod small { color:#94a3b8; font-size:.78rem; }
+  .cic-monto { font-weight:700; color:#c2410c; white-space:nowrap; }
+  .cic-vacio { padding:14px 2px; color:#94a3b8; font-size:.88rem; }
+
+  @media (max-width:600px) { .cic-numeros { grid-template-columns:1fr; } }
+</style>
+
         </section>
 
         <section id="formas-pago" class="view hidden">
@@ -3474,9 +3589,8 @@
           src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
         <!-- Tu app -->
         <script src="js/app.js?v=3"></script>
-        <script src="js/compras.js?v=1001"></script>
+        <script src="js/compras.js?v=1004"></script>
         <script src="js/ventas.js?v=999"></script>
-        <script src="js/consumos.js?v=1"></script>
 
 
         <script>
