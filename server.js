@@ -7039,6 +7039,123 @@ app.delete("/consumos/:id", requireEmpresa, async (req, res) => {
 });
 
 
+
+
+/* =====================================================================
+   VENTA POR KILO (carnicería, fiambrería, verdulería) — bloque para server.js
+   ---------------------------------------------------------------------
+   CÓMO PEGARLO:
+   En server.js, pegá este bloque completo justo ANTES del comentario
+   "CONSUMO INTERNO (uso propio)". No borres nada.
+
+   Qué hace (solo agrega, no cambia lo que ya funciona):
+   - Agrega a productos el campo unidad_venta ("unidad" o "kg").
+     Todos los productos existentes quedan en "unidad".
+   - Si stock / cantidades son números enteros o tienen menos de 3
+     decimales en la base, los pasa a NUMERIC para aceptar gramos
+     (1,250 kg). Los valores actuales no cambian.
+   ===================================================================== */
+
+async function bootstrapVentaPorKilo() {
+  try {
+    await pool.query(`ALTER TABLE productos ADD COLUMN IF NOT EXISTS unidad_venta TEXT DEFAULT 'unidad'`);
+
+    const columnas = [
+      ["productos", "stock"],
+      ["ventas_items", "cantidad"],
+      ["compras_items", "cantidad"]
+    ];
+
+    for (const [tabla, columna] of columnas) {
+      const { rows } = await pool.query(
+        `
+        SELECT data_type, numeric_scale
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = $1
+          AND column_name = $2
+        `,
+        [tabla, columna]
+      );
+      const tipo = rows[0]?.data_type;
+      const escala = rows[0]?.numeric_scale;
+      const esEntero = ["integer", "smallint", "bigint"].includes(tipo);
+      // NUMERIC con menos de 3 decimales (ej: NUMERIC(12,2)) redondea los gramos: 1,316 -> 1,32
+      const pocosDecimales = tipo === "numeric" && escala !== null && escala !== undefined && Number(escala) < 3;
+      if (esEntero || pocosDecimales) {
+        try {
+          await pool.query(`ALTER TABLE ${tabla} ALTER COLUMN ${columna} TYPE NUMERIC USING ${columna}::numeric`);
+          console.log(`Venta por kilo: ${tabla}.${columna} ahora acepta decimales`);
+        } catch (e) {
+          console.error(`Venta por kilo: no se pudo cambiar ${tabla}.${columna}:`, e.message);
+        }
+      }
+    }
+
+    console.log("Venta por kilo lista");
+  } catch (e) {
+    console.error("bootstrapVentaPorKilo:", e.message);
+  }
+}
+bootstrapVentaPorKilo();
+
+/* ---------- Unidad de venta de cada producto (para el panel) ---------- */
+app.get("/productos/unidades", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const { rows } = await pool.query(
+      `
+      SELECT id, COALESCE(unidad_venta, 'unidad') AS unidad_venta
+      FROM productos
+      WHERE empresa_id = $1
+        AND COALESCE(activo, true) = true
+      `,
+      [empresaId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /productos/unidades", err);
+    res.status(500).json({ ok: false, msg: "Error cargando unidades" });
+  }
+});
+
+/* ---------- Guardar si un producto se vende por unidad o por kg ---------- */
+app.put("/productos/:id/unidad", requireEmpresa, async (req, res) => {
+  try {
+    const empresaId = getEmpresaId(req);
+    const id = Number(req.params.id);
+    const unidad = req.body?.unidad_venta === "kg" ? "kg" : "unidad";
+    const stockRaw = req.body?.stock;
+    const stock = stockRaw === null || stockRaw === undefined || stockRaw === ""
+      ? null
+      : Number(stockRaw);
+
+    if (!id) return res.status(400).json({ ok: false, msg: "ID inválido" });
+    if (stock !== null && (!Number.isFinite(stock) || stock < 0)) {
+      return res.status(400).json({ ok: false, msg: "Stock inválido" });
+    }
+
+    const { rowCount } = await pool.query(
+      `
+      UPDATE productos
+      SET unidad_venta = $1,
+          stock = COALESCE($2::numeric, stock)
+      WHERE id = $3
+        AND empresa_id = $4
+      `,
+      [unidad, stock, id, empresaId]
+    );
+
+    if (!rowCount) {
+      return res.status(404).json({ ok: false, msg: "Producto no encontrado o no pertenece a esta empresa" });
+    }
+    res.json({ ok: true, unidad_venta: unidad });
+  } catch (err) {
+    console.error("PUT /productos/:id/unidad", err);
+    res.status(500).json({ ok: false, msg: "Error guardando la unidad" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

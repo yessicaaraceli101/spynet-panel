@@ -556,7 +556,7 @@
 
       <div>
         <label for="consumoCantidad" style="display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:6px;">Cantidad</label>
-        <input id="consumoCantidad" type="number" min="1" step="1" value="1"
+        <input id="consumoCantidad" type="number" min="0" step="any" value="1"
           style="width:100%;height:42px;padding:0 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
       </div>
 
@@ -1830,15 +1830,39 @@
 
                 <div class="grid cols-2" style="gap:16px; margin-top:14px;">
                   <div class="ec-field">
-                    <label>Cantidad</label>
+                    <label id="lblCantidadManualVenta">Cantidad</label>
                     <input id="cantidadManualVenta" type="number" min="1" value="1" class="input">
                   </div>
 
                   <div class="ec-field">
-                    <label>Precio</label>
+                    <label id="lblPrecioManualVenta">Precio</label>
                     <input id="precioManualVenta" type="text" class="input" readonly>
                   </div>
                 </div>
+
+                <!-- Venta por kilo (solo aparece si el producto se vende por kg) -->
+                <div id="kgPanel" class="kg-panel" style="display:none;">
+                  <div class="kg-rapidos">
+                    <span>Peso rápido:</span>
+                    <button type="button" onclick="kgRapido(0.25)">¼ kg</button>
+                    <button type="button" onclick="kgRapido(0.5)">½ kg</button>
+                    <button type="button" onclick="kgRapido(1)">1 kg</button>
+                    <button type="button" onclick="kgRapido(2)">2 kg</button>
+                  </div>
+                  <div class="ec-field" style="margin-top:12px;">
+                    <label for="kgMontoVenta">O cobrar por monto (Gs.)</label>
+                    <input id="kgMontoVenta" type="text" inputmode="numeric" class="input" placeholder="Ej: 50.000">
+                  </div>
+                  <div id="kgResumen" class="kg-resumen"></div>
+                </div>
+                <style>
+                  .kg-panel { margin-top:14px; padding:14px; border:1.5px solid #fed7aa; background:#fff7ed; border-radius:12px; }
+                  .kg-rapidos { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:.85rem; color:#9a3412; font-weight:600; }
+                  .kg-rapidos button { border:1.5px solid #fdba74; background:#fff; color:#9a3412; border-radius:8px; padding:5px 12px; font-weight:700; cursor:pointer; }
+                  .kg-rapidos button:hover { background:#ffedd5; }
+                  .kg-resumen { margin-top:10px; font-size:1rem; font-weight:700; color:#1a2a3a; }
+                  .kg-resumen:empty { display:none; }
+                </style>
 
                 <div style="margin-top:16px;">
                   <button class="btn btn-primary" type="button" onclick="agregarProductoManualVenta()">
@@ -1917,9 +1941,16 @@
 
       <div class="section-title">Precios y stock</div>
       <div class="grid cols-2">
-        <div><label class="label">Precio (Gs.)</label><input id="pr_precio" class="input" type="text" inputmode="numeric" placeholder="0" oninput="formatearMilesPY(this)"></div>
+        <div style="grid-column:1/-1">
+          <label class="label">Se vende por</label>
+          <select id="pr_unidad" class="input" onchange="cambiarUnidadProductoForm('pr')">
+            <option value="unidad">Unidad</option>
+            <option value="kg">Kilo (carnicería, fiambres, verdulería)</option>
+          </select>
+        </div>
+        <div><label class="label" id="lbl_pr_precio">Precio (Gs.)</label><input id="pr_precio" class="input" type="text" inputmode="numeric" placeholder="0" oninput="formatearMilesPY(this)"></div>
         <div><label class="label">Costo (Gs.)</label><input id="pr_costo" class="input" type="text" inputmode="numeric" placeholder="0" oninput="formatearMilesPY(this)"></div>
-        <div><label class="label">Cantidad</label><input id="pr_stock" class="input" type="number" min="0" step="1" placeholder="0"></div>
+        <div><label class="label" id="lbl_pr_stock">Cantidad</label><input id="pr_stock" class="input" type="number" min="0" step="1" placeholder="0"></div>
         <div><label class="label">Imagen (opcional)</label><input id="pr_img" type="file" accept="image/*"></div>
       </div>
     </div>
@@ -1960,9 +1991,16 @@
 
       <div class="section-title">Precios y stock</div>
       <div class="grid cols-2">
-        <div><label class="label">Precio (Gs.)</label><input id="ed_precio" class="input" type="number" step="0.01" min="0" placeholder="0.00"></div>
+        <div style="grid-column:1/-1">
+          <label class="label">Se vende por</label>
+          <select id="ed_unidad" class="input" onchange="cambiarUnidadProductoForm('ed')">
+            <option value="unidad">Unidad</option>
+            <option value="kg">Kilo (carnicería, fiambres, verdulería)</option>
+          </select>
+        </div>
+        <div><label class="label" id="lbl_ed_precio">Precio (Gs.)</label><input id="ed_precio" class="input" type="number" step="0.01" min="0" placeholder="0.00"></div>
         <div><label class="label">Costo (Gs.)</label><input id="ed_costo" class="input" type="number" step="0.01" min="0" placeholder="0.00"></div>
-        <div><label class="label">Cantidad</label><input id="ed_stock" class="input" type="number" min="0" step="1" placeholder="0"></div>
+        <div><label class="label" id="lbl_ed_stock">Cantidad</label><input id="ed_stock" class="input" type="number" min="0" step="1" placeholder="0"></div>
         <div><label class="label">Imagen (opcional)</label><input id="ed_img" type="file" accept="image/*" class="input"></div>
       </div>
     </div>
@@ -2453,7 +2491,7 @@
     <h3><i class="fa-solid fa-box-open"></i> Consumo interno</h3>
     <span class="cic-pill">No suma ni resta en caja</span>
   </div>
-  <p class="cic-texto">Productos que salieron del stock sin venderse. Explica por qué falta mercadería sin que haya entrado dinero.</p>
+  <p class="cic-texto">Productos que salieron del stock sin venderse. Explica por qué falta mercadería sin que haya entrado plata.</p>
 
   <div class="cic-numeros">
     <div class="cic-num">
@@ -3589,8 +3627,9 @@
           src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
         <!-- Tu app -->
         <script src="js/app.js?v=3"></script>
-        <script src="js/compras.js?v=1004"></script>
+        <script src="js/compras.js?v=1005"></script>
         <script src="js/ventas.js?v=999"></script>
+        <script src="js/carniceria.js?v=2"></script>
 
 
         <script>
